@@ -1,0 +1,841 @@
+[
+    {
+        "id": 1,
+        "name": "أنشطة عددية",
+        "description": "الأعداد والحساب والدوال.",
+        "order": 1,
+        "created_at": "2026-03-08T23:53:51.000000Z",
+        "updated_at": "2026-03-08T23:53:51.000000Z",
+        "access_type": "classic",
+        "price": 0,
+        "sections": [
+            {
+                "id": 1,
+                "field_id": 1,
+                "name": "الأعداد الطبيعية والأعداد الناطقة",
+                "description": "القاسم المشترك الأكبر والكسور.",
+                "order": 1,
+                "created_at": "2026-03-08T23:53:51.000000Z",
+                "updated_at": "2026-03-08T23:53:51.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 151,
+                        "section_id": 1,
+                        "name": "قواسم عدد طبيعي",
+                        "summary": "قاسم عدد طبيعي $a$ هو كل عدد طبيعي $b$ حيث يكون باقي قسمة $a$ على $b$ معدوماً. قواسم العدد المشتركة تساعدنا في تبسيط الكسور.",
+                        "example_problem": "أوجد مجموعة قواسم العدد $36$",
+                        "example_steps": [
+                            "نبحث عن كل جداء لعددين طبيعيين يعطي $36$:",
+                            "$$36 = 1 \\times 36$$",
+                            "$$36 = 2 \\times 18$$",
+                            "$$36 = 3 \\times 12$$",
+                            "$$36 = 4 \\times 9$$",
+                            "$$36 = 6 \\times 6$$",
+                            {
+                                "text": "$$36 = {\\color{red}9} \\times 4$$",
+                                "type": "stop"
+                            },
+                            {
+                                "text": "- العدد $1$ قاسم لكل عدد طبيعي $a$ لأن $a = 1 \\times a$.\\n- كل عدد طبيعي $a$ غير معدوم يقبل القسمة على نفسه لأن $a = a \\times 1$.",
+                                "type": "notes"
+                            },
+                            "مجموعة قواسم العدد $36$ هي: $\\{1, 2, 3, 4, 6, 9, 12, 18, 36\\}$"
+                        ],
+                        "application_problem": "أوجد قواسم العدد $24$",
+                        "application_solution": "$\\{1, 2, 3, 4, 6, 8, 12, 24\\}$",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-04-02T20:58:10.000000Z",
+                        "lab_type": "divisor_discovery",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "تذكر أن قواسم العدد هي الأعداد التي تقسمه تماماً بدون باقٍ. ابدأ بالرقم 1 والعدد نفسه."
+                    },
+                    {
+                        "id": 152,
+                        "section_id": 1,
+                        "name": "خواص قواسم عدد طبيعي",
+                        "summary": "نتعلم في هذا الدرس أهم خواص القواسم المتعلقة بالعمليات الحسابية (الجمع والطرح) وباقي القسمة الإقليدية.",
+                        "example_problem": "اكتشف خواص القواسم عبر التجارب التفاعلية:",
+                        "example_steps": [
+                            {
+                                "text": "حوصلة:",
+                                "type": "notes"
+                            },
+                            "$a$ و $b$ و $n$ أعداد طبيعية غير معدومة و $a > b$.",
+                            {
+                                "text": "خاصية 1:",
+                                "type": "notes"
+                            },
+                            "إذا كان $n$ يقسم كلاً من $a$ و $b$، فإن $n$ يقسم كلاً من $(a+b)$ و $(a-b)$.",
+                            "مثال: لدينا $5$ يقسم كلاً من $15$ و $35$ إذن: $5$ يقسم كلاً من $50 (15+35)$ و $20 (35-15)$.",
+                            {
+                                "text": "خاصية 2:",
+                                "type": "notes"
+                            },
+                            "إذا كان $n$ يقسم كلاً من $a$ و $b$، و $r$ باقي قسمة $a$ على $b$، فإن $n$ يقسم $r$.",
+                            "مثال: لدينا $7$ يقسم كلاً من $56$ و $21$.\\nباقي قسمة $56$ على $21$ هو $14$.\\nإذن: $7$ يقسم $14$."
+                        ],
+                        "application_problem": "هل $6$ يقسم مجموع $12$ و $18$؟ علل.",
+                        "application_solution": "نعم، لأن $6$ يقسم كلاً من $12$ ($12=6 \\times 2$) و $18$ ($18=6 \\times 3$).",
+                        "order": 2,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "divisor_properties",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "استخدم الخاصية: إذا كان n يقسم a و b، فإنه يقسم مجموعمهما."
+                    },
+                    {
+                        "id": 153,
+                        "section_id": 1,
+                        "name": "القاسم المشترك الأكبر (PGCD)",
+                        "summary": "القاسم المشترك الأكبر لعددين هو أكبر عدد يقسمهما معاً. نستخدمه لاختزال الكسور وتبسيط الحسابات.",
+                        "example_problem": "أوجد $PGCD(12, 18)$",
+                        "example_steps": [
+                            "نكتب قواسم العدد $12$: $\\{1, 2, 3, 4, 6, 12\\}$",
+                            "نكتب قواسم العدد $18$: $\\{1, 2, 3, 6, 9, 18\\}$",
+                            "القواسم المشتركة هي: $\\{1, 2, 3, 6\\}$",
+                            "أكبر قاسم مشترك هو $6$."
+                        ],
+                        "application_problem": "احسب $PGCD(24, 36)$",
+                        "application_solution": "$12$",
+                        "order": 3,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "pgcd_all",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "يمكنك استخدام خوارزمية إقليدس (القسمات المتتالية) لإيجاد القاسم المشترك الأكبر بسرعة."
+                    },
+                    {
+                        "id": 154,
+                        "section_id": 1,
+                        "name": "العددان الأوليان فيما بينهما",
+                        "summary": "نقول عن عددين طبيعيين أنهما أوليان فيما بينهما إذا كان قاسمهما المشترك الأكبر يساوي 1.",
+                        "example_problem": "هل العددان 15 و 8 أوليان فيما بينهما؟",
+                        "example_steps": [
+                            "نحسب $PGCD(15, 8)$ باستخدام خوارزمية إقليدس:",
+                            "$$15 = 8 \\times 1 + 7$$",
+                            "$$8 = 7 \\times 1 + 1$$",
+                            "$$7 = 1 \\times 7 + 0$$",
+                            "بما أن آخر باق غير معدوم هو 1، فإن $PGCD(15, 8) = 1$."
+                        ],
+                        "application_problem": "هل 21 و 14 أوليان فيما بينهما؟",
+                        "application_solution": "لا",
+                        "order": 4,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "coprime_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "تكون الأعداد أولية فيما بينها إذا كان PGCD لهما يساوي 1. ابحث عن قاسم مشترك أكبر من 1."
+                    },
+                    {
+                        "id": 155,
+                        "section_id": 1,
+                        "name": "اختزال كسر",
+                        "summary": "اختزال كسر $\\frac{a}{b}$ يعني كتابته على شكل كسر غير قابل للاختزال بقسمة البسط والمقام على $PGCD$.",
+                        "example_problem": "اختزل الكسر $\\frac{48}{72}$",
+                        "example_steps": [
+                            "نحسب $PGCD(48, 72) = 24$.",
+                            "نقسم الطرفين: $\\frac{48 \\div 24}{72 \\div 24} = \\frac{2}{3}$."
+                        ],
+                        "application_problem": "اختزل الكسر $\\frac{15}{25}$",
+                        "application_solution": "3\/5",
+                        "order": 5,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "fraction_simplify",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "اقسم كلاً من البسط والمقام على قاسمهما المشترك الأكبر."
+                    },
+                    {
+                        "id": 156,
+                        "section_id": 1,
+                        "name": "جذر تربيعي لعدد موجب",
+                        "summary": "الجذر التربيعي لعدد موجب $x$ هو العدد الذي مربعه يساوي $x$. نرمز له بـ $\\sqrt{x}$.",
+                        "example_problem": "بسط العدد $\\sqrt{18}$",
+                        "example_steps": [
+                            "نكتب $18$ على شكل جداء بمربع تام: $18 = 9 \\times 2$.",
+                            "إذن: $\\sqrt{18} = \\sqrt{9 \\times 2} = 3\\sqrt{2}$."
+                        ],
+                        "application_problem": "بسط العدد $\\sqrt{50}$",
+                        "application_solution": "$5\\sqrt{2}$",
+                        "order": 6,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "roots_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "ابحث عن أكبر مربع تام يقسم العدد تحت الجذر (مثل 4، 9، 16، 25...)."
+                    },
+                    {
+                        "id": 157,
+                        "section_id": 1,
+                        "name": "حل المعادلة $x^2 = a$",
+                        "summary": "إذا كان $a > 0$: حلان هما $\\sqrt{a}$ و $-\\sqrt{a}$. إذا كان $a = 0$: حل وحيد 0. إذا كان $a < 0$: لا يوجد حل.",
+                        "example_problem": "حل المعادلة $x^2 = 16$",
+                        "example_steps": [
+                            "بما أن $16 > 0$، فإن للمعادلة حلان: $4$ و $-4$."
+                        ],
+                        "application_problem": "حل المعادلة $x^2 = 7$",
+                        "application_solution": "√7, -√7",
+                        "order": 7,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "rational_roots",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "تذكر أن أي عدد موجب له جذران تربيعيان (أحدهما موجب والآخر هو مقابله السالب $-\\sqrt{a}$)."
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "field_id": 1,
+                "name": "المعادلات والمتراجحات",
+                "description": "حل المشكلات من الدرجة الأولى.",
+                "order": 2,
+                "created_at": "2026-03-08T23:53:51.000000Z",
+                "updated_at": "2026-03-08T23:53:51.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 158,
+                        "section_id": 2,
+                        "name": "معادلات من الدرجة الأولى",
+                        "summary": "حل المعادلة يعني إيجاد قيمة $x$ التي تحقق المساواة.",
+                        "example_problem": "حل المعادلة: $3x - 5 = 10$",
+                        "example_steps": [
+                            "نضيف $5$ للطرفين: $3x = 15$.",
+                            "نقسم على $3$: $x = 5$."
+                        ],
+                        "application_problem": "حل المعادلة: $2x + 4 = 12$",
+                        "application_solution": "$4$",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "equations_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "اجعل المجاهيل في طرف والمعاليم في طرف آخر مع تغيير إشارة كل ما تنقله."
+                    },
+                    {
+                        "id": 159,
+                        "section_id": 2,
+                        "name": "معادلة الجداء المعدوم",
+                        "summary": "المعادلة $(ax+b)(cx+d) = 0$ تعني $ax+b=0$ أو $cx+d=0$.",
+                        "example_problem": "حل المعادلة: $(x-3)(2x+4) = 0$",
+                        "example_steps": [
+                            "إما $x-3 = 0 \\Rightarrow x = 3$.",
+                            "أو $2x+4 = 0 \\Rightarrow x = -2$."
+                        ],
+                        "application_problem": "حل المعادلة: $(x+5)(x-5) = 0$",
+                        "application_solution": "-5, 5",
+                        "order": 2,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "equations_product_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "يكون جداء عددين معدوماً إذا كان أحد العاملين على الأقل يساوي الصفر."
+                    },
+                    {
+                        "id": 160,
+                        "section_id": 2,
+                        "name": "متراجحات من الدرجة الأولى",
+                        "summary": "نحل المتراجحة بنفس طريقة المعادلات مع مراعاة قلب الإشارة عند الضرب أو القسمة على عدد سالب.",
+                        "example_problem": "حل المتراجحة: 2x + 3 > 7",
+                        "example_steps": [
+                            "2x > 4 \\Rightarrow x > 2."
+                        ],
+                        "application_problem": "حل المتراجحة: -x + 5 ≤ 3",
+                        "application_solution": "x ≥ 2",
+                        "order": 3,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "inequalities_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "تذكر: اقلب رمز التراجُح عند الضرب أو القسمة في عدد سالب."
+                    },
+                    {
+                        "id": 161,
+                        "section_id": 2,
+                        "name": "تمثيل حلول متراجحة بيانياً",
+                        "summary": "بعد حل المتراجحة، نصور الحلول على مستقيم مدرج ونشطب ما ليس حلاً.",
+                        "example_problem": "مثل بيانياً حلول المتراجحة $x \\le 3$",
+                        "example_steps": [
+                            "نرسم مستقيماً، نحدد 3، نشطب القيم الأكبر من 3."
+                        ],
+                        "application_problem": "مثل حلول $x > -2$",
+                        "application_solution": "Open at -2 towards right",
+                        "order": 4,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "inequalities_graph_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "ارسم مستقيماً وحدد عليه الصفر والعدد -2. الحلول هي القيم التي تقع يمين -2."
+                    },
+                    {
+                        "id": 162,
+                        "section_id": 2,
+                        "name": "المتطابقات الشهيرة",
+                        "summary": "المتطابقات: $(a+b)^2$, $(a-b)^2$, $a^2-b^2$.",
+                        "example_problem": "انشر وبسط: $(x + 3)^2$",
+                        "example_steps": [
+                            "$(x+3)^2 = x^2 + 6x + 9$."
+                        ],
+                        "application_problem": "انشر: $(2x - 1)^2$",
+                        "application_solution": "$4x^2 - 4x + 1$",
+                        "order": 5,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "identities_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "استخدم القاعدة $(a-b)^2 = a^2 - 2ab + b^2$. هنا $a=2x$ و $b=1$."
+                    },
+                    {
+                        "id": 163,
+                        "section_id": 2,
+                        "name": "ترييض مشكلة",
+                        "summary": "ترجمة مشكلة لغوية أو واقعية إلى لغة الرياضيات (معادلة أو متراجحة) لحلها.",
+                        "example_problem": "ثلاثة أعداد طبيعية متتالية مجموعها $33$. ما هي هذه الأعداد؟",
+                        "example_steps": [
+                            "نفرص العدد الأول هو $x$.",
+                            "الأعداد التالية هي $x+1$ و $x+2$.",
+                            "المعادلة: $x + (x+1) + (x+2) = 33$",
+                            "$3x + 3 = 33 \\Rightarrow 3x = 30 \\Rightarrow x = 10$.",
+                            "الأعداد هي: $10, 11, 12$."
+                        ],
+                        "application_problem": "عمر أمين ربع عمر أبيه، وعمر جده ضعف عمر أبيه. إذا كان مجموع أعمارهم $117$ سنة، فما هو عمر الأب؟",
+                        "application_solution": "36",
+                        "order": 6,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "word_problems_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "نضع $x$ هو سن الأب، وبالتالي يكون عمر أمين $\\dfrac{1}{4}x$ وعمر الجد $2x$. مجموعهم: $x + \\dfrac{1}{4}x + 2x = 117$."
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "field_id": 1,
+                "name": "الدوال الخطية والتآلفية",
+                "description": "دراسة تغيرات الدوال وتمثيلها البياني.",
+                "order": 3,
+                "created_at": "2026-03-08T23:53:51.000000Z",
+                "updated_at": "2026-03-08T23:53:51.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 164,
+                        "section_id": 3,
+                        "name": "الدالة الخطية",
+                        "summary": "الدالة الخطية عبارتها من الشكل $f(x) = ax$. تمثيلها البياني هو مستقيم يمر من مبدأ المعلم $O(0, 0)$.",
+                        "example_problem": "لتكن الدالة الخطية $f(x) = 2x$. أحسب صورة العدد $3$.",
+                        "example_steps": [
+                            "$f(3) = 2 \\times 3 = 6$.",
+                            "إذن صورة $3$ بالدالة $f$ هي $6$."
+                        ],
+                        "application_problem": "لتكن الدالة الخطية $g(x) = -3x$. أحسب $g(-2)$.",
+                        "application_solution": "6",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "linear_functions",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "لحساب صورة عدد بدالة، نعوض $x$ بذلك العدد في عبارة الدالة: $g(-2) = -3 \\times (-2)$."
+                    },
+                    {
+                        "id": 165,
+                        "section_id": 3,
+                        "name": "الدالة التآلفية",
+                        "summary": "الدالة التآلفية عبارتها من الشكل $f(x) = ax + b$. تمثيلها البياني هو مستقيم لا يمر بالضرورة من المبدأ.",
+                        "example_problem": "لتكن $f(x) = 2x + 1$. أحسب صورة الصفر $f(0)$.",
+                        "example_steps": [
+                            "$f(0) = 2 \\times 0 + 1 = 1$."
+                        ],
+                        "application_problem": "لتكن $f(x) = x - 2$. أحسب $f(5)$.",
+                        "application_solution": "3",
+                        "order": 2,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "affine_functions",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "عوض $x$ بالعدد $5$ في العبارة: $f(5) = 5 - 2$."
+                    }
+                ]
+            },
+            {
+                "id": 4,
+                "field_id": 1,
+                "name": "جملة معادلتين",
+                "description": "حل جملة معادلتين من الدرجة الأولى بمجهولين.",
+                "order": 4,
+                "created_at": "2026-03-08T23:53:51.000000Z",
+                "updated_at": "2026-03-08T23:53:51.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 166,
+                        "section_id": 4,
+                        "name": "حل جملة معادلتين",
+                        "summary": "نستخدم طريقة التعويض أو الجمع لإيجاد الثنائية $(x, y)$ التي تحقق المعادلتين معاً.",
+                        "example_problem": "حل الجملة: $\\begin{cases} x + y = 5 \\ 2x - y = 4 \\end{cases}$",
+                        "example_steps": [
+                            "نلاحظ أن معاملات $y$ متعاكسة، نستخدم الجمع:",
+                            "$(x + 2x) + (y - y) = 5 + 4 \\Rightarrow 3x = 9$",
+                            "إذن $x = 3$.",
+                            "بالتعويض في المعادلة الأولى: $3 + y = 5 \\Rightarrow y = 2$.",
+                            "الحل هو الثنائية $(3, 2)$."
+                        ],
+                        "application_problem": "حل الجملة: $\\begin{cases} x + y = 3 \\ x - y = 1 \\end{cases}$",
+                        "application_solution": "2, 1",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "systems_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "بما أن معاملات $y$ متعاكسة ($+1$ و $-1$)، جرب جمع المعادلتين للتخلص من $y$ وإيجاد قيمة $x$."
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "name": "أنشطة هندسية",
+        "description": "النظريات والهندسة في الفضاء.",
+        "order": 2,
+        "created_at": "2026-03-08T23:53:51.000000Z",
+        "updated_at": "2026-03-08T23:53:51.000000Z",
+        "access_type": "classic",
+        "price": 0,
+        "sections": [
+            {
+                "id": 51,
+                "field_id": 2,
+                "name": "خاصية طاليس وفيثاغورس",
+                "description": "حساب الأطوال وإثبات التوازي.",
+                "order": 1,
+                "created_at": "2026-03-28T17:28:25.000000Z",
+                "updated_at": "2026-03-28T17:28:25.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 146,
+                        "section_id": 51,
+                        "name": "خاصية طاليس",
+                        "summary": "تستخدم لحساب الأطوال في حالة وجود مستقيمين متوازيين يقطعهما مستقيمان غير متوازيين.",
+                        "example_problem": "في الشكل المقابل $(DE) \\parallel (BC)$. أحسب الطول $AE$.",
+                        "example_steps": [
+                            "بتطبيق خاصية طاليس نجد: $\\frac{AD}{AB} = \\frac{AE}{AC} = \\frac{DE}{BC}$",
+                            "نعوض الأطوال المعلومة ثم نستخدم الرابع التناسبي."
+                        ],
+                        "application_problem": "في مثلث $ABC$، لدينا $(MN) \\parallel (BC)$. إذا كان $AM=2, AB=6, AN=3$. أحسب $AC$.",
+                        "application_solution": "9",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:28:25.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "thales_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "طبق تناسبية الأطوال: $\\frac{AM}{AB} = \\frac{AN}{AC}$. اضرب الطرفين في الوسطين لإيجاد $AC$."
+                    },
+                    {
+                        "id": 147,
+                        "section_id": 51,
+                        "name": "خاصية فيثاغورس",
+                        "summary": "في مثلث قائم: مربع الوتر يساوي مجموع مربعي الضلعين الآخرين.",
+                        "example_problem": "AB=3, AC=4. احسب الوتر BC.",
+                        "example_steps": [
+                            "BC² = 3² + 4² = 25 \\Rightarrow BC = 5."
+                        ],
+                        "application_problem": "الضلعان القائمان 5 و 12. احسب الوتر.",
+                        "application_solution": "13",
+                        "order": 2,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:28:25.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "pythagoras_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "الوتر هو الضلع المقابل للزاوية القائمة. استعمل $c^2 = a^2 + b^2$."
+                    },
+                    {
+                        "id": 148,
+                        "section_id": 51,
+                        "name": "النسب المثلثية",
+                        "summary": "في المثلث القائم، نعرّف جيب التمام ($\\cos$)، الجيب ($\\sin$)، والظل ($\\tan$) كنسب بين أطوال أضلاعه.",
+                        "example_problem": "احسب $\\tan(B)$ إذا كان المقابل $= 4$ والمجاور $= 3$.",
+                        "example_steps": [
+                            "القانون: $\\tan(B) = \\frac{\\text{المقابل}}{\\text{المجاور}}$",
+                            "نعوض: $\\tan(B) = \\frac{4}{3} \\approx 1.33$"
+                        ],
+                        "application_problem": "احسب الجيب ($\\sin$) لزاوية في مثلث قائم ضلعها المقابل $3$ ووترها $5$.",
+                        "application_solution": "0.6",
+                        "order": 3,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:28:25.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "trigonometry_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "تذكر أن جيب الزاوية ($\\sin$) هو النسبة بين طول الضلع المقابل وطول الوتر."
+                    }
+                ]
+            },
+            {
+                "id": 53,
+                "field_id": 2,
+                "name": "الأشعة والانسحاب",
+                "description": "مفهوم الشعاع وعلاقة شال.",
+                "order": 2,
+                "created_at": "2026-03-28T17:41:21.000000Z",
+                "updated_at": "2026-03-28T17:41:21.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 167,
+                        "section_id": 53,
+                        "name": "تساوي شعاعين وعلاقة شال",
+                        "summary": "$\\vec{AB} + \\vec{BC} = \\vec{AC}$.",
+                        "example_problem": "بسط: $\\vec{AB} + \\vec{BC}$.",
+                        "example_steps": [
+                            "النتيجة هي $\\vec{AC}$."
+                        ],
+                        "application_problem": "بسط المجموع الشعاعي: $\\vec{MA} + \\vec{AB} + \\vec{BC}$.",
+                        "application_solution": "MC",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:20:57.000000Z",
+                        "lab_type": "vectors_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "استخدم علاقة شال بشكل متكرر: نهاية الشعاع الأول هي بداية الشعاع الثاني."
+                    },
+                    {
+                        "id": 168,
+                        "section_id": 53,
+                        "name": "المعالم وإحداثيات شعاع",
+                        "summary": "حساب مركبتي شعاع وإحداثيات منتصف قطعة مستقيمة في معلم.",
+                        "example_problem": "في معلم، لدينا النقطتان $A(2, 4)$ و $B(6, 8)$. أحسب إحداثيات منتصف القطعة $[AB]$.",
+                        "example_steps": [
+                            "القانون: $M\\left(\\frac{x_A+x_B}{2}, \\frac{y_A+y_B}{2}\\right)$",
+                            "نعوض: $M\\left(\\frac{2+6}{2}, \\frac{4+8}{2}\\right) = M(4, 6)$"
+                        ],
+                        "application_problem": "لتكن $A(0, 0)$ و $B(4, 4)$. احسب مركبتي الشعاع $\\vec{AB}$.",
+                        "application_solution": "(4, 4)",
+                        "order": 2,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:41:21.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "vector_coords_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "مركبات الشعاع $\\vec{AB}$ هي $(x_B - x_A, y_B - y_A)$. اظهر الناتج على شكل ثنائية."
+                    }
+                ]
+            },
+            {
+                "id": 54,
+                "field_id": 2,
+                "name": "الدوران والمضلعات المنتظمة",
+                "description": "صور الأشكال بدوران وزوايا المضلعات.",
+                "order": 3,
+                "created_at": "2026-03-28T17:43:42.000000Z",
+                "updated_at": "2026-03-28T17:43:42.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 169,
+                        "section_id": 54,
+                        "name": "الدوران والزوايا",
+                        "summary": "الدوران يحافظ على المسافات، الأطوال، والزوايا. صورة شكل بدوران هي شكل مطابق له.",
+                        "example_problem": "$ABC$ مثلث متقايس الأضلاع مركزه $O$. ما هي صورة الرأس $A$ بالدوران الذي مركزه $O$ وزاويته $120^\\circ$ في الاتجاه المباشر؟",
+                        "example_steps": [
+                            "الزاوية المركزية في المثلث متقايس الأضلاع هي $360^\\circ \\div 3 = 120^\\circ$.",
+                            "بما أن الدوران مركزه $O$ وزاويته $120^\\circ$، فإن صورة $A$ هي النقطة التالية $B$."
+                        ],
+                        "application_problem": "ما هي صورة دائرة نصف قطرها $5$ سم بدوران؟",
+                        "application_solution": "دائرة نصف قطرها 5",
+                        "order": 1,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "rotation_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "بما أن الدوران يحافظ على الأطوال، فإن صورة الدائرة هي دائرة لها نفس نصف القطر تماماً."
+                    },
+                    {
+                        "id": 170,
+                        "section_id": 54,
+                        "name": "المضلعات المنتظمة",
+                        "summary": "المضلع المنتظم هو مضلع جميع أضلاعه متقايسة وزواياه متقايسة. يمكن حصر كل مضلع منتظم داخل دائرة.",
+                        "example_problem": "احسب قيس الزاوية المركزية لسداسي منتظم.",
+                        "example_steps": [
+                            "قانون الزاوية المركزية: $\\alpha = 360^\\circ \\div n$",
+                            "للسداسي $n = 6$: $\\alpha = 360^\\circ \\div 6 = 60^\\circ$."
+                        ],
+                        "application_problem": "ما هو قيس الزاوية المركزية لمثمن منتظم ($8$ أضلاع)؟",
+                        "application_solution": "45",
+                        "order": 2,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "regular_polygons_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "طبق القاعدة: الزاوية المركزية $= 360^\\circ \\div n$ حيث $n$ هو عدد الأضلاع."
+                    }
+                ]
+            },
+            {
+                "id": 55,
+                "field_id": 2,
+                "name": "الهندسة في الفضاء",
+                "description": "الكرة والجلة، والمقاطع المستوية.",
+                "order": 4,
+                "created_at": "2026-03-28T17:43:42.000000Z",
+                "updated_at": "2026-03-28T17:43:42.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 171,
+                        "section_id": 55,
+                        "name": "الكرة والجلة",
+                        "summary": "مساحة الكرة ذات نصف القطر $R$ هي $A = 4 \\pi R^2$. حجم الجلة هو $V = \\frac{4}{3} \\pi R^3$.",
+                        "example_problem": "جلة نصف قطرها $R = 3$ سم. أحسب حجمها $V$ بدلالة $\\pi$.",
+                        "example_steps": [
+                            "قانون الحجم: $V = \\frac{4}{3} \\pi R^3$",
+                            "نعوض $R = 3$: $V = \\frac{4}{3} \\times \\pi \\times 3^3 = \\frac{4}{3} \\times \\pi \\times 27 = 36\\pi$ سم$^3$."
+                        ],
+                        "application_problem": "احسب مساحة كرة نصف قطرها $2$ سم (بدلالة $\\pi$).",
+                        "application_solution": "16π",
+                        "order": 1,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "geometry_3d_sphere",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "استخدم قانون مساحة الكرة: $A = 4 \\times \\pi \\times R^2$. هنا $R = 2$."
+                    },
+                    {
+                        "id": 172,
+                        "section_id": 55,
+                        "name": "الأسطوانة والمخروط",
+                        "summary": "حجم الأسطوانة $V = \\pi R^2 h$. حجم المخروط هو ثلث حجم الأسطوانة $V = \\frac{1}{3} \\pi R^2 h$.",
+                        "example_problem": "أسطوانة نصف قطر قاعدتها $2$ سم وارتفاعها $5$ سم. احسب حجمها $V$.",
+                        "example_steps": [
+                            "القانون: $V = \\pi R^2 h$",
+                            "نعوض: $V = \\pi \\times 2^2 \\times 5 = 20\\pi$ سم$^3$."
+                        ],
+                        "application_problem": "مخروط نصف قطر قاعدته $3$ سم وارتفاعه $6$ سم. احسب حجمه بدلالة $\\pi$.",
+                        "application_solution": "18π",
+                        "order": 2,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:27:03.000000Z",
+                        "lab_type": "geometry_3d_cylinder",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "طبق القانون: $V = \\frac{1}{3} \\times \\pi \\times R^2 \\times h$."
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": 16,
+        "name": "تنظيم معطيات",
+        "description": "الإحصاء والاحتمالات.",
+        "order": 3,
+        "created_at": "2026-03-28T17:28:26.000000Z",
+        "updated_at": "2026-03-28T17:28:26.000000Z",
+        "access_type": "classic",
+        "price": 0,
+        "sections": [
+            {
+                "id": 52,
+                "field_id": 16,
+                "name": "الإحصاء",
+                "description": "السلاسل الإحصائية، التكرارات، والوسط الحسابي.",
+                "order": 1,
+                "created_at": "2026-03-28T17:28:26.000000Z",
+                "updated_at": "2026-03-28T17:28:26.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 150,
+                        "section_id": 52,
+                        "name": "السلسلة الإحصائية والتكرارات",
+                        "summary": "تنظيم البيانات في جداول تكرارية.",
+                        "example_problem": "أوجد التكرار الكلي لسلسلة.",
+                        "example_steps": [
+                            "نجمع كل التكرارات الجزئية."
+                        ],
+                        "application_problem": "إذا كانت التكرارات هي $5$، $3$، $2$. ما هو التكرار الكلي؟",
+                        "application_solution": "10",
+                        "order": 1,
+                        "is_locked": false,
+                        "created_at": "2026-03-28T17:28:26.000000Z",
+                        "updated_at": "2026-03-29T19:30:51.000000Z",
+                        "lab_type": "statistics_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "التكرار الكلي هو مجموع كل التكرارات الجزئية: $5 + 3 + 2$."
+                    },
+                    {
+                        "id": 173,
+                        "section_id": 52,
+                        "name": "الوسط الحسابي المتوازن",
+                        "summary": "الوسط الحسابي هو مجموع الجداءات (القيمة $\\times$ التكرار) مقسوماً على التكرار الكلي.",
+                        "example_problem": "العلامات: $10$ (معامل $2$)، $15$ (معامل $1$). أحسب المعدل.",
+                        "example_steps": [
+                            "مجموع الجداءات: $(10 \\times 2) + (15 \\times 1) = 20 + 15 = 35$",
+                            "مجموع المعاملات: $2 + 1 = 3$",
+                            "المعدل $= \\frac{35}{3}$",
+                            "النتيجة $\\approx 11.66$"
+                        ],
+                        "application_problem": "العلامات المجمعة: $12$ (معامل $3$)، $8$ (معامل $1$). أحسب المعدل.",
+                        "application_solution": "$11$",
+                        "order": 2,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:30:51.000000Z",
+                        "lab_type": "statistics_grapher",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "المعدل $= \\frac{(12 \\times 3) + (8 \\times 1)}{3 + 1}$."
+                    },
+                    {
+                        "id": 174,
+                        "section_id": 52,
+                        "name": "الوسيط والمدى",
+                        "summary": "الوسيط هو القيمة الوسطى عند ترتيب القيم تصاعدياً. المدى هو الفرق بين أكبر وأصغر قيمة.",
+                        "example_problem": "السلسلة: $3, 7, 5, 9, 2$. أحسب الوسيط والمدى.",
+                        "example_steps": [
+                            "نرتب القيم تصاعدياً: $2, 3, 5, 7, 9$",
+                            "الوسيط (القيمة التي في المنتصف) هو: $5$",
+                            "المدى $= 9 - 2 = 7$"
+                        ],
+                        "application_problem": "السلسلة: $10, 20, 15$. أحسب الوسيط.",
+                        "application_solution": "15",
+                        "order": 3,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:30:51.000000Z",
+                        "lab_type": "statistics_grapher",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "أولاً، رتب الأعداد تصاعدياً من الأصغر إلى الأكبر. الوسيط هو العدد الذي يقع في المنتصف بالضبط."
+                    }
+                ]
+            },
+            {
+                "id": 56,
+                "field_id": 16,
+                "name": "الاحتمالات",
+                "description": "حساب احتمال وقوع حدث.",
+                "order": 2,
+                "created_at": "2026-03-28T17:43:42.000000Z",
+                "updated_at": "2026-03-28T17:43:42.000000Z",
+                "access_type": "classic",
+                "price": 0,
+                "lessons": [
+                    {
+                        "id": 175,
+                        "section_id": 56,
+                        "name": "الاحتمالات البسيطة",
+                        "summary": "احتمال حدث = عدد الحالات المناسبة \/ عدد الحالات الممكنة. قيمة الاحتمال بين 0 و 1.",
+                        "example_problem": "نرمي نرداً. ما احتمال الحصول على عدد زوجي؟",
+                        "example_steps": [
+                            "الأعداد الزوجية في النرد هي: $2, 4, 6$ (إذن $3$ حالات)",
+                            "العدد الكلي للحالات الممكنة هو $6$.",
+                            "الاحتمال $= \\frac{3}{6} = \\frac{1}{2}$"
+                        ],
+                        "application_problem": "نسحب بطاقة عشوائياً من $4$ بطاقات تحمل الأحرف ($A, B, C, D$). ما احتمال سحب البطاقة التي تحمل الحرف $A$؟",
+                        "application_solution": "0.25",
+                        "order": 1,
+                        "is_locked": true,
+                        "created_at": "2026-03-28T17:43:42.000000Z",
+                        "updated_at": "2026-03-29T19:30:51.000000Z",
+                        "lab_type": "probability_lab",
+                        "lab_config": null,
+                        "access_type": "classic",
+                        "price": 0,
+                        "application_hint": "هناك حالة ملائمة واحدة من أصل $4$ حالات ممكنة، إذن الاحتمال هو $\\frac{1}{4}$."
+                    }
+                ]
+            }
+        ]
+    }
+]

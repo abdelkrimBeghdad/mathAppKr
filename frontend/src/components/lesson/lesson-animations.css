@@ -1,0 +1,399 @@
+/* ===== نظام الدروس التفاعلية - حركات CSS ===== */
+
+/* --- كشف الخطوة (RTL: من اليمين) --- */
+@keyframes step-reveal-rtl {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes step-reveal-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- توهج الرياضيات --- */
+@keyframes math-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px rgba(14, 165, 233, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 0 24px rgba(14, 165, 233, 0.4), 0 0 48px rgba(14, 165, 233, 0.15);
+    }
+}
+
+@keyframes math-highlight-pulse {
+
+    0%,
+    100% {
+        background-color: rgba(14, 165, 233, 0.08);
+    }
+
+    50% {
+        background-color: rgba(14, 165, 233, 0.2);
+    }
+}
+
+/* --- XP عائم --- */
+@keyframes xp-float {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    60% {
+        opacity: 1;
+        transform: translateY(-40px) scale(1.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-80px) scale(0.8);
+    }
+}
+
+/* --- نار السلسلة --- */
+@keyframes streak-fire {
+
+    0%,
+    100% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1);
+    }
+
+    25% {
+        transform: scale(1.15) rotate(-3deg);
+        filter: brightness(1.3);
+    }
+
+    50% {
+        transform: scale(1.25) rotate(3deg);
+        filter: brightness(1.5);
+    }
+
+    75% {
+        transform: scale(1.15) rotate(-2deg);
+        filter: brightness(1.3);
+    }
+}
+
+/* --- اهتزاز الخطأ --- */
+@keyframes shake-error {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10% {
+        transform: translateX(-8px);
+    }
+
+    20% {
+        transform: translateX(8px);
+    }
+
+    30% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    50% {
+        transform: translateX(-4px);
+    }
+
+    60% {
+        transform: translateX(4px);
+    }
+
+    70% {
+        transform: translateX(-2px);
+    }
+
+    80% {
+        transform: translateX(2px);
+    }
+}
+
+/* --- نبض التبريز --- */
+@keyframes pulse-highlight {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(14, 165, 233, 0);
+    }
+}
+
+/* --- حد متوهج --- */
+@keyframes border-glow {
+
+    0%,
+    100% {
+        border-color: rgba(14, 165, 233, 0.3);
+    }
+
+    50% {
+        border-color: rgba(14, 165, 233, 0.8);
+    }
+}
+
+@keyframes border-glow-amber {
+
+    0%,
+    100% {
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    50% {
+        border-color: rgba(245, 158, 11, 0.8);
+    }
+}
+
+@keyframes border-glow-rose {
+
+    0%,
+    100% {
+        border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    50% {
+        border-color: rgba(244, 63, 94, 0.8);
+    }
+}
+
+@keyframes border-glow-emerald {
+
+    0%,
+    100% {
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    50% {
+        border-color: rgba(16, 185, 129, 0.8);
+    }
+}
+
+/* --- شارة إنجاز --- */
+@keyframes achievement-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.3) rotate(-12deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.15) rotate(3deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* --- كتابة تدريجية --- */
+@keyframes typewriter-cursor {
+
+    0%,
+    100% {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: #0ea5e9;
+    }
+}
+
+/* --- نبض النقطة --- */
+@keyframes dot-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
+}
+
+/* --- دوران التحميل --- */
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== أصناف الحركات ===== */
+
+.animate-step-reveal {
+    animation: step-reveal-rtl 0.5s ease-out both;
+}
+
+.animate-step-up {
+    animation: step-reveal-up 0.4s ease-out both;
+}
+
+.animate-math-glow {
+    animation: math-glow 2s ease-in-out infinite;
+}
+
+.animate-math-highlight {
+    animation: math-highlight-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-xp-float {
+    animation: xp-float 1.5s ease-out forwards;
+}
+
+.animate-streak-fire {
+    animation: streak-fire 0.8s ease-in-out;
+}
+
+.animate-shake {
+    animation: shake-error 0.6s ease-in-out;
+}
+
+.animate-pulse-highlight {
+    animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+.animate-border-glow {
+    animation: border-glow 2s ease-in-out infinite;
+}
+
+.animate-border-glow-amber {
+    animation: border-glow-amber 2s ease-in-out infinite;
+}
+
+.animate-border-glow-rose {
+    animation: border-glow-rose 2s ease-in-out infinite;
+}
+
+.animate-border-glow-emerald {
+    animation: border-glow-emerald 2s ease-in-out infinite;
+}
+
+.animate-achievement-pop {
+    animation: achievement-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.animate-dot-pulse {
+    animation: dot-pulse 1.2s ease-in-out infinite;
+}
+
+/* ===== أنماط الخطوات ===== */
+
+.lesson-step-card {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.lesson-step-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 0 1.5rem 1.5rem 0;
+    transition: background-color 0.3s ease;
+}
+
+.lesson-step-card.type-calculation::before {
+    background: linear-gradient(to bottom, #38bdf8, #0ea5e9);
+}
+
+.lesson-step-card.type-reasoning::before {
+    background: linear-gradient(to bottom, #a78bfa, #8b5cf6);
+}
+
+.lesson-step-card.type-result::before {
+    background: linear-gradient(to bottom, #34d399, #10b981);
+}
+
+.lesson-step-card.type-interaction::before {
+    background: linear-gradient(to bottom, #fb923c, #f97316);
+}
+
+/* ===== شريط التقدم ===== */
+
+.lesson-progress-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.15);
+    overflow: hidden;
+}
+
+.lesson-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #38bdf8, #0ea5e9, #8b5cf6);
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s linear infinite;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes progress-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ===== الوضع الداكن ===== */
+
+.dark .lesson-step-card {
+    background-color: rgba(30, 41, 59, 0.8);
+    border-color: rgba(71, 85, 105, 0.4);
+}
+
+.dark .lesson-progress-track {
+    background: rgba(71, 85, 105, 0.3);
+}
+
+/* ===== استجابة الهاتف ===== */
+
+@media (max-width: 640px) {
+    .lesson-step-card {
+        border-radius: 1rem;
+    }
+
+    .animate-step-reveal {
+        animation: step-reveal-up 0.4s ease-out both;
+    }
+}

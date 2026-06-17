@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "Dashboard",
+        "lessons": "Lessons",
+        "store": "Store",
+        "forum": "Forum",
+        "tournaments": "Tournaments",
+        "logout": "Logout",
+        "profile": "Profile",
+        "settings": "Settings",
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "passed": "Passed",
+        "failed": "Failed"
+    },
+    "student": {
+        "welcome": "Welcome back, {{name}}!",
+        "my_progress": "My Progress",
+        "daily_reward": "Daily Reward",
+        "daily_reward_claim": "Claim reward!",
+        "start_lesson": "Start Lesson",
+        "continue_learning": "Continue Learning",
+        "battle_challenge": "Battle Challenge"
+    }
+}

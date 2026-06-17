@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "لوحة التحكم",
+        "lessons": "الدروس",
+        "store": "المتجر",
+        "forum": "المنتدى",
+        "tournaments": "المسابقات",
+        "logout": "تسجيل الخروج",
+        "profile": "الملف الشخصي",
+        "settings": "الإعدادات",
+        "loading": "جاري التحميل...",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "delete": "حذف",
+        "edit": "تعديل",
+        "passed": "ناجح",
+        "failed": "راسب"
+    },
+    "student": {
+        "welcome": "مرحباً بك مجدداً، {{name}}!",
+        "my_progress": "تقدمي الدراسي",
+        "daily_reward": "المكافأة اليومية",
+        "daily_reward_claim": "احصل على مكافأتك!",
+        "start_lesson": "ابدأ الدرس",
+        "continue_learning": "واصل التعلم",
+        "battle_challenge": "تحدي الخصوم"
+    }
+}

@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "Tableau de bord",
+        "lessons": "Leçons",
+        "store": "Boutique",
+        "forum": "Forum",
+        "tournaments": "Tournois",
+        "logout": "Déconnexion",
+        "profile": "Profil",
+        "settings": "Paramètres",
+        "loading": "Chargement...",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "edit": "Modifier",
+        "passed": "Réussi",
+        "failed": "Échoué"
+    },
+    "student": {
+        "welcome": "Bon retour, {{name}} !",
+        "my_progress": "Ma progression",
+        "daily_reward": "Récompense quotidienne",
+        "daily_reward_claim": "Récupérer ma récompense !",
+        "start_lesson": "Commencer la leçon",
+        "continue_learning": "Continuer à apprendre",
+        "battle_challenge": "Défi de bataille"
+    }
+}
