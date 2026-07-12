@@ -154,20 +154,230 @@ function ExpansionDoubleContent({ setLabTitle, setLabPhase }) {
                 <div className="flex flex-col items-center w-full max-w-5xl px-2">
                     <div className={`w-full p-4 md:p-6 rounded-[1.5rem] border-2 backdrop-blur-3xl mb-6 md:mb-8 text-center relative overflow-hidden transition-all duration-700 shadow-2xl ${step === 8 ? 'border-emerald-500/40 bg-emerald-500/5' : theme.card}`}>
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-30" />
-                        <div className="relative flex flex-row flex-wrap items-center justify-center gap-1 md:gap-3 w-full text-xl md:text-3xl font-black font-mono z-20 whitespace-nowrap select-none" dir="ltr">
-                            <div className={`${parenthesisClass} font-serif px-1`}>(</div>
-                            <motion.div onClick={handleFirstOuterClick} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl cursor-pointer transition-all ${step >= 2 ? 'text-sky-400 bg-sky-500/10' : step === 1 ? activePulseClass : inactiveFactorClass}`}>x</motion.div>
-                            <div className={`${parenthesisClass} px-1`}>+</div>
-                            <motion.div onClick={handleSecondOuterClick} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl cursor-pointer transition-all ${step >= 5 ? 'text-amber-400 bg-amber-500/10' : step === 4 ? activePulseClass : inactiveFactorClass}`}>{problem.b}</motion.div>
-                            <div className={`${parenthesisClass} font-serif px-1`}>)</div>
-                            
-                            <div className={`${parenthesisClass} font-serif px-1`}>(</div>
-                            <motion.div onClick={step === 2 ? handleDist1 : (step === 5 ? handleDist3 : undefined)} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl cursor-pointer transition-all ${step === 2 || step === 5 ? activePulseClass : (step > 2 && step !== 5 && step < 7 ? 'text-sky-400 opacity-60' : inactiveFactorClass)}`}>x</motion.div>
-                            <div className={`${parenthesisClass} px-1`}>+</div>
-                            <motion.div onClick={step === 3 ? handleDist2 : (step === 6 ? handleDist4 : undefined)} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl cursor-pointer transition-all ${step === 3 || step === 6 ? activePulseClass : (step > 3 && step !== 6 && step < 7 ? 'text-amber-400 opacity-60' : inactiveFactorClass)}`}>{problem.d}</motion.div>
-                            <div className={`${parenthesisClass} font-serif px-1`}>)</div>
+                        
+                        <div className="relative mb-4 w-[360px] h-[160px] mx-auto">
+                            {/* SVG Arcs for FOIL distribution */}
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 360 160" preserveAspectRatio="xMidYMid meet" style={{ zIndex: 1 }}>
+                                {/* Arc 1: x1 -> x2 (step >= 3) */}
+                                <AnimatePresence>
+                                    {step >= 3 && step < 8 && (
+                                        <motion.path
+                                            d="M 70 80 Q 150 15, 230 80"
+                                            fill="none"
+                                            stroke="url(#arcDouble1)"
+                                            strokeWidth="2.5"
+                                            strokeLinecap="round"
+                                            initial={{ pathLength: 0, opacity: 0 }}
+                                            animate={{ pathLength: 1, opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                                        />
+                                    )}
+                                </AnimatePresence>
+                                
+                                {/* Arc 2: x1 -> d2 (step >= 4) */}
+                                <AnimatePresence>
+                                    {step >= 4 && step < 8 && (
+                                        <motion.path
+                                            d="M 70 80 Q 177 -5, 285 80"
+                                            fill="none"
+                                            stroke="url(#arcDouble2)"
+                                            strokeWidth="2.5"
+                                            strokeLinecap="round"
+                                            strokeDasharray="6 4"
+                                            initial={{ pathLength: 0, opacity: 0 }}
+                                            animate={{ pathLength: 1, opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 }}
+                                        />
+                                    )}
+                                </AnimatePresence>
+                                
+                                {/* Arc 3: b1 -> x2 (step >= 6) */}
+                                <AnimatePresence>
+                                    {step >= 6 && step < 8 && (
+                                        <motion.path
+                                            d="M 125 80 Q 177 145, 230 80"
+                                            fill="none"
+                                            stroke="url(#arcDouble3)"
+                                            strokeWidth="2.5"
+                                            strokeLinecap="round"
+                                            initial={{ pathLength: 0, opacity: 0 }}
+                                            animate={{ pathLength: 1, opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                                        />
+                                    )}
+                                </AnimatePresence>
+                                
+                                {/* Arc 4: b1 -> d2 (step >= 7) */}
+                                <AnimatePresence>
+                                    {step >= 7 && step < 8 && (
+                                        <motion.path
+                                            d="M 125 80 Q 205 165, 285 80"
+                                            fill="none"
+                                            stroke="url(#arcDouble4)"
+                                            strokeWidth="2.5"
+                                            strokeLinecap="round"
+                                            strokeDasharray="6 4"
+                                            initial={{ pathLength: 0, opacity: 0 }}
+                                            animate={{ pathLength: 1, opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 }}
+                                        />
+                                    )}
+                                </AnimatePresence>
+
+                                {/* Arrowheads/Endpoints circles */}
+                                <AnimatePresence>
+                                    {step >= 3 && step < 8 && <motion.circle cx="230" cy="80" r="4" fill="#38bdf8" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 }} />}
+                                </AnimatePresence>
+                                <AnimatePresence>
+                                    {step >= 4 && step < 8 && <motion.circle cx="285" cy="80" r="4" fill="#34d399" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.8 }} />}
+                                </AnimatePresence>
+                                <AnimatePresence>
+                                    {step >= 6 && step < 8 && <motion.circle cx="230" cy="80" r="4" fill="#fbbf24" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 }} />}
+                                </AnimatePresence>
+                                <AnimatePresence>
+                                    {step >= 7 && step < 8 && <motion.circle cx="285" cy="80" r="4" fill="#f87171" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.8 }} />}
+                                </AnimatePresence>
+                                
+                                <defs>
+                                    <linearGradient id="arcDouble1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.9" />
+                                        <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.9" />
+                                    </linearGradient>
+                                    <linearGradient id="arcDouble2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.7" />
+                                        <stop offset="100%" stopColor="#34d399" stopOpacity="0.9" />
+                                    </linearGradient>
+                                    <linearGradient id="arcDouble3" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.9" />
+                                        <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.9" />
+                                    </linearGradient>
+                                    <linearGradient id="arcDouble4" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.7" />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity="0.9" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+
+                            <div className="absolute inset-x-0 bottom-12 h-12 text-2xl font-black font-mono select-none" dir="ltr" style={{ zIndex: 2 }}>
+                                <div className={`${parenthesisClass} absolute text-center font-serif`} style={{ left: '35px', width: '20px' }}>(</div>
+                                
+                                {/* Term 1: x */}
+                                <motion.div 
+                                    onClick={handleFirstOuterClick} 
+                                    className={`absolute text-center rounded-xl cursor-pointer transition-all ${step >= 2 ? 'text-sky-400 bg-sky-500/10' : step === 1 ? activePulseClass : inactiveFactorClass}`}
+                                    style={{ left: '65px', width: '30px' }}
+                                    animate={step === 1 ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] } : {}}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                    whileHover={step === 1 ? { scale: 1.15 } : {}}
+                                    whileTap={step === 1 ? { scale: 0.95 } : {}}
+                                >
+                                    x
+                                </motion.div>
+                                
+                                <div className={`${parenthesisClass} absolute text-center`} style={{ left: '105px', width: '20px' }}>+</div>
+                                
+                                {/* Term 2: b */}
+                                <motion.div 
+                                    onClick={handleSecondOuterClick} 
+                                    className={`absolute text-center rounded-xl cursor-pointer transition-all ${step >= 5 ? 'text-amber-400 bg-amber-500/10' : step === 4 ? activePulseClass : inactiveFactorClass}`}
+                                    style={{ left: '135px', width: '30px' }}
+                                    animate={step === 4 ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] } : {}}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                    whileHover={step === 4 ? { scale: 1.15 } : {}}
+                                    whileTap={step === 4 ? { scale: 0.95 } : {}}
+                                >
+                                    {problem.b}
+                                </motion.div>
+                                
+                                <div className={`${parenthesisClass} absolute text-center font-serif`} style={{ left: '175px', width: '20px' }}>)</div>
+                                
+                                <div className={`${parenthesisClass} absolute text-center font-serif`} style={{ left: '195px', width: '20px' }}>(</div>
+                                
+                                {/* Term 3: x */}
+                                <motion.div 
+                                    onClick={step === 2 ? handleDist1 : (step === 5 ? handleDist3 : undefined)} 
+                                    className={`absolute text-center rounded-xl cursor-pointer transition-all ${step === 2 || step === 5 ? activePulseClass : (step > 2 && step !== 5 && step < 7 ? 'text-sky-400 bg-sky-500/5' : inactiveFactorClass)}`}
+                                    style={{ left: '225px', width: '30px' }}
+                                    animate={step === 2 || step === 5 ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] } : {}}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                    whileHover={step === 2 || step === 5 ? { scale: 1.15 } : {}}
+                                    whileTap={step === 2 || step === 5 ? { scale: 0.95 } : {}}
+                                >
+                                    x
+                                </motion.div>
+                                
+                                <div className={`${parenthesisClass} absolute text-center`} style={{ left: '265px', width: '20px' }}>+</div>
+                                
+                                {/* Term 4: d */}
+                                <motion.div 
+                                    onClick={step === 3 ? handleDist2 : (step === 6 ? handleDist4 : undefined)} 
+                                    className={`absolute text-center rounded-xl cursor-pointer transition-all ${step === 3 || step === 6 ? activePulseClass : (step > 3 && step !== 6 && step < 7 ? 'text-amber-400 bg-amber-500/5' : inactiveFactorClass)}`}
+                                    style={{ left: '295px', width: '30px' }}
+                                    animate={step === 3 || step === 6 ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] } : {}}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                    whileHover={step === 3 || step === 6 ? { scale: 1.15 } : {}}
+                                    whileTap={step === 3 || step === 6 ? { scale: 0.95 } : {}}
+                                >
+                                    {problem.d}
+                                </motion.div>
+                                
+                                <div className={`${parenthesisClass} absolute text-center font-serif`} style={{ left: '335px', width: '20px' }}>)</div>
+                            </div>
                         </div>
+
+                        {/* Intermediate Formula Builder */}
+                        {step >= 2 && step <= 6 && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className={`mt-4 p-3 rounded-xl font-mono text-base md:text-lg border select-none max-w-md mx-auto z-20 relative ${isDarkMode ? 'bg-white/5 border-white/10 text-indigo-300' : 'bg-slate-50 border-slate-200 text-slate-700'}`}
+                                dir="ltr"
+                            >
+                                {step === 2 && <span>x × x = x²</span>}
+                                {step === 3 && <span>x² + x × {problem.d} = x² + {problem.d}x</span>}
+                                {step === 4 && <span>x² + {problem.d}x</span>}
+                                {step === 5 && <span>x² + {problem.d}x + {problem.b} × x = x² + {problem.d}x + {problem.b}x</span>}
+                                {step === 6 && <span>x² + {problem.d}x + {problem.b}x + {problem.b} × {problem.d} = x² + {problem.d}x + {problem.b}x + {problem.b * problem.d}</span>}
+                            </motion.div>
+                        )}
                     </div>
+
+                    {/* Progress Step Dots */}
+                    <div className="flex justify-center gap-2 mb-5">
+                        {[1, 2, 3, 4, 5, 6, 7].map(s => (
+                            <motion.div
+                                key={s}
+                                className={`h-1.5 rounded-full transition-colors ${s <= step ? 'bg-indigo-500' : isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}
+                                animate={{ width: s === step ? 28 : 12 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Help Guide Indicator */}
+                    <AnimatePresence mode="wait">
+                        {step < 7 && (
+                            <motion.div 
+                                key={`hint-${step}`}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.3 }}
+                                className={`mb-6 p-4 rounded-xl border text-xs md:text-sm max-w-md mx-auto text-center ${isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}
+                            >
+                                {step === 1 && "اضغط على الحد الأول بالقوس الأول (x) للبدء بتوزيعه."}
+                                {step === 2 && "اضغط على الحد الأول بالقوس الثاني (x) لضربه في الحد الأول."}
+                                {step === 3 && "اضغط على الحد الثاني بالقوس الثاني لضربه في الحد الأول."}
+                                {step === 4 && "اضغط على الحد الثاني بالقوس الأول للبدء بتوزيعه."}
+                                {step === 5 && "اضغط على الحد الأول بالقوس الثاني لضربه في الحد الثاني."}
+                                {step === 6 && "اضغط على الحد الثاني بالقوس الثاني لضربه في الحد الثاني."}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <AnimatePresence>
                         {step === 7 && (
@@ -176,13 +386,26 @@ function ExpansionDoubleContent({ setLabTitle, setLabPhase }) {
                                     <div className="flex flex-wrap items-center justify-center gap-3 text-xl md:text-xl font-black font-mono text-white" dir="ltr">
                                         <div className="relative text-sky-400 drop-shadow-[0_0_15px_rgba(56,189,248,0.3)]">x<span className="absolute -top-4 -right-4 text-base md:text-lg italic">2</span></div>
                                         <span className={`${opacityTextClass} font-serif`}>+</span>
-                                        <input type="number" value={inputs.x} onChange={(e) => setInputs({...inputs, x: e.target.value})} className={`w-28 md:w-44 border-4 rounded-[1rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake text-rose-400' : inputClass} shadow-inner`} placeholder="?" autoFocus />
+                                        <motion.input whileFocus={{ scale: 1.03 }} type="number" value={inputs.x} onChange={(e) => setInputs({...inputs, x: e.target.value})} className={`w-28 md:w-44 border-4 rounded-[1rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake text-rose-400' : inputClass} shadow-inner`} placeholder="?" autoFocus />
                                         <span className={`${staticTextClass} italic font-serif opacity-60`}>x</span>
                                         <span className={`${opacityTextClass} font-serif`}>+</span>
-                                        <input type="number" value={inputs.c} onChange={(e) => setInputs({...inputs, c: e.target.value})} className={`w-28 md:w-44 border-4 rounded-[1rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake text-rose-400' : inputClass2} shadow-inner`} placeholder="?" />
+                                        <motion.input whileFocus={{ scale: 1.03 }} type="number" value={inputs.c} onChange={(e) => setInputs({...inputs, c: e.target.value})} className={`w-28 md:w-44 border-4 rounded-[1rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake text-rose-400' : inputClass2} shadow-inner`} placeholder="?" />
                                     </div>
+                                    
+                                    <AnimatePresence>
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -5 }}
+                                                className="text-rose-500 text-sm font-bold mt-4"
+                                            >
+                                                النتيجة غير صحيحة، يرجى المحاولة مرة أخرى!
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                                <button onClick={checkMastery} className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"><CheckCircle2 size={20} /> تأكيد العملية</button>
+                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={checkMastery} className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl flex items-center justify-center gap-3 transition-all"><CheckCircle2 size={20} /> تأكيد العملية</motion.button>
                             </motion.div>
                         )}
 

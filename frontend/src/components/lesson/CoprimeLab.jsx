@@ -156,27 +156,49 @@ function CoprimeContent({ setLabTitle, setLabPhase }) {
                          </div>
 
                          <div className="text-center space-y-6">
-                             <div className={`text-4xl md:text-6xl font-black font-mono flex items-center justify-center gap-3 select-none ${theme.textMain}`} dir="ltr">
-                                 <span className="text-sky-400">{challengeList[currentChallenge].a}</span>
-                                 <Search className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} size={24} />
-                                 <span className="text-amber-400">{challengeList[currentChallenge].b}</span>
-                             </div>
+                              <motion.div 
+                                  key={currentChallenge}
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                  className={`text-4xl md:text-6xl font-black font-mono flex items-center justify-center gap-3 select-none ${theme.textMain}`} 
+                                  dir="ltr"
+                              >
+                                  <span className="text-sky-400 drop-shadow-[0_0_15px_rgba(56,189,248,0.3)]">{challengeList[currentChallenge].a}</span>
+                                  <Search className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} size={24} />
+                                  <span className="text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">{challengeList[currentChallenge].b}</span>
+                              </motion.div>
 
-                             <div className="flex flex-wrap gap-3 justify-center">
-                                 <button onClick={() => handleChallengeAnswer(true)} className="px-6 md:px-8 py-2 md:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-base md:text-lg shadow-md transition-all flex items-center gap-1.5 active:scale-95"><Check size={18} /> نعم (أوليان)</button>
-                                 <button onClick={() => handleChallengeAnswer(false)} className="px-6 md:px-8 py-2 md:py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-base md:text-lg shadow-md transition-all flex items-center gap-1.5 active:scale-95"><X size={18} /> لا (غير ذلك)</button>
-                             </div>
+                              <div className="flex flex-wrap gap-3 justify-center">
+                                  <motion.button 
+                                      whileHover={{ scale: 1.05 }} 
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleChallengeAnswer(true)} 
+                                      className="px-6 md:px-8 py-2 md:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-base md:text-lg shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                      <Check size={18} /> نعم (أوليان)
+                                  </motion.button>
+                                  
+                                  <motion.button 
+                                      whileHover={{ scale: 1.05 }} 
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleChallengeAnswer(false)} 
+                                      className="px-6 md:px-8 py-2 md:py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-base md:text-lg shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                      <X size={18} /> لا (غير ذلك)
+                                  </motion.button>
+                              </div>
 
-                             <button onClick={() => setShowHint(!showHint)} className="flex items-center gap-1.5 text-amber-500 font-bold text-xs md:text-sm mx-auto opacity-70 hover:opacity-100 transition-opacity">
-                                 <HelpCircle size={16} /> أحتاج مساعدة
-                             </button>
-                             <AnimatePresence>
-                                 {showHint && (
-                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-4 border-2 rounded-2xl ${isDarkMode ? 'bg-slate-950 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
-                                         <p className="text-amber-600 font-mono font-black text-xs md:text-sm" dir="ltr">PGCD({challengeList[currentChallenge].a}, {challengeList[currentChallenge].b}) = {gcd(challengeList[currentChallenge].a, challengeList[currentChallenge].b)}</p>
-                                     </motion.div>
-                                 )}
-                             </AnimatePresence>
+                              <button onClick={() => setShowHint(!showHint)} className="flex items-center gap-1.5 text-amber-500 font-bold text-xs md:text-sm mx-auto opacity-70 hover:opacity-100 transition-opacity">
+                                  <HelpCircle size={16} /> أحتاج مساعدة
+                              </button>
+                              <AnimatePresence>
+                                  {showHint && (
+                                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-4 border-2 rounded-2xl ${isDarkMode ? 'bg-slate-950 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                                          <p className="text-amber-600 font-mono font-black text-xs md:text-sm" dir="ltr">PGCD({challengeList[currentChallenge].a}, {challengeList[currentChallenge].b}) = {gcd(challengeList[currentChallenge].a, challengeList[currentChallenge].b)}</p>
+                                      </motion.div>
+                                  )}
+                              </AnimatePresence>
                          </div>
                     </div>
                 </div>

@@ -15,6 +15,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
     const [problem, setProblem] = useState({ a: 5, b: 3, op: '+' });
     const [inputs, setInputs] = useState({ term1: '', term2: '' });
     const [reward, setReward] = useState(null);
+    const [error, setError] = useState(false);
 
     const learnContent = [
         {
@@ -40,6 +41,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
         setPracticeStep(1);
         setInputs({ term1: '', term2: '' });
         setReward(null);
+        setError(false);
     };
 
     const handleCheck = async () => {
@@ -51,6 +53,9 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                 const res = await rewardService.claimLabReward('expansion-simple');
                 if (res.status === 'success') setReward(res);
             } catch (err) { console.error(err); }
+        } else {
+            setError(true);
+            setTimeout(() => setError(false), 1000);
         }
     };
 
@@ -155,14 +160,14 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-2xl px-2">
                         <div className={`p-6 md:p-8 rounded-[1.5rem] border ${theme.card} text-center shadow-xl relative overflow-hidden`}>
                             {/* Problem Display with SVG Distribution Arcs */}
-                            <div className="relative mb-8">
+                            <div className="relative mb-8 w-[300px] h-[120px] mx-auto">
                                 {/* SVG Arcs Layer */}
-                                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid meet" style={{ zIndex: 1 }}>
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet" style={{ zIndex: 1 }}>
                                     {/* Arc: a → x (first distribution) */}
                                     <AnimatePresence>
                                         {practiceStep >= 2 && (
                                             <motion.path
-                                                d="M 120 60 Q 160 10, 200 60"
+                                                d="M 65 80 Q 102 30, 140 80"
                                                 fill="none"
                                                 stroke="url(#arcGradient1)"
                                                 strokeWidth="2.5"
@@ -178,7 +183,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     <AnimatePresence>
                                         {practiceStep >= 3 && (
                                             <motion.path
-                                                d="M 120 60 Q 190 -10, 280 60"
+                                                d="M 65 80 Q 140 10, 215 80"
                                                 fill="none"
                                                 stroke="url(#arcGradient2)"
                                                 strokeWidth="2.5"
@@ -194,7 +199,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     {/* Arrowheads via circles at endpoints */}
                                     <AnimatePresence>
                                         {practiceStep >= 2 && (
-                                            <motion.circle cx="200" cy="60" r="4" fill="#818cf8"
+                                            <motion.circle cx="140" cy="80" r="4" fill="#818cf8"
                                                 initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }}
                                                 transition={{ delay: 0.6, duration: 0.4 }}
                                             />
@@ -202,7 +207,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     </AnimatePresence>
                                     <AnimatePresence>
                                         {practiceStep >= 3 && (
-                                            <motion.circle cx="280" cy="60" r="4" fill="#34d399"
+                                            <motion.circle cx="215" cy="80" r="4" fill="#34d399"
                                                 initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }}
                                                 transition={{ delay: 0.8, duration: 0.4 }}
                                             />
@@ -222,9 +227,10 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                 </svg>
 
                                 {/* Terms display */}
-                                <div className="text-3xl md:text-5xl font-black font-mono flex justify-center items-center gap-2 select-none relative" dir="ltr" style={{ zIndex: 2 }}>
+                                <div className="absolute inset-x-0 bottom-4 h-12 text-3xl font-black font-mono select-none" dir="ltr" style={{ zIndex: 2 }}>
                                     <motion.span 
-                                        className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 2 ? "text-indigo-400 bg-indigo-500/10" : `${theme.textMain}`}`}
+                                        className={`absolute text-center px-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 2 ? "text-indigo-400 bg-indigo-500/10" : `${theme.textMain}`}`}
+                                        style={{ left: '50px', width: '30px' }}
                                         animate={practiceStep === 1 ? { scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] } : {}}
                                         transition={{ duration: 1.2, repeat: Infinity }}
                                         onClick={() => practiceStep === 1 && setPracticeStep(2)}
@@ -233,9 +239,10 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     >
                                         {problem.a}
                                     </motion.span>
-                                    <span className={`${theme.textMain} opacity-30`}>(</span>
+                                    <span className={`absolute text-center ${theme.textMain} opacity-30`} style={{ left: '90px', width: '20px' }}>(</span>
                                     <motion.span 
-                                        className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 3 ? "text-sky-400 bg-sky-500/10" : practiceStep === 2 ? `${theme.textMain}` : `${theme.textMain} opacity-30`}`}
+                                        className={`absolute text-center px-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 3 ? "text-sky-400 bg-sky-500/10" : practiceStep === 2 ? `${theme.textMain}` : `${theme.textMain} opacity-30`}`}
+                                        style={{ left: '125px', width: '30px' }}
                                         animate={practiceStep === 2 ? { scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] } : {}}
                                         transition={{ duration: 1.2, repeat: Infinity }}
                                         onClick={() => practiceStep === 2 && setPracticeStep(3)}
@@ -244,9 +251,10 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     >
                                         x
                                     </motion.span>
-                                    <span className={`${theme.textMain} opacity-30`}>{problem.op}</span>
+                                    <span className={`absolute text-center ${theme.textMain} opacity-30`} style={{ left: '165px', width: '20px' }}>{problem.op}</span>
                                     <motion.span 
-                                        className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 4 ? "text-emerald-400 bg-emerald-500/10" : practiceStep === 3 ? `${theme.textMain}` : `${theme.textMain} opacity-30`}`}
+                                        className={`absolute text-center px-1 rounded-lg transition-colors cursor-pointer ${practiceStep >= 4 ? "text-emerald-400 bg-emerald-500/10" : practiceStep === 3 ? `${theme.textMain}` : `${theme.textMain} opacity-30`}`}
+                                        style={{ left: '195px', width: '30px' }}
                                         animate={practiceStep === 3 ? { scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] } : {}}
                                         transition={{ duration: 1.2, repeat: Infinity }}
                                         onClick={() => practiceStep === 3 && setPracticeStep(4)}
@@ -255,7 +263,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                     >
                                         {problem.b}
                                     </motion.span>
-                                    <span className={`${theme.textMain} opacity-30`}>)</span>
+                                    <span className={`absolute text-center ${theme.textMain} opacity-30`} style={{ left: '235px', width: '20px' }}>)</span>
                                 </div>
                             </div>
 
@@ -288,7 +296,6 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                 </motion.div>
                             )}
                             </AnimatePresence>
-
                             {/* Input Form */}
                             {practiceStep === 4 && (
                                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
@@ -297,7 +304,7 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                             type="number" 
                                             value={inputs.term1} 
                                             onChange={e => setInputs({ ...inputs, term1: e.target.value })} 
-                                            className={`w-20 md:w-24 border-2 rounded-xl text-center p-2 font-bold focus:outline-none transition-colors ${isDarkMode ? 'bg-black/40 text-indigo-400 border-indigo-500/40 focus:border-indigo-400' : 'bg-slate-100 text-indigo-700 border-indigo-200 focus:bg-white focus:border-indigo-500'}`} 
+                                            className={`w-20 md:w-24 border-2 rounded-xl text-center p-2 font-bold focus:outline-none transition-colors ${error ? 'border-rose-500 animate-shake text-rose-400' : (isDarkMode ? 'bg-black/40 text-indigo-400 border-indigo-500/40 focus:border-indigo-400' : 'bg-slate-100 text-indigo-700 border-indigo-200 focus:bg-white focus:border-indigo-500')}`} 
                                             placeholder="?" 
                                             autoFocus
                                             initial={{ scale: 0.8, opacity: 0 }}
@@ -311,13 +318,27 @@ function ExpansionSimpleContent({ setLabTitle, setLabPhase }) {
                                             value={inputs.term2} 
                                             onChange={e => setInputs({ ...inputs, term2: e.target.value })} 
                                             onKeyDown={e => e.key === 'Enter' && handleCheck()} 
-                                            className={`w-20 md:w-24 border-2 rounded-xl text-center p-2 font-bold focus:outline-none transition-colors ${isDarkMode ? 'bg-black/40 text-emerald-400 border-emerald-500/40 focus:border-emerald-400' : 'bg-slate-100 text-emerald-700 border-emerald-200 focus:bg-white focus:border-emerald-500'}`} 
+                                            className={`w-20 md:w-24 border-2 rounded-xl text-center p-2 font-bold focus:outline-none transition-colors ${error ? 'border-rose-500 animate-shake text-rose-400' : (isDarkMode ? 'bg-black/40 text-emerald-400 border-emerald-500/40 focus:border-emerald-400' : 'bg-slate-100 text-emerald-700 border-emerald-200 focus:bg-white focus:border-emerald-500')}`} 
                                             placeholder="?" 
                                             initial={{ scale: 0.8, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1 }}
                                             transition={{ type: 'spring', stiffness: 300, delay: 0.25 }}
                                         />
                                     </div>
+                                    
+                                    <AnimatePresence>
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -5 }}
+                                                className="text-rose-500 text-sm font-bold mt-2"
+                                            >
+                                                النتيجة غير صحيحة، يرجى المحاولة مرة أخرى!
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     <motion.button 
                                         onClick={handleCheck} 
                                         className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-base md:text-lg hover:bg-indigo-500 transition-all shadow-md"
