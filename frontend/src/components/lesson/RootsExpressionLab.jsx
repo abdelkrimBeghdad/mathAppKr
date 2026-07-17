@@ -1,182 +1,165 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, CheckCircle2, BookOpen, Zap as ZapIcon, Sigma, Cpu, Binary, Zap, Rocket } from 'lucide-react';
+import { CheckCircle2, Cpu, ArrowRight, Zap as ZapIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
+import LabChallenge from './LabChallenge';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { rewardService } from '../../utils/rewardService';
 
-function RootsExpressionContent({ setLabTitle, setLabPhase }) {
+function RootsExpressionContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
-    const [phase, setPhase] = useState('intro'); // intro | learn | practice
-    const [step, setStep] = useState(0); // Current simplification step
-    const [practicePair, setPracticePair] = useState({ 
-        expr: '\u221a20 + \u221a45', 
-        steps: ['2\u221a5 + 3\u221a5', '5\u221a5'],
-        final: '5\u221a5'
-    });
+
+    const [step, setStep] = useState(0);
+    const [practicePair, setPracticePair] = useState({ expr: '√20 + √45', steps: ['2√5 + 3√5', '5√5'], final: '5√5' });
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
-    const [difficultyLevel, setDifficultyLevel] = useState(1);
-    const [isCompleted, setIsCompleted] = useState(false);
-
-    useEffect(() => {
-        labProgressService.getOne('roots-expression')
-            .then(progress => {
-                const level = difficultyEngine.getLevel(progress);
-                setDifficultyLevel(level);
-            })
-            .catch(err => console.error(err));
-    }, []);
+    const [feedback, setFeedback] = useState(null);
+    const [reward, setReward] = useState(null);
 
     const simplificationGuide = [
-        { title: 'بروتوكول التفكيك', detail: 'نفكك كل جذر إلى حاصل ضرب مربع تام في عدد أولي (مثلاً \u221a20 = \u221a4\u00d75).' },
-        { title: 'خوارزمية الاستخراج', detail: 'نستخرج الجذر التربيعي للمربعات التامة خارج المظلة الجذريّة.' },
-        { title: 'الدمج النهائي', detail: 'نجمع أو نطرح الحدود التي لها نفس الجذر للحصول على أبسط صورة.' }
+        { title: 'بروتوكول التفكيك', detail: 'نفكك كل جذر إلى حاصل ضرب مربع تام في عدد أولي (مثلاً √20 = √4×5).' },
+        { title: 'خوارزمية الاستخراج', detail: 'نستخرج الجذر التربيعي للمربعات التامة خارج المظلة الجذرية.' },
+        { title: 'الدمج النهائي', detail: 'نجمع أو نطرح الحدود التي لها نفس الجذر للحصول على أبسط صورة.' },
+    ];
+
+    const options = [
+        { expr: '√20 + √45', steps: ['2√5 + 3√5', '5√5'], final: '5√5' },
+        { expr: '√8 + √18', steps: ['2√2 + 3√2', '5√2'], final: '5√2' },
+        { expr: '√12 + √27', steps: ['2√3 + 3√3', '5√3'], final: '5√3' },
+        { expr: '√50 − √8', steps: ['5√2 − 2√2', '3√2'], final: '3√2' },
+        { expr: '√75 − √12', steps: ['5√3 − 2√3', '3√3'], final: '3√3' },
+        { expr: '√32 + √8', steps: ['4√2 + 2√2', '6√2'], final: '6√2' },
+        { expr: '√48 − √27', steps: ['4√3 − 3√3', '1√3'], final: '1√3' },
     ];
 
     const generateProblem = () => {
-        const options = [
-            { expr: '\u221a20 + \u221a45', steps: ['2\u221a5 + 3\u221a5', '5\u221a5'], final: '5\u221a5' },
-            { expr: '\u221a8 + \u221a18', steps: ['2\u221a2 + 3\u221a2', '5\u221a2'], final: '5\u221a2' },
-            { expr: '\u221a12 + \u221a27', steps: ['2\u221a3 + 3\u221a3', '5\u221a3'], final: '5\u221a3' },
-            { expr: '\u221a50 - \u221a8', steps: ['5\u221a2 - 2\u221a2', '3\u221a2'], final: '3\u221a2' },
-            { expr: '\u221a75 - \u221a12', steps: ['5\u221a3 - 2\u221a3', '3\u221a3'], final: '3\u221a3' },
-            { expr: '\u221a32 + \u221a8', steps: ['4\u221a2 + 2\u221a2', '6\u221a2'], final: '6\u221a2' },
-            { expr: '\u221a48 - \u221a27', steps: ['4\u221a3 - 3\u221a3', '1\u221a3'], final: '1\u221a3' }
-        ];
-        
-        let newProb = options[Math.floor(Math.random() * options.length)];
+        const newProb = options[Math.floor(Math.random() * options.length)];
         setPracticePair(newProb);
         setPhase('practice');
         setStep(0);
         setInputVal('');
-        setError(false);
-        setIsCompleted(false);
-        labProgressService.update('roots-expression', 'practice').catch(console.error);
+        setError(false); setFeedback(null); setReward(null);
+        labProgressService.update('roots-expression', 'practice').catch(() => { });
     };
 
     const handleCheck = async () => {
-        const normalizedInput = inputVal.replace(/\s+/g, '').replace(/√/g, '\u221a');
-        const normalizedTarget = practicePair.steps[step].replace(/\s+/g, '').replace(/√/g, '\u221a');
+        const normalizedInput = inputVal.replace(/\s+/g, '').replace(/√/g, '√');
+        const normalizedTarget = practicePair.steps[step].replace(/\s+/g, '').replace(/√/g, '√');
 
         if (normalizedInput === normalizedTarget) {
+            setError(false);
             if (step < practicePair.steps.length - 1) {
-                setStep(step + 1);
-                setInputVal('');
+                setFeedback({ type: 'success', text: 'صحيح! خطوة تفكيك موفقة.' });
                 confetti({ particleCount: 50, spread: 40, origin: { y: 0.8 } });
+                setInputVal('');
+                setTimeout(() => { setStep(s => s + 1); setFeedback(null); }, 900);
             } else {
-                setStep(step + 1);
-                setIsCompleted(true);
+                setFeedback({ type: 'success', text: 'تبسيط مثالي! وصلت لأبسط صورة للعبارة.' });
                 confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('roots-expression', 'completed', 100).catch(() => { });
                 try {
-                    await labProgressService.update('roots-expression', 'completed', 100);
+                    const data = await rewardService.claimLabReward('roots-expression-mastery');
+                    if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
-            setError(false);
         } else {
             setError(true);
-            setTimeout(() => setError(false), 1000);
+            setFeedback({ type: 'error', text: 'راجع خطوة التفكيك أو الدمج.' });
+            setTimeout(() => { setError(false); setFeedback(null); }, 1000);
         }
     };
 
-    useEffect(() => {
-        setLabPhase(phase);
-        if (phase === 'intro') {
-            setLabTitle('تبسيط العبارات');
-        } else if (isCompleted) {
-            setLabTitle('تبسيط مثالي!');
-        } else {
-            setLabTitle(`المرحلة ${step + 1}`);
-        }
-    }, [phase, isCompleted, step, setLabTitle, setLabPhase]);
-
-    return (
-        <div className="w-full h-full flex flex-col items-center justify-center relative z-10 w-full overflow-hidden px-4" dir="rtl">
-            {phase === 'intro' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-6xl">
-                    <div className={`p-4 md:p-6 rounded-[1.5rem] border backdrop-blur-3xl transition-all shadow-2xl ${theme.card}`}>
-                         <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-orange-600 rounded-2xl flex items-center justify-center text-white mb-3 shadow-xl"><BookOpen size={20} /></div>
-                         <h3 className={`text-base md:text-lg font-black mb-3 tracking-tighter ${theme.textMain}`}>خريطة التبسيط:</h3>
-                         <div className="space-y-4">
-                             {simplificationGuide.map((g, i) => (
-                                 <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-                                     <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-black text-lg shadow-inner">{i + 1}</div>
-                                     <div>
-                                        <h4 className="text-white font-bold text-lg">{g.title}</h4>
-                                        <p className="text-white/40 text-sm italic">{g.detail}</p>
-                                     </div>
-                                 </div>
-                             ))}
-                         </div>
-                    </div>
-                    <motion.button onClick={generateProblem} className="relative group cursor-pointer overflow-hidden rounded-[1.5rem] shadow-2xl">
-                        <div className={`absolute inset-0 bg-gradient-to-br from-rose-600 via-orange-600 to-rose-700 transition-transform duration-500 group-hover:scale-110`} />
-                        <div className="relative p-4 md:p-5 flex flex-col items-center justify-center text-center gap-3 text-white">
-                            <Binary size={40} className="md:w-12 md:h-12 animate-pulse text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" />
-                            <span className="text-base md:text-lg font-black tracking-tighter uppercase italic tracking-widest">تفعيل المعالج</span>
-                        </div>
-                    </motion.button>
+    // ── intro ─────────────────────────────────────────────────────────────────
+    if (phase === 'intro') return (
+        <div className="flex flex-col items-center max-w-2xl text-center px-4 gap-3">
+            <div className={`p-6 rounded-[1rem] border backdrop-blur-3xl w-full ${theme.card}`}>
+                <div className="w-16 h-16 bg-rose-500 rounded-3xl flex items-center justify-center text-white mb-4 mx-auto">
+                    <Cpu size={20} />
                 </div>
-            )}
-
-            {phase === 'practice' && (
-                <div className="flex flex-col items-center w-full max-w-5xl px-2">
-                    <div className={`w-full p-4 md:p-6 rounded-[1.5rem] border-2 backdrop-blur-3xl mb-12 text-center relative overflow-hidden transition-all duration-700 shadow-2xl ${isCompleted ? 'border-emerald-500/40 bg-emerald-500/5 shadow-lg' : theme.card}`}>
-                        <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 via-transparent to-orange-500/10 opacity-30" />
-                        <div className="relative z-10 text-2xl md:text-8xl font-black font-mono leading-tight text-white drop-shadow-[0_0_30px_rgba(244,63,94,0.3)]" dir="ltr">
-                            {practicePair.expr}
-                        </div>
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                        {!isCompleted ? (
-                            <motion.div key="input-area" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full text-center max-w-4xl">
-                                <div className={`p-4 md:p-6 rounded-[1.5rem] border-2 shadow-2xl backdrop-blur-3xl mb-3 ${theme.card}`}>
-                                    <div className="flex items-center justify-center gap-4 mb-4">
-                                        <div className="px-6 py-2 rounded-full bg-rose-500/20 text-rose-400 font-black text-xl italic border border-rose-500/30">المرحلة {step + 1}</div>
-                                    </div>
-                                    <div className="relative">
-                                        <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCheck()} className={`w-full bg-white/5 border-4 rounded-[1.5rem] text-center py-2 outline-none text-xl md:text-xl font-black font-mono transition-all ${error ? 'border-rose-500 animate-shake text-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'border-rose-500/30 text-rose-400 focus:border-rose-500 shadow-inner'}`} placeholder="a√x ± b√x" autoFocus dir="ltr" />
-                                    </div>
-                                </div>
-                                <button onClick={handleCheck} className="w-full py-2 bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                                    <Zap size={20} /> تأكيد المعالجة
-                                </button>
-                            </motion.div>
-                        ) : (
-                            <motion.div key="success-area" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="w-full text-center max-w-4xl">
-                                <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-4 border-emerald-500/40 rounded-[1.5rem] p-4 md:p-5 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
-                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-40" />
-                                    <div className="relative z-10 text-2xl md:text-xl font-mono font-black text-white flex items-center justify-center gap-12 drop-shadow-[0_0_40px_rgba(52,211,153,0.4)]">
-                                        <span dir="ltr">{practicePair.final}</span>
-                                    </div>
-                                </div>
-                                <button onClick={generateProblem} className="mt-3 w-full py-2 bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl transition-all active:scale-95">تحليل عبارة جديدة</button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            )}
+                <p className={`${theme.textSub} text-sm font-medium mb-3`}>
+                    تعلم كيف تبسّط عبارات جذرية معقدة عبر تفكيكها إلى مربعات تامة، ثم دمج الحدود المتشابهة.
+                </p>
+                <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black transition-all">
+                    فتح خريطة التبسيط
+                </button>
+            </div>
+            <button onClick={generateProblem} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+                تخطي الشرح والبدء بالتحدي
+            </button>
         </div>
+    );
+
+    // ── learn ─────────────────────────────────────────────────────────────────
+    if (phase === 'learn') return (
+        <div className="w-full max-w-2xl px-2">
+            <div className={`p-5 rounded-[1rem] border backdrop-blur-3xl ${theme.card}`}>
+                <h3 className={`text-base font-black mb-4 text-center ${theme.textMain}`}>خريطة التبسيط</h3>
+                <div className="space-y-3">
+                    {simplificationGuide.map((g, i) => (
+                        <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-rose-50 border-rose-100'}`}>
+                            <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-black text-sm shrink-0">{i + 1}</div>
+                            <div>
+                                <h4 className={`font-bold text-xs ${theme.textMain}`}>{g.title}</h4>
+                                <p className={`text-[11px] font-medium ${theme.textSub}`}>{g.detail}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="flex justify-between items-center mt-6 px-4">
+                <button onClick={() => setPhase('intro')} className={`px-4 py-2 rounded-xl font-black transition-all ${isDarkMode ? 'bg-white/5 text-white border border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>السابق</button>
+                <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">تفعيل المعالج <ArrowRight size={18} /></button>
+            </div>
+        </div>
+    );
+
+    // ── practice — يستخدم LabChallenge ───────────────────────────────────────
+    return (
+        <LabChallenge
+            type="text"
+            current={step + 1}
+            total={practicePair.steps.length}
+            level={step + 1}
+            question={practicePair.expr}
+            hint="فكك كل جذر لمربع تام مضروب في عدد، ثم استخرج الجذر خارج المظلة."
+            feedback={feedback}
+            reward={reward}
+            onRefresh={generateProblem}
+            onRestart={() => { setPhase('intro'); setReward(null); }}
+        >
+            <input
+                type="text" value={inputVal}
+                onChange={e => setInputVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCheck()}
+                aria-label="أدخل خطوة التبسيط"
+                dir="ltr"
+                autoFocus
+                className={`w-full max-w-xs rounded-xl text-center p-3 font-mono font-black text-lg outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400 focus:border-rose-400' : 'bg-white border-rose-200 text-rose-700 focus:border-rose-500'
+                    }`}
+                placeholder="a√x ± b√x"
+            />
+            <button onClick={handleCheck} className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
+                <ZapIcon size={18} /> تأكيد المعالجة
+            </button>
+        </LabChallenge>
     );
 }
 
 export default function RootsExpressionLab() {
-    const [labTitle, setLabTitle] = useState('تبسيط العبارات');
-    const [labPhase, setLabPhase] = useState('intro');
-
+    const [phase, setPhase] = useState('intro');
     return (
-        <LabShell 
-            labId="roots-expression" 
-            accentColor="rose"
+        <LabShell
+            labId="roots-expression"
+            phase={phase}
+            title="تبسيط العبارات الجذرية"
             badgeText="بروتوكول المعالجة"
             badgeIcon={Cpu}
-            title={labTitle}
-            phase={labPhase}
+            accentColor="rose"
+            onBack={phase !== 'intro' ? () => setPhase('intro') : undefined}
         >
-            <RootsExpressionContent setLabTitle={setLabTitle} setLabPhase={setLabPhase} />
+            <RootsExpressionContent phase={phase} setPhase={setPhase} />
         </LabShell>
     );
 }

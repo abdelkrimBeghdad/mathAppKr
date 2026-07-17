@@ -1,210 +1,171 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, CheckCircle2, BookOpen, RefreshCw, Zap as ZapIcon, Sigma, Cpu, Binary, Target } from 'lucide-react';
+import { CheckCircle2, Sigma, Zap as ZapIcon, Binary, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
+import LabChallenge from './LabChallenge';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
+import { rewardService } from '../../utils/rewardService';
 
-function RootsMultiplicationContent() {
-    const { theme, isDarkMode, currentAccent } = useLabTheme();
-    const [phase, setPhase] = useState('intro'); // intro | learn | practice
+function RootsMultiplicationContent({ phase, setPhase }) {
+    const { theme, isDarkMode } = useLabTheme();
+
     const [learnStep, setLearnStep] = useState(0);
-    const [step, setStep] = useState(0); // 0: input result, 1: reward
+    const [level, setLevel] = useState(1);
     const [practicePair, setPracticePair] = useState({ a: 2, b: 3, res: 6 });
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
-    const [difficultyLevel, setDifficultyLevel] = useState(1);
-    const [isCompleted, setIsCompleted] = useState(false);
+    const [feedback, setFeedback] = useState(null);
+    const [reward, setReward] = useState(null);
 
     useEffect(() => {
         labProgressService.getOne('roots-multiplication')
-            .then(progress => {
-                const level = difficultyEngine.getLevel(progress);
-                setDifficultyLevel(level);
-            })
-            .catch(err => console.error(err));
+            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .catch(() => { });
     }, []);
 
     const learnPages = [
-        {
-            title: 'بروتوكول الاندماج الجذري',
-            detail: 'عند ضرب جذرين تربيعيين، يمكننا دمج القيمتين تحت جذر واحد كبير لتبسيط العملية وتوحيد المظلة.',
-            math: '\u221aa \u00d7 \u221ab = \u221a(a \u00d7 b)',
-            icon: <ZapIcon size={20} />
-        },
-        {
-            title: 'خوارزمية الضرب الموحد',
-            detail: 'ببساطة، نضرب الأعداد الموجودة داخل الجذور ببعضها، ونضع الناتج تحت رمز جذر واحد مشترك.',
-            math: '\u221a2 \u00d7 \u221a3 = \u221a6',
-            icon: <Binary size={20} />
-        }
+        { title: 'بروتوكول الاندماج الجذري', detail: 'عند ضرب جذرين تربيعيين، يمكننا دمج القيمتين تحت جذر واحد كبير لتبسيط العملية.', math: '√a × √b = √(a × b)', icon: <ZapIcon size={20} /> },
+        { title: 'خوارزمية الضرب الموحد', detail: 'نضرب الأعداد الموجودة داخل الجذور ببعضها، ونضع الناتج تحت رمز جذر واحد مشترك.', math: '√2 × √3 = √6', icon: <Binary size={20} /> },
     ];
 
     const generateProblem = () => {
-        const params = difficultyEngine.getParams('roots', difficultyLevel);
+        const params = difficultyEngine.getParams('roots', level);
         const maxNum = params.maxNum || 12;
-        
         const nums = [2, 3, 5, 7, 10, 6, 8, 11, 13, 14, 15].filter(n => n <= maxNum);
+
         const a = nums[Math.floor(Math.random() * nums.length)];
         let b = nums[Math.floor(Math.random() * nums.length)];
         while (a === b && nums.length > 1) b = nums[Math.floor(Math.random() * nums.length)];
-        
+
         setPracticePair({ a, b, res: a * b });
         setPhase('practice');
-        setStep(0);
         setInputVal('');
-        setError(false);
-        setIsCompleted(false);
-
-        labProgressService.update('roots-multiplication', 'practice').catch(console.error);
+        setError(false); setFeedback(null); setReward(null);
+        labProgressService.update('roots-multiplication', 'practice').catch(() => { });
     };
 
     const handleCheck = async () => {
         if (parseInt(inputVal) === practicePair.res) {
-            setStep(1);
-            setIsCompleted(true);
+            setFeedback({ type: 'success', text: 'اندماج جذري متكامل! ضربت الأعداد تحت جذر مشترك واحد.' });
             confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            try {
-                await labProgressService.update('roots-multiplication', 'completed', 100);
-            } catch (err) { console.error(err); }
+            await labProgressService.update('roots-multiplication', 'completed', 100).catch(() => { });
             setError(false);
+            try {
+                const data = await rewardService.claimLabReward('roots-multiplication-mastery');
+                if (data.status === 'success') setReward(data);
+            } catch (err) { console.error(err); }
         } else {
             setError(true);
-            setTimeout(() => setError(false), 1000);
+            setFeedback({ type: 'error', text: 'راجع: اضرب العددين الموجودين تحت الجذرين.' });
+            setTimeout(() => { setError(false); setFeedback(null); }, 1000);
         }
     };
 
-    return (
-        <div className={`w-full h-full flex flex-col font-sans transition-all duration-500`} dir="rtl">
-            <div className="flex-grow flex flex-col items-center justify-center relative z-10 w-full overflow-hidden px-4">
-                {phase === 'intro' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-6xl">
-                        <div className={`p-4 md:p-6 rounded-[1.5rem] border backdrop-blur-3xl transition-all shadow-2xl ${theme.card}`}>
-                             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white mb-3 shadow-xl"><BookOpen size={20} /></div>
-                             <h3 className={`text-base md:text-lg font-black mb-3 tracking-tighter ${theme.textMain}`}>قانون الدمج:</h3>
-                             <div className={`p-8 rounded-[1.5rem] border-2 text-center bg-white/5 border-white/10 shadow-inner`}>
-                                <div className={`text-base md:text-lg font-black font-mono tracking-tighter flex items-center justify-center gap-3`} dir="ltr">
-                                    <span className="text-cyan-400">\u221aa</span>
-                                    <span className="text-white opacity-40">\u00d7</span>
-                                    <span className="text-orange-400">\u221ab</span>
-                                    <span className="text-white">=</span>
-                                    <span className="text-rose-400 italic drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]">\u221a(a \u00d7 b)</span>
-                                </div>
-                             </div>
-                             <button onClick={() => { setPhase('learn'); setLearnStep(0); labProgressService.update('roots-multiplication', 'learn').catch(console.error); }} className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black transition-all border border-white/10 shadow-lg">فتح الشرح</button>
-                        </div>
-                        <motion.button onClick={generateProblem} className="relative group cursor-pointer overflow-hidden rounded-[1.5rem] shadow-2xl">
-                            <div className={`absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-700 transition-transform duration-500 group-hover:scale-110`} />
-                            <div className="relative p-4 md:p-5 flex flex-col items-center justify-center text-center gap-3 text-white">
-                                <Sigma size={40} className="md:w-12 md:h-12 animate-pulse text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" />
-                                <span className="text-base md:text-lg font-black tracking-tighter uppercase italic tracking-widest">بدء التحدي</span>
-                            </div>
-                        </motion.button>
+    // ── intro ─────────────────────────────────────────────────────────────────
+    if (phase === 'intro') return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-2">
+            <div className={`p-6 rounded-[1rem] border backdrop-blur-3xl ${theme.card}`}>
+                <h3 className={`text-base font-black mb-3 ${theme.textMain}`}>قانون الدمج:</h3>
+                <div className={`p-5 rounded-2xl border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-indigo-50 border-indigo-100'}`}>
+                    <div className="text-lg font-black font-mono flex items-center justify-center gap-3" dir="ltr">
+                        <span className="text-cyan-400">√a</span>
+                        <span className={`opacity-40 ${theme.textMain}`}>×</span>
+                        <span className="text-orange-400">√b</span>
+                        <span className={theme.textMain}>=</span>
+                        <span className="text-rose-400">√(a×b)</span>
                     </div>
-                )}
+                </div>
+                <button onClick={() => setPhase('learn')} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'}`}>
+                    فتح الشرح
+                </button>
+            </div>
+            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-indigo-600" />
+                <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
+                    <Sigma size={36} />
+                    <span className="font-black text-xl uppercase tracking-widest">بدء التحدي</span>
+                </div>
+            </motion.button>
+        </div>
+    );
 
-                {phase === 'learn' && (
-                    <div className="w-full max-w-4xl px-2">
-                        <motion.div key={learnStep} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className={`p-4 md:p-6 rounded-[1.5rem] border-2 shadow-2xl backdrop-blur-3xl relative overflow-hidden ${theme.card}`}>
-                             <div className="flex flex-col items-center text-center">
-                                 <h3 className={`text-base md:text-lg font-black mb-3 tracking-tighter ${theme.textMain}`}>{learnPages[learnStep].title}</h3>
-                                 <p className={`text-sm md:text-base ${theme.textSub} mb-3 max-w-2xl font-medium leading-relaxed italic`}>{learnPages[learnStep].detail}</p>
-                                 <div className={`p-5 rounded-[1.5rem] border-2 bg-white/5 border-white/10 shadow-inner w-full`}>
-                                     <span className="text-xl md:text-xl font-mono font-black text-white" dir="ltr">
-                                        {learnStep === 0 ? (
-                                            <>
-                                                <span className="text-cyan-400">\u221aa</span> \u00d7 <span className="text-orange-400">\u221ab</span> = <span className="text-rose-400">\u221a(a \u00d7 b)</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="text-cyan-400">\u221a2</span> \u00d7 <span className="text-orange-400">\u221a3</span> = <span className="text-rose-400 font-bold drop-shadow-[0_0_15px_rgba(244,63,94,0.4)]">\u221a6</span>
-                                            </>
-                                        )}
-                                     </span>
-                                 </div>
-                             </div>
-                        </motion.div>
-                        <div className="flex justify-between items-center mt-3 px-6">
-                             <button onClick={() => learnStep > 0 ? setLearnStep(l => l - 1) : setPhase('intro')} className={`px-4 py-2 rounded-2xl font-black transition-all ${isDarkMode ? 'bg-white/10 text-white border border-white/20 hover:bg-white/20' : 'bg-slate-100 text-slate-600'}`}>السابق</button>
-                             {learnStep < 1 ? (
-                                 <button onClick={() => setLearnStep(l => l + 1)} className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-2xl font-black shadow-xl text-xl">التالي</button>
-                             ) : (
-                                 <button onClick={generateProblem} className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-2xl font-black shadow-xl text-xl">بدء التحدي</button>
-                             )}
-                        </div>
+    // ── learn ─────────────────────────────────────────────────────────────────
+    if (phase === 'learn') return (
+        <div className="w-full max-w-3xl px-2">
+            <AnimatePresence mode="wait">
+                <motion.div key={learnStep} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                    className={`p-5 rounded-[1rem] border backdrop-blur-3xl text-center ${theme.card}`}
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3">{learnPages[learnStep].icon}</div>
+                    <h3 className={`text-base font-black mb-4 ${theme.textMain}`}>{learnPages[learnStep].title}</h3>
+                    <p className={`text-sm ${theme.textSub} mb-4 max-w-2xl mx-auto font-medium`}>{learnPages[learnStep].detail}</p>
+                    <div className={`p-4 rounded-2xl border mx-auto max-w-md ${isDarkMode ? 'bg-black/40 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                        <span className="font-mono font-black text-indigo-400" dir="ltr">{learnPages[learnStep].math}</span>
                     </div>
-                )}
-
-                {phase === 'practice' && (
-                    <div className="flex flex-col items-center w-full max-w-5xl px-2">
-                        <div className={`w-full p-12 md:p-16 rounded-[1.5rem] border backdrop-blur-3xl mb-3 text-center relative overflow-hidden transition-all duration-700 shadow-2xl ${isCompleted ? 'border-emerald-500/40 bg-emerald-500/5' : theme.card}`}>
-                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-30" />
-                            <div className="flex flex-wrap items-center justify-center gap-5 relative z-10" dir="ltr">
-                                <AnimatePresence mode="wait">
-                                    {!isCompleted ? (
-                                        <motion.div key="fusion" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2, filter: 'blur(5px)' }} className="flex items-center gap-3 text-xl md:text-[9rem] font-black font-mono text-white leading-none">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-rose-500 font-serif italic">\u221a</span>
-                                                <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">{practicePair.a}</span>
-                                            </div>
-                                            <span className="text-white opacity-40 font-serif italic">\u00d7</span>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-rose-500 font-serif italic">\u221a</span>
-                                                <span className="text-orange-400 drop-shadow-[0_0_20px_rgba(251,146,60,0.3)]">{practicePair.b}</span>
-                                            </div>
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div key="result" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center justify-center text-2xl md:text-[12rem] font-black font-mono text-white leading-none">
-                                            <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 px-12 py-10 rounded-[1.5rem] border-4 border-emerald-500/40 shadow-2xl relative overflow-hidden">
-                                                <span className="text-rose-500 font-serif italic drop-shadow-[0_0_15px_rgba(244,63,94,0.4)]">\u221a</span>
-                                                <span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">{practicePair.res}</span>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-
-                        <AnimatePresence>
-                            {!isCompleted && (
-                                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full text-center max-w-4xl px-4">
-                                    <div className={`p-4 md:p-6 rounded-[1.5rem] border-2 shadow-2xl backdrop-blur-3xl mb-4 ${theme.card}`}>
-                                        <div className="flex items-center justify-center gap-3 text-2xl md:text-xl font-black font-mono text-white" dir="ltr">
-                                            <span className="text-rose-500 font-serif italic">\u221a</span>
-                                            <input type="number" value={inputVal} onChange={(e) => setInputVal(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCheck()} className={`w-36 md:w-64 bg-white/5 border-4 rounded-[1.5rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'border-indigo-500/30 text-indigo-400 focus:border-indigo-500 shadow-inner'}`} placeholder="?" autoFocus />
-                                        </div>
-                                    </div>
-                                    <button onClick={handleCheck} className="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"><ZapIcon size={36} /> تفعيل الاندماج</button>
-                                </motion.div>
-                            )}
-
-                            {isCompleted && (
-                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="w-full text-center max-w-2xl px-2">
-                                    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-2 border-emerald-500/40 p-8 rounded-3xl text-emerald-400 font-bold mb-3 text-2xl shadow-lg">اندماج جذري متكامل!</div>
-                                    <button onClick={generateProblem} className="mt-4 w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-[1rem] font-black text-2xl shadow-xl transition-all active:scale-95">تحدي جديد</button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                )}
+                </motion.div>
+            </AnimatePresence>
+            <div className="flex justify-between items-center mt-6 px-4">
+                <button onClick={() => learnStep > 0 ? setLearnStep(l => l - 1) : setPhase('intro')}
+                    className={`px-4 py-2 rounded-xl font-black transition-all ${isDarkMode ? 'bg-white/5 text-white border border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >السابق</button>
+                {learnStep < learnPages.length - 1
+                    ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
+                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">بدء التحدي</button>
+                }
             </div>
         </div>
+    );
+
+    // ── practice — يستخدم LabChallenge ───────────────────────────────────────
+    return (
+        <LabChallenge
+            type="text"
+            current={1}
+            total={1}
+            level={level}
+            question={`√${practicePair.a} × √${practicePair.b}`}
+            hint={`اضرب ${practicePair.a} × ${practicePair.b}، ثم ضع الناتج تحت جذر واحد.`}
+            feedback={feedback}
+            reward={reward}
+            onRefresh={generateProblem}
+            onRestart={() => { setPhase('intro'); setReward(null); }}
+        >
+            <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
+                <span className="text-rose-500">√</span>
+                <input
+                    type="number" value={inputVal}
+                    onChange={e => setInputVal(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleCheck()}
+                    aria-label="أدخل الناتج تحت الجذر"
+                    autoFocus
+                    className={`w-24 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400 focus:border-indigo-400' : 'bg-white border-indigo-200 text-indigo-700 focus:border-indigo-500'
+                        }`}
+                    placeholder="؟"
+                />
+            </div>
+            <button onClick={handleCheck} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
+                <ZapIcon size={18} /> تفعيل الاندماج
+            </button>
+        </LabChallenge>
     );
 }
 
 export default function RootsMultiplicationLab() {
+    const [phase, setPhase] = useState('intro');
     return (
-        <LabShell 
-            labId="roots-multiplication" 
-            title="ضرب الجذور التربيعية" 
-            icon={Sigma}
-            accentColor="indigo"
+        <LabShell
+            labId="roots-multiplication"
+            phase={phase}
+            title="ضرب الجذور التربيعية"
             badgeText="بروتوكول دمج الجذور"
             badgeIcon={ZapIcon}
+            accentColor="indigo"
+            onBack={phase !== 'intro' ? () => setPhase('intro') : undefined}
         >
-            <RootsMultiplicationContent />
+            <RootsMultiplicationContent phase={phase} setPhase={setPhase} />
         </LabShell>
     );
 }

@@ -1,194 +1,147 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, CheckCircle2, Zap as ZapIcon, Target, Search, FastForward, ScanSearch, ShieldCheck, BookOpen, Sigma, Rocket } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, ScanSearch, Zap as ZapIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import LabShell from './LabShell';
-import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
+import { rewardService } from '../../utils/rewardService';
+import LabShell from './LabShell';
+import LabChallenge from './LabChallenge';
+import { useLabTheme } from './LabThemeContext';
 
-function LinearFormulaContent({ setLabTitle, setLabPhase }) {
+function LinearFormulaContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
-    const [phase, setPhase] = useState('intro'); // intro | learn | practice
-    const [step, setStep] = useState(0); // 0: input, 1: reward
+
+    const [level, setLevel] = useState(1);
     const [a, setA] = useState(2);
     const [x, setX] = useState(3);
     const [inputA, setInputA] = useState('');
     const [error, setError] = useState(false);
-    const [difficultyLevel, setDifficultyLevel] = useState(1);
-    const [isCompleted, setIsCompleted] = useState(false);
+    const [feedback, setFeedback] = useState(null);
+    const [reward, setReward] = useState(null);
 
     useEffect(() => {
         labProgressService.getOne('linear-formula')
-            .then(progress => {
-                const level = difficultyEngine.getLevel(progress);
-                setDifficultyLevel(level);
-            })
-            .catch(err => console.error(err));
+            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .catch(() => { });
     }, []);
 
-    const learnPages = [
-        {
-            title: 'بروتوكول الكشف الجبري',
-            detail: 'بما أن f(x) = ax، فإننا نستطيع "عزل" المعامل a من خلال قسمة النتيجة f(x) على المدخل x.',
-            math: 'a = f(x) / x',
-            icon: <ScanSearch size={20} />
-        },
-        {
-            title: 'خوارزمية التحقق الرقمي',
-            detail: 'دائماً تأكد من أن الناتج المحسوب يحقق العلاقة: f(x) = a × x بدقة تامة.',
-            math: 'Test: a × x = f(x)',
-            icon: <ShieldCheck size={20} />
-        }
-    ];
-
     const generateProblem = () => {
-        const params = difficultyEngine.getParams('linear', difficultyLevel);
+        const params = difficultyEngine.getParams('linear', level);
         const maxCoeff = params.maxCoeff || 5;
         const maxInput = params.maxInput || 5;
 
         const newA = (Math.floor(Math.random() * maxCoeff) + 1) * (Math.random() > 0.5 ? 1 : -1);
-        const newX = (Math.floor(Math.random() * maxInput) + 1);
-        
-        setA(newA);
-        setX(newX);
-        setPhase('practice');
-        setStep(0);
-        setInputA('');
-        setError(false);
-        setIsCompleted(false);
+        const newX = Math.floor(Math.random() * maxInput) + 1;
 
-        labProgressService.update('linear-formula', 'practice').catch(console.error);
+        setA(newA); setX(newX);
+        setPhase('practice');
+        setInputA('');
+        setError(false); setFeedback(null); setReward(null);
+        labProgressService.update('linear-formula', 'practice').catch(() => { });
     };
 
     const handleCheck = async () => {
         if (parseFloat(inputA) === a) {
-            setStep(1);
-            setIsCompleted(true);
+            setFeedback({ type: 'success', text: 'اكتشاف جبري مثالي! فككت شيفرة الدالة الخطية.' });
             confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+            await labProgressService.update('linear-formula', 'completed', 100).catch(() => { });
             try {
-                await labProgressService.update('linear-formula', 'completed', 100);
+                const data = await rewardService.claimLabReward('linear-formula-mastery');
+                if (data.status === 'success') setReward(data);
             } catch (err) { console.error(err); }
-            setError(false);
         } else {
             setError(true);
-            setTimeout(() => setError(false), 1000);
+            setFeedback({ type: 'error', text: 'راجع القاعدة: a = f(x) ÷ x.' });
+            setTimeout(() => { setError(false); setFeedback(null); }, 1200);
         }
     };
 
-    useEffect(() => {
-        setLabPhase(phase);
-        if (phase === 'intro') {
-            setLabTitle('استخراج المعامل');
-        } else if (isCompleted) {
-            setLabTitle('تم فك الشيفرة!');
-        } else {
-            setLabTitle('استنتاج a');
-        }
-    }, [phase, isCompleted, setLabTitle, setLabPhase]);
-
-    return (
-        <div className="w-full h-full flex flex-col items-center justify-center relative z-10 w-full overflow-hidden px-4" dir="rtl">
-            {phase === 'intro' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-6xl">
-                    <div className={`p-4 md:p-6 rounded-[1.5rem] border backdrop-blur-3xl transition-all shadow-2xl ${theme.card}`}>
-                         <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-sky-600 rounded-[1rem] flex items-center justify-center text-white mb-3 shadow-xl"><BookOpen size={20} /></div>
-                         <h3 className={`text-base md:text-lg font-black mb-3 tracking-tighter ${theme.textMain}`}>القاعدة الذهبية:</h3>
-                         <div className="bg-white/5 p-8 rounded-[1.5rem] border-2 border-indigo-500/20 text-center shadow-inner">
-                             <div className="text-base md:text-lg font-black font-mono text-white tracking-tighter flex items-center justify-center gap-4" dir="ltr">
-                                 <span>a = </span>
-                                 <div className="flex flex-col items-center">
-                                     <span className="border-b-4 border-indigo-500 px-6 font-serif">f(x)</span>
-                                     <span className="text-2xl opacity-40 font-serif">x</span>
-                                 </div>
-                             </div>
-                         </div>
-                         <button onClick={() => setPhase('learn')} className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black transition-all border border-white/10 w-full text-center text-xl shadow-lg">فتح دليل البروتوكول</button>
-                    </div>
-                    <motion.button onClick={generateProblem} className="relative group cursor-pointer overflow-hidden rounded-[1.5rem] shadow-2xl">
-                        <div className={`absolute inset-0 bg-gradient-to-br from-indigo-600 via-sky-600 to-indigo-800 transition-transform duration-500 group-hover:scale-110`} />
-                        <div className="relative p-4 md:p-5 flex flex-col items-center justify-center text-center gap-3 text-white">
-                            <ScanSearch size={40} className="md:w-12 md:h-12 animate-pulse text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" />
-                            <span className="text-base md:text-lg font-black tracking-tighter uppercase italic tracking-widest leading-tight">تفعيل المسح الرقمي</span>
-                        </div>
-                    </motion.button>
+    // ── intro ─────────────────────────────────────────────────────────────────
+    if (phase === 'intro') return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-2">
+            <div className={`p-6 rounded-[1rem] border backdrop-blur-3xl ${theme.card}`}>
+                <h3 className={`text-base font-black mb-3 ${theme.textMain}`}>القاعدة الذهبية:</h3>
+                <div className={`p-4 rounded-xl border text-center mb-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-indigo-50 border-indigo-100'}`}>
+                    <span className="font-mono font-black text-indigo-400" dir="ltr">a = f(x) / x</span>
                 </div>
-            )}
-
-            {phase === 'learn' && (
-                <div className="w-full max-w-4xl px-2">
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className={`p-4 md:p-6 rounded-[1.5rem] border-2 shadow-2xl backdrop-blur-3xl relative overflow-hidden ${theme.card}`}>
-                         <div className="flex flex-col items-center text-center">
-                             <div className={`w-20 h-20 rounded-3xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 shadow-inner`}>{learnPages[0].icon}</div>
-
-                             <p className={`text-sm md:text-base ${theme.textSub} mb-3 max-w-2xl font-medium leading-relaxed italic`}>{learnPages[0].detail}</p>
-                             <div className={`p-5 rounded-[1.5rem] border-2 bg-white/5 border-white/10 shadow-inner w-full`}>
-                                 <span className="text-base md:text-lg font-mono font-black text-indigo-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.4)]" dir="ltr">f(x) = ax ➔ a = f(x) / x</span>
-                             </div>
-                         </div>
-                    </motion.div>
-                    <button onClick={generateProblem} className="mt-4 w-full py-3 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white rounded-[1rem] font-black text-2xl shadow-xl transition-all flex items-center justify-center gap-4">ابدأ المهمة <FastForward size={20} /></button>
+                <button onClick={() => setPhase('learn')} className={`w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'}`}>
+                    فتح دليل البروتوكول
+                </button>
+            </div>
+            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-indigo-600" />
+                <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
+                    <ScanSearch size={36} />
+                    <span className="font-black text-xl uppercase tracking-widest">تفعيل المسح الرقمي</span>
                 </div>
-            )}
-
-            {phase === 'practice' && (
-                <div className="flex flex-col items-center w-full max-w-5xl px-2">
-                    <div className={`w-full p-4 md:p-6 rounded-[1.5rem] border-2 backdrop-blur-3xl mb-12 text-center relative overflow-hidden transition-all duration-700 shadow-2xl ${isCompleted ? 'border-emerald-500/40 bg-emerald-500/5' : theme.card}`}>
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-sky-500/10 opacity-30" />
-                        <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-20 relative z-10">
-                            <div className="text-center space-y-6">
-                                <div className="px-6 py-2 rounded-full bg-indigo-500/20 text-indigo-400 font-black text-xs md:text-sm uppercase tracking-[0.4em] mb-4 inline-block border border-indigo-500/30 italic">معطيات المسح</div>
-                                <div className="bg-white/5 px-4 py-2 rounded-[1.5rem] border-2 border-indigo-500/20 text-white text-base md:text-lg font-black font-mono shadow-inner" dir="ltr">
-                                    f(<span className="text-indigo-400 italic">{x}</span>) = <span className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{a * x}</span>
-                                </div>
-                            </div>
-
-                            <AnimatePresence mode="wait">
-                                {!isCompleted ? (
-                                    <motion.div key="input-area" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="w-full max-w-sm">
-                                        <div className="bg-white/5 p-5 rounded-[1.5rem] border-2 border-white/10 shadow-inner mb-4">
-                                            <div className="flex items-center justify-center gap-3 text-xl md:text-2xl font-black font-mono">
-                                                <span className="text-white italic">a =</span>
-                                                <input type="number" value={inputA} onChange={(e) => setInputA(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCheck()} className={`w-36 md:w-52 bg-white/5 border-4 rounded-[1rem] text-center py-3 outline-none transition-all ${error ? 'border-rose-500 animate-shake text-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'border-indigo-500/30 text-indigo-400 focus:border-indigo-400 shadow-inner'}`} placeholder="?" autoFocus dir="ltr" />
-                                            </div>
-                                        </div>
-                                        <button onClick={handleCheck} className="w-full py-2 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"><ZapIcon size={20} /> تأكيد التحليل</button>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div key="success-area" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-lg">
-                                        <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-4 border-emerald-500/40 rounded-[1.5rem] p-12 md:p-16 shadow-2xl relative overflow-hidden backdrop-blur-3xl">
-                                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-40" />
-                                             <div className="relative z-10 text-xl text-emerald-400 font-black mb-4 uppercase tracking-[0.4em] italic drop-shadow-glow">اكتشاف جبري مثالي!</div>
-                                             <div className="relative z-10 text-xl md:text-[6rem] font-mono font-black text-white drop-shadow-[0_0_40px_rgba(52,211,153,0.4)]" dir="ltr">
-                                                 f(x) = <span className="text-emerald-400 italic">{a}</span>x
-                                             </div>
-                                        </div>
-                                        <button onClick={generateProblem} className="mt-3 w-full py-2 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black text-2xl shadow-xl transition-all active:scale-95">تحليل عبارة جديدة</button>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </motion.button>
         </div>
+    );
+
+    // ── learn ─────────────────────────────────────────────────────────────────
+    if (phase === 'learn') return (
+        <div className="w-full max-w-3xl px-2">
+            <div className={`p-5 rounded-[1rem] border backdrop-blur-3xl text-center ${theme.card}`}>
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3"><ScanSearch size={20} /></div>
+                <p className={`text-sm ${theme.textSub} mb-4 max-w-2xl mx-auto font-medium`}>بما أن f(x) = ax، نستطيع عزل المعامل a بقسمة الناتج f(x) على المدخل x.</p>
+                <div className={`p-4 rounded-2xl border mx-auto max-w-md ${isDarkMode ? 'bg-black/40 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                    <span className="font-mono font-black text-indigo-400" dir="ltr">f(x) = ax ⟶ a = f(x) / x</span>
+                </div>
+            </div>
+            <button onClick={generateProblem} className="mt-6 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all">
+                ابدأ المهمة
+            </button>
+        </div>
+    );
+
+    // ── practice — يستخدم LabChallenge ───────────────────────────────────────
+    return (
+        <LabChallenge
+            type="text"
+            current={1}
+            total={1}
+            level={level}
+            question={`f(${x}) = ${a * x}`}
+            hint={`a = ${a * x} ÷ ${x}`}
+            feedback={feedback}
+            reward={reward}
+            onRefresh={generateProblem}
+            onRestart={() => { setPhase('intro'); setReward(null); }}
+        >
+            <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
+                <span className={theme.textMain}>a =</span>
+                <input
+                    type="number" value={inputA}
+                    onChange={e => setInputA(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleCheck()}
+                    aria-label="أدخل قيمة المعامل"
+                    autoFocus
+                    className={`w-24 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400 focus:border-indigo-400' : 'bg-white border-indigo-200 text-indigo-700 focus:border-indigo-500'
+                        }`}
+                    placeholder="؟"
+                />
+            </div>
+            <button onClick={handleCheck} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
+                <ZapIcon size={18} /> تأكيد التحليل
+            </button>
+        </LabChallenge>
     );
 }
 
 export default function LinearFormulaLab() {
-    const [labTitle, setLabTitle] = useState('استخراج المعامل');
-    const [labPhase, setLabPhase] = useState('intro');
-
+    const [phase, setPhase] = useState('intro');
     return (
-        <LabShell 
-            labId="linear-formula" 
-            accentColor="indigo"
+        <LabShell
+            labId="linear-formula"
+            phase={phase}
+            title="استخراج المعامل"
             badgeText="وحدة التحليل"
             badgeIcon={Search}
-            title={labTitle}
-            phase={labPhase}
+            accentColor="indigo"
+            onBack={phase !== 'intro' ? () => setPhase('intro') : undefined}
         >
-            <LinearFormulaContent setLabTitle={setLabTitle} setLabPhase={setLabPhase} />
+            <LinearFormulaContent phase={phase} setPhase={setPhase} />
         </LabShell>
     );
 }
