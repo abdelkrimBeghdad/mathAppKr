@@ -27,10 +27,9 @@ class SecurityController extends Controller
             'reason' => 'required|string|max:255',
         ]);
 
-        $user->update([
-            'is_suspended' => true,
-            'suspension_reason' => $request->reason,
-        ]);
+        $user->is_suspended = true;
+        $user->suspension_reason = $request->reason;
+        $user->save();
 
         return response()->json([
             'message' => 'User has been suspended.',
@@ -40,10 +39,9 @@ class SecurityController extends Controller
 
     public function unsuspendUser(User $user)
     {
-        $user->update([
-            'is_suspended' => false,
-            'suspension_reason' => null,
-        ]);
+        $user->is_suspended = false;
+        $user->suspension_reason = null;
+        $user->save();
 
         return response()->json([
             'message' => 'User suspension has been lifted.',

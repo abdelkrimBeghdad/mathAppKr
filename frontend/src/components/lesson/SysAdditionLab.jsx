@@ -99,7 +99,13 @@ function SysAdditionContent({ phase, setPhase }) {
                     setStep(4);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                     try {
-                        const data = await rewardService.claimLabReward('sys-add-mastery');
+                        const data = await rewardService.claimLabReward('sys-add-mastery', {
+                            type: 'system',
+                            eq1: { a: 2, b: 1, c: 4 },
+                            eq2: { a: 1, b: -2, c: -3 },
+                            x: problem.x,
+                            y: problem.y
+                        });
                         if (data.status === 'success') setReward(data);
                     } catch (err) { console.error(err); }
                 }, 900);

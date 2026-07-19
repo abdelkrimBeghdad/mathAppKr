@@ -51,7 +51,7 @@ function StatMeanContent({ phase, setPhase }) {
         const parsed = parseFloat(input);
         if (isNaN(parsed)) return;
 
-        if (parsed === currentChallenge.ans) {
+        if (Math.abs(parsed - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'صحيح! لقد حددت مؤشر المركز بدقة. ✓' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput('');

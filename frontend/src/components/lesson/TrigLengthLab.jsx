@@ -59,7 +59,7 @@ function TrigLengthContent({ phase, setPhase }) {
     };
 
     const handleAnswer = async () => {
-        if (parseFloat(input1) === currentChallenge.ans) {
+        if (Math.abs(parseFloat(input1) - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'رائع! الضرب التبادلي أعطاك النتيجة الصحيحة.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
