@@ -7,60 +7,83 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
-function buildChallenge(level) {
-    return difficultyEngine.generateChallenge('stat-cumulative', level);
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('stat-cumulative', lvl) }));
 }
 
 function StatCumulativeContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [challenge, setChallenge] = useState(() => buildChallenge(1));
-    const [userValues, setUserValues] = useState([]);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
+    const [userValues, setUserValues] = useState(() => new Array(rounds[0].problem.freqs.length).fill(''));
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const challenge = roundData.problem;
 
     useEffect(() => {
         labProgressService.getOne('stat-cumulative')
             .then(progress => {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
-                    setLevel(lvl);
-                    const c = buildChallenge(lvl);
-                    setChallenge(c);
-                    setUserValues(new Array(c.freqs.length).fill(''));
+                    setBaseLevel(lvl);
+                    const newRounds = buildRounds(lvl);
+                    setRounds(newRounds);
+                    setUserValues(new Array(newRounds[0].problem.freqs.length).fill(''));
                 }
             })
             .catch(() => { });
     }, []);
 
-    useEffect(() => {
-        setUserValues(new Array(challenge.freqs.length).fill(''));
-    }, []); // init once
+    const resetAll = () => {
+        const newRounds = buildRounds(baseLevel);
+        setRounds(newRounds);
+        setRound(0);
+        setUserValues(new Array(newRounds[0].problem.freqs.length).fill(''));
+        setError(false); setFeedback(null);
+    };
 
-    const resetChallenge = () => {
-        const c = buildChallenge(level);
-        setChallenge(c);
-        setUserValues(new Array(c.freqs.length).fill(''));
-        setError(false);
-        setFeedback(null);
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('stat-cumulative', 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
         const isCorrect = userValues.every((v, i) => parseInt(v) === challenge.correct[i]);
 
         if (isCorrect) {
-            setFeedback({ type: 'success', text: 'أحسنت! تراكم البيانات يعطيك صورة أوضح عن ترتيب السلسلة.' });
-            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-            await labProgressService.update('stat-cumulative', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('stat-cumulative-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `أحسنت! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => {
+                    const nextIdx = round + 1;
+                    setRound(nextIdx);
+                    setUserValues(new Array(rounds[nextIdx].problem.freqs.length).fill(''));
+                    setFeedback(null);
+                }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'أحسنت! تراكم البيانات يعطيك صورة أوضح عن ترتيب السلسلة.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('stat-cumulative', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('stat-cumulative', {
+                        type: 'stat-cumulative', freqs: challenge.freqs, correct: challenge.correct,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'خطأ في الجمع التراكمي. جرب مرة أخرى.' });
@@ -83,13 +106,13 @@ function StatCumulativeContent({ phase, setPhase }) {
                     تعلم كيف تبني صورة تراكمية للبيانات تساعدك في فهم ترتيب القيم بشكل أعمق.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     دخول مختبر التراكم
                 </button>
             </div>
-            <button onClick={() => { resetChallenge(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -115,7 +138,7 @@ function StatCumulativeContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenge(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -125,15 +148,15 @@ function StatCumulativeContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={level}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={challenge.q}
             hint={challenge.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenge}
-            onRestart={() => { setPhase('intro'); resetChallenge(); setReward(null); }}
+            onRefresh={() => { setUserValues(new Array(challenge.freqs.length).fill('')); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className={`flex justify-center gap-3 p-3 rounded-xl border font-mono text-sm ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
@@ -162,6 +185,11 @@ function StatCumulativeContent({ phase, setPhase }) {
                         </React.Fragment>
                     ))}
                 </div>
+
+                <LabTutorialNote
+                    from={`السلسلة المعطاة: ${challenge.freqs.join('، ')}.`}
+                    why={`التكرار المجمع يعني: كم مجموع القيم حتى هذه النقطة؟ أول خانة = التكرار الأول نفسه، وكل خانة تالية = مجموع كل الخانات السابقة معها.`}
+                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                     تحقق من التراكم

@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -26,7 +27,7 @@ function PowersContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     useEffect(() => {
-        labProgressService.getOne('powers')
+        labProgressService.getOne('powers-rules')
             .then(progress => {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
@@ -56,9 +57,9 @@ function PowersContent({ phase, setPhase }) {
             if (challengeStep < challenges.length - 1) {
                 setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
             } else {
-                await labProgressService.update('powers', 'completed', 100).catch(() => { });
+                await labProgressService.update('powers-rules', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('powers-mastery');
+                    const data = await rewardService.claimLabReward('powers-rules');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -154,6 +155,10 @@ function PowersContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
+            <LabTutorialNote
+                from={`السؤال يقارن بين أُسَّين لنفس الأساس.`}
+                why={currentChallenge.hint}
+            />
             <button
                 onClick={handleAnswer}
                 className="mt-4 w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
@@ -168,7 +173,7 @@ export default function PowersLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="powers"
+            labId="powers-rules"
             phase={phase}
             title="مختبر الأسس والقوى"
             badgeText="قوانين الأسس"

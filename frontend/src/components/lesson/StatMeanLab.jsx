@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -51,7 +52,7 @@ function StatMeanContent({ phase, setPhase }) {
         const parsed = parseFloat(input);
         if (isNaN(parsed)) return;
 
-        if (parsed === currentChallenge.ans) {
+        if (Math.abs(parsed - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'صحيح! لقد حددت مؤشر المركز بدقة. ✓' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput('');
@@ -65,7 +66,7 @@ function StatMeanContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('stat-mean', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('stat-mean-mastery');
+                    const data = await rewardService.claimLabReward('stat-mean');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -206,6 +207,11 @@ function StatMeanContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
+
+            <LabTutorialNote
+                from={`لديك ${currentChallenge.data.length} أرقام: ${currentChallenge.data.join('، ')}.`}
+                why={`الوسط الحسابي = مجموع كل الأرقام ÷ عددها. اجمعها أولاً، ثم اقسم الناتج على ${currentChallenge.data.length}.`}
+            />
 
             <button
                 onClick={handleAnswer}

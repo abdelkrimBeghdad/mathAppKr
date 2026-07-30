@@ -8,6 +8,7 @@ import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // خوارزمية إقليدس — تولّد كل خطوات القسمة المتتالية حتى الوصول لباقٍ صفري
@@ -24,14 +25,23 @@ function computeSteps(a, b) {
     return { steps, pgcd: x };
 }
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const { a, b } = difficultyEngine.generateChallenge('pgcd-euclidean', lvl);
+        const { steps, pgcd } = computeSteps(a, b);
+        return { level: lvl, a, b, steps, pgcd };
+    });
+}
+
 function PGCDEuclideanContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [numbers, setNumbers] = useState({ a: 84, b: 60 });
-    const [expectedSteps, setExpectedSteps] = useState([]);
-    const [pgcd, setPgcd] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [completedRows, setCompletedRows] = useState([]);
@@ -39,36 +49,39 @@ function PGCDEuclideanContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const current = expectedSteps[currentStep];
+    const roundData = rounds[round]; // { level, a, b, steps, pgcd }
+    const current = roundData.steps[currentStep];
 
     useEffect(() => {
         labProgressService.getOne('pgcd-euclidean')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
     const learnPages = [
         { title: 'بروتوكول القسمة الإقليدية', detail: 'خوارزمية إقليدس تعتمد على تكرار القسمة: نقسم العدد الأكبر على الأصغر ونحتفظ بالباقي، ثم نكرر العملية مع المقسوم عليه والباقي.', math: 'a = b × q + r' },
         { title: 'شرط التوقف', detail: 'نكرر هذه الخطوة حتى نحصل على باقٍ يساوي صفر. عندها، آخر مقسوم عليه هو القاسم المشترك الأكبر.', math: 'r = 0 → PGCD = آخر b' },
+        { title: 'الجولات الثلاث', detail: 'ستطبّق الخوارزمية على 3 أزواج مختلفة من الأعداد: زوج سهل، ثم أصعب، ثم الأصعب. المكافأة تُمنح فقط بعد الزوج الثالث لضمان إتقانك الحقيقي للخوارزمية.', math: 'مبتدئ ➜ متوسط ➜ متقدم' },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('pgcd', level);
-        const options = params.pairs || [[48, 18], [60, 24], [84, 60], [105, 45]];
-        const pair = options[Math.floor(Math.random() * options.length)];
-        const a = Math.max(pair[0], pair[1]);
-        const b = Math.min(pair[0], pair[1]);
-        const { steps, pgcd: p } = computeSteps(a, b);
-
-        setNumbers({ a, b });
-        setExpectedSteps(steps);
-        setPgcd(p);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setCurrentStep(0);
         setCompletedRows([]);
         setUserAnswer('');
         setError(false);
         setFeedback(null);
-        setReward(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
         labProgressService.update('pgcd-euclidean', 'practice').catch(() => { });
     };
@@ -91,12 +104,29 @@ function PGCDEuclideanContent({ phase, setPhase }) {
         setFeedback({ type: 'success', text: 'صحيح! انتقل للخطوة التالية.' });
 
         if (current.r === 0) {
-            await labProgressService.update('pgcd-euclidean', 'completed', 100).catch(() => { });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            try {
-                const data = await rewardService.claimLabReward('pgcd-euclidean');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            if (round < 2) {
+                setTimeout(() => {
+                    setFeedback({ type: 'success', text: `أحسنت! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => {
+                        setRound(r => r + 1);
+                        setCurrentStep(0);
+                        setCompletedRows([]);
+                        setFeedback(null);
+                    }, 1400);
+                }, 300);
+            } else {
+                await labProgressService.update('pgcd-euclidean', 'completed', 100).catch(() => { });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                try {
+                    const data = await rewardService.claimLabReward('pgcd-euclidean', {
+                        type: 'pgcd',
+                        a: roundData.a,
+                        b: roundData.b,
+                        result: roundData.pgcd,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setTimeout(() => { setCurrentStep(s => s + 1); setFeedback(null); }, 700);
         }
@@ -111,15 +141,16 @@ function PGCDEuclideanContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم خوارزمية إقليدس القديمة — طريقة أنيقة وسريعة لإيجاد القاسم المشترك الأكبر عبر تكرار القسمة.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={generateProblem} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -145,14 +176,13 @@ function PGCDEuclideanContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
     );
 
     // ── practice — يستخدم LabChallenge + LabStepsPanel (سجل الخطوات) ─────────
-    // نبني سجل الخطوات: المكتملة (done)، الحالية (active)، والمتبقية (لا تظهر بعد)
     const stepsForPanel = [
         ...completedRows.map(row => ({
             label: `${row.a} = ${row.b}×${row.q} + ${row.r}`,
@@ -161,18 +191,20 @@ function PGCDEuclideanContent({ phase, setPhase }) {
         ...(current ? [{ label: `${current.a} = ${current.b}×? + ?`, active: true }] : []),
     ];
 
+    const totalStepsSoFar = rounds.slice(0, round).reduce((s, r) => s + r.steps.length, 0);
+
     return (
         <LabChallenge
             type="text"
-            current={completedRows.length + 1}
-            total={expectedSteps.length}
-            level={level}
+            current={totalStepsSoFar + completedRows.length + 1}
+            total={rounds.reduce((s, r) => s + r.steps.length, 0)}
+            level={roundData.level}
             question={current ? `احسب باقي قسمة ${current.a} على ${current.b}` : ''}
             hint="القسمة الإقليدية: a = b×q + r. احسب r فقط (الباقي)."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setCurrentStep(0); setCompletedRows([]); setUserAnswer(''); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={<LabStepsPanel title="سجل القسمة الإقليدية" steps={stepsForPanel} />}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
@@ -188,6 +220,12 @@ function PGCDEuclideanContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
+
+            <LabTutorialNote
+                from={current ? `القسمة السابقة انتهت بمقسوم عليه ${current.a} ومقسوم ${current.b} (أو هذان هما العددان الأصليان في أول خطوة).` : ''}
+                why={current ? `في كل خطوة نستبدل الزوج (a, b) بالزوج (b, الباقي r)، وهذا يصغّر المسألة تدريجياً حتى يصبح الباقي صفراً — عندها b الحالي هو القاسم المشترك الأكبر.` : ''}
+            />
+
             <button onClick={handleSubmit} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تأكيد الباقي
             </button>

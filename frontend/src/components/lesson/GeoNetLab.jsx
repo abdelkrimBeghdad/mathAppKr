@@ -1,20 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ArrowRight, Layers, Layout, MousePointer2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('geo-net', lvl) }));
+}
 
 function GeoNetContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
     const [isUnfolded, setIsUnfolded] = useState(false);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
+    const [inputVal, setInputVal] = useState('');
+    const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { type, ans, q, hint, ... }
+
+    useEffect(() => {
+        labProgressService.getOne('geo-net')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -49,42 +77,44 @@ function GeoNetContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        {
-            q: 'إذا كانت مساحة الوجه الواحد للمكعب هي 9cm²، فكم تكون مساحته الكلية؟',
-            correct: '54',
-            options: ['36', '54', '81'],
-            hint: 'المكعب يملك 6 أوجه متطابقة. اضرب مساحة الوجه في 6.',
-        },
-        {
-            q: "كم وجهاً يظهر في 'نشر' متوازي المستطيلات؟",
-            correct: '6',
-            options: ['4', '6', '8'],
-            hint: 'متوازي المستطيلات هو ابن عم المكعب، له نفس عدد الأوجه.',
-        },
-    ];
-
-    const currentChallenge = challenges[challengeStep];
-
-    const resetChallenges = () => {
-        setChallengeStep(0); setFeedback(null); setReward(null);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setInputVal('');
+        setError(false); setFeedback(null);
     };
 
-    const handleAnswer = async (choice) => {
-        if (choice === currentChallenge.correct) {
-            setFeedback({ type: 'success', text: 'صحيح! المساحة الكلية هي مجموع مساحات كل أوجه النشر. ✓' });
-            confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('geo-net', 'practice').catch(() => { });
+    };
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1500);
+    const handleAnswer = async () => {
+        if (parseInt(inputVal) === currentChallenge.ans) {
+            setError(false);
+            setInputVal('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                setFeedback({ type: 'success', text: 'صحيح! المساحة الكلية هي مجموع مساحات كل أوجه النشر. ✓' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('geo-net', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('geo-net-mastery');
+                    const data = await rewardService.claimLabReward('geo-net', {
+                        type: 'geo-net', kind: currentChallenge.type, ans: currentChallenge.ans,
+                        side: currentChallenge.side, l: currentChallenge.l, w: currentChallenge.w, h: currentChallenge.h,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
         } else {
-            setFeedback({ type: 'error', text: 'خطأ. فكر في عدد الأوجه الموجودة في الشكل المسطح.' });
+            setError(true);
+            setFeedback({ type: 'error', text: 'خطأ. فكر في عدد الأوجه ومساحة كل واحد منها في الشكل المسطح.' });
+            setTimeout(() => { setError(false); setFeedback(null); }, 1200);
         }
     };
 
@@ -97,12 +127,16 @@ function GeoNetContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تفتح المجسمات لترى "جلدها" الخارجي. مهارة النشر هي الطريق الوحيد لفهم وحساب المساحات الكلية للمجسمات.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     بدء عملية النشر
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -134,7 +168,7 @@ function GeoNetContent({ phase, setPhase }) {
                         التالي <ArrowRight size={18} />
                     </button>
                 ) : (
-                    <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all flex items-center gap-2">
+                    <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all flex items-center gap-2">
                         التدريب <CheckCircle2 size={18} />
                     </button>
                 )}
@@ -142,33 +176,43 @@ function GeoNetContent({ phase, setPhase }) {
         </div>
     );
 
-    // ── practice — يستخدم LabChallenge بنوع choice ────────────────────────────
+    // ── practice — يستخدم LabChallenge ───────────────────────────────────────
     return (
         <LabChallenge
-            type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            type="text"
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={currentChallenge.q}
             hint={currentChallenge.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
-            <div className="flex flex-wrap justify-center gap-3" role="group" aria-label="خيارات الإجابة">
-                {currentChallenge.options.map((opt, i) => (
-                    <button
-                        key={i}
-                        onClick={() => handleAnswer(opt)}
-                        className={`px-4 py-2 rounded-xl border-2 font-black text-2xl transition-all active:scale-95 ${isDarkMode
-                                ? 'border-white/10 bg-black/40 hover:border-indigo-500/50 hover:bg-indigo-500/10 text-white'
-                                : 'border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50 text-slate-700'
-                            }`}
-                    >
-                        {opt}
-                    </button>
-                ))}
+            <div className="w-full flex flex-col items-center gap-4">
+                <input
+                    type="number" value={inputVal}
+                    onChange={e => setInputVal(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAnswer()}
+                    aria-label="أدخل المساحة الكلية"
+                    dir="ltr"
+                    className={`w-32 rounded-xl p-3 text-center text-xl font-black outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/40 text-indigo-300 focus:border-indigo-400' : 'bg-white border-indigo-200 text-indigo-700 focus:border-indigo-500'
+                        }`}
+                    placeholder="?"
+                    autoFocus
+                />
+                <LabTutorialNote
+                    from={currentChallenge.type === 'cube'
+                        ? `مساحة كل وجه من أوجه المكعب معطاة ويساوي ${currentChallenge.faceArea}cm².`
+                        : `الأبعاد الثلاثة لمتوازي المستطيلات: ${currentChallenge.l}cm × ${currentChallenge.w}cm × ${currentChallenge.h}cm.`}
+                    why={currentChallenge.type === 'cube'
+                        ? `عند نشر المكعب، تظهر 6 أوجه متطابقة تمامًا؛ لذا نضرب مساحة الوجه الواحد في 6 للحصول على المساحة الكلية.`
+                        : `عند نشر متوازي المستطيلات، تظهر 3 أزواج من الأوجه المتقابلة (كل زوج متطابق): طول×عرض، طول×ارتفاع، عرض×ارتفاع. نجمع الثلاثة ونضربها في 2.`}
+                />
+                <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
+                    تحقق من المساحة الكلية
+                </button>
             </div>
 
             <style dangerouslySetInnerHTML={{

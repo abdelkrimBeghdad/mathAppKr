@@ -65,7 +65,8 @@ class SecurityMonitorTest extends TestCase
 
     public function test_suspended_student_is_blocked_from_student_routes()
     {
-        $this->student->update(['is_suspended' => true]);
+        $this->student->is_suspended = true;
+        $this->student->save();
 
         $response = $this->actingAs($this->student)->getJson('/api/student/structure');
 

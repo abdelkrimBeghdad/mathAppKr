@@ -1,59 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Box, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('vec-parallelogram', lvl) }));
+}
 
 function VecParallelogramContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [selectedPoint, setSelectedPoint] = useState(null);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { a, b, d, c, options }
+
+    useEffect(() => {
+        labProgressService.getOne('vec-para')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         { title: 'نقطة الانطلاق المشتركة', detail: 'عندما ينطلق شعاعان من نفس النقطة، لا يمكننا تطبيق علاقة شال مباشرة. هنا نحتاج لـ "قاعدة متوازي الأضلاع".' },
         { title: 'إكمال الشكل', detail: 'نتخيل وجود خطوط توازي الأشعة لترسم لنا متوازي أضلاع. نقطة التقاطع هي نهاية شعاع المحصلة.' },
         { title: 'المحصلة هي القطر', detail: 'الشعاع الناتج ينطلق من نفس البداية A ويصل إلى الرأس المقابل C في متوازي الأضلاع.', math: 'AB + AD = AC' },
+        { title: 'الجولات الثلاث', detail: 'ستحل 3 مسائل تتصاعد صعوبتها. المكافأة تُمنح فقط بعد الجولة الثالثة (الأصعب).', math: 'مبتدئ ➜ متوسط ➜ متقدم' },
     ];
 
-    const challenges = [
-        {
-            q: 'AB + AD = ?',
-            a: { x: 0, y: 0 }, b: { x: 3, y: 1 }, d: { x: 1, y: 3 },
-            options: [{ x: 4, y: 4, correct: true }, { x: 2, y: 2, correct: false }, { x: 3, y: 4, correct: false }],
-        },
-        {
-            q: 'MA + MB = ?',
-            a: { x: 0, y: 0 }, b: { x: -2, y: 2 }, d: { x: 2, y: 2 },
-            options: [{ x: 0, y: 4, correct: true }, { x: 0, y: 0, correct: false }, { x: 4, y: 0, correct: false }],
-        },
-    ];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setSelectedPoint(null); setFeedback(null);
+    };
 
-    const currentChallenge = challenges[challengeStep];
-
-    const resetChallenges = () => {
-        setChallengeStep(0); setSelectedPoint(null); setFeedback(null);
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('vec-para', 'practice').catch(() => { });
     };
 
     const handleAnswer = async (opt) => {
         setSelectedPoint(opt);
         if (opt.correct) {
             setFeedback({ type: 'success', text: 'أحسنت! أكملت متوازي الأضلاع بنجاح.' });
-            confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); setSelectedPoint(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setSelectedPoint(null);
+                    setFeedback({ type: 'success', text: `أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => setFeedback(null), 1000);
+                }, 900);
             } else {
-                try {
-                    const data = await rewardService.claimLabReward('vec-parallelogram-mastery');
-                    if (data.status === 'success') setReward(data);
-                } catch (err) { console.error(err); }
+                setTimeout(async () => {
+                    await labProgressService.update('vec-para', 'completed', 100).catch(() => { });
+                    try {
+                        const data = await rewardService.claimLabReward('vec-para', {
+                            type: 'vec-parallelogram',
+                            a: currentChallenge.a, b: currentChallenge.b, d: currentChallenge.d, c: currentChallenge.c,
+                        });
+                        if (data.status === 'success') setReward(data);
+                    } catch (err) { console.error(err); }
+                }, 900);
             }
         } else {
             setFeedback({ type: 'error', text: 'نقطة خاطئة. تذكر أن المحصلة هي الرأس الرابع لمتوازي الأضلاع.' });
@@ -69,12 +101,16 @@ function VecParallelogramContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تجمع شعاعين ينطلقان من نفس النقطة باستخدام الهندسة الذكية لإكمال متوازي الأضلاع.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -102,32 +138,39 @@ function VecParallelogramContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
     );
 
     // ── practice — يستخدم LabChallenge بنوع choice ───────────────────────────
+    // نطاق الرسم يتكيّف تلقائياً مع نطاق الصعوبة الحالي حتى تبقى كل النقاط مرئية
+    const allX = [currentChallenge.a.x, currentChallenge.b.x, currentChallenge.d.x, ...currentChallenge.options.map(o => o.x)];
+    const allY = [currentChallenge.a.y, currentChallenge.b.y, currentChallenge.d.y, ...currentChallenge.options.map(o => o.y)];
+    const maxAbs = Math.max(1, ...allX.map(Math.abs), ...allY.map(Math.abs));
+    const viewSize = maxAbs * 2 + 2;
+    const viewOffset = -maxAbs - 1;
+
     return (
         <LabChallenge
             type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`أكمل متوازي الأضلاع: ${currentChallenge.q}`}
             hint="تخيل خطين وهميين يوازيان الأشعة الموجودة حتى يتقاطعا في النقطة الرابعة."
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setSelectedPoint(null); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="relative w-64 h-40 mx-auto bg-black/20 rounded-2xl border border-white/10">
-                <svg viewBox="-1 -1 6 6" className="w-full h-full" aria-hidden="true">
-                    <g transform="scale(1, -1) translate(0, -5)">
+                <svg viewBox={`${viewOffset} ${viewOffset} ${viewSize} ${viewSize}`} className="w-full h-full" aria-hidden="true">
+                    <g transform={`scale(1, -1)`}>
                         <line x1={currentChallenge.a.x} y1={currentChallenge.a.y} x2={currentChallenge.b.x} y2={currentChallenge.b.y} stroke="#38bdf8" strokeWidth="0.1" markerEnd="url(#arrow-b)" />
                         <line x1={currentChallenge.a.x} y1={currentChallenge.a.y} x2={currentChallenge.d.x} y2={currentChallenge.d.y} stroke="#f472b6" strokeWidth="0.1" markerEnd="url(#arrow-p)" />
-                        <circle cx={currentChallenge.a.x} cy={currentChallenge.a.y} r="0.1" fill="white" />
+                        <circle cx={currentChallenge.a.x} cy={currentChallenge.a.y} r="0.15" fill="white" />
                         {currentChallenge.options.map((opt, i) => (
                             <circle
                                 key={i}
@@ -161,6 +204,11 @@ function VecParallelogramContent({ phase, setPhase }) {
                     </button>
                 ))}
             </div>
+
+            <LabTutorialNote
+                from={`الشعاعان المعطيان: AB = (${currentChallenge.b.x}, ${currentChallenge.b.y}) و AD = (${currentChallenge.d.x}, ${currentChallenge.d.y}) (كلاهما ينطلق من A).`}
+                why={`محصلة الشعاعين تُحسب بجمع مركّباتهما: C = B + D − A = (${currentChallenge.b.x}+${currentChallenge.d.x}−${currentChallenge.a.x}, ${currentChallenge.b.y}+${currentChallenge.d.y}−${currentChallenge.a.y}) = (${currentChallenge.c.x}, ${currentChallenge.c.y}).`}
+            />
         </LabChallenge>
     );
 }
@@ -169,7 +217,7 @@ export default function VecParallelogramLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="vec-parallelogram"
+            labId="vec-para"
             phase={phase}
             title="توازن القوى"
             badgeText="قاعدة متوازي الأضلاع"

@@ -1,18 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Calculator, AlertTriangle, Scale } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('ineq-solve', lvl) }));
+}
 
 function InequalitiesSolveContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [step, setStep] = useState(0); // 0: نقل الثابت، 1: القسمة النهائية، 2: تم
     const [learnStep, setLearnStep] = useState(1);
-    const [practicePair, setPracticePair] = useState({ a: 2, b: 6, c: 14, sym: '>', symFlip: '>', res: 4 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputVal, setInputVal] = useState('');
     const [inputSym, setInputSym] = useState('');
     const [error, setError] = useState(false);
@@ -24,6 +35,21 @@ function InequalitiesSolveContent({ phase, setPhase }) {
     const containerRef = useRef(null);
     const elsRef = useRef({});
     const setRef = (id) => (el) => { if (el) elsRef.current[id] = el; };
+
+    const roundData = rounds[round];
+    const practicePair = roundData.problem; // { a, b, c, sym, symFlip, res, targetVal }
+
+    useEffect(() => {
+        labProgressService.getOne('ineq-solve')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -40,24 +66,19 @@ function InequalitiesSolveContent({ phase, setPhase }) {
         },
     ];
 
-    const generateProblem = () => {
-        const options = [
-            { a: 2, b: 6, c: 14, sym: '>', symFlip: '>', res: 4 },
-            { a: 3, b: -5, c: 10, sym: '<', symFlip: '<', res: 5 },
-            { a: -2, b: 4, c: 10, sym: '>', symFlip: '<', res: -3 },
-            { a: -3, b: -1, c: 8, sym: '≤', symFlip: '≥', res: -3 },
-            { a: 5, b: 10, c: 30, sym: '≥', symFlip: '≥', res: 4 },
-            { a: -4, b: 8, c: 0, sym: '<', symFlip: '>', res: 2 },
-        ];
-        const newProb = options[Math.floor(Math.random() * options.length)];
-        setPracticePair(newProb);
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(0);
-        setInputVal('');
-        setInputSym('');
-        setError(false);
-        setFeedback(null);
+        setInputVal(''); setInputSym('');
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
         setReward(null);
+        labProgressService.update('ineq-solve', 'practice').catch(() => { });
     };
 
     const handleNextLearnStep = () => {
@@ -87,9 +108,9 @@ function InequalitiesSolveContent({ phase, setPhase }) {
         setTimeout(() => { setIsAnimating(false); setFlightAnim(null); }, 1000);
     };
 
-    const handleCheck = () => {
+    const handleCheck = async () => {
         if (step === 0) {
-            const targetVal = practicePair.c - practicePair.b;
+            const targetVal = practicePair.targetVal;
             if (parseInt(inputVal) === targetVal) {
                 setStep(1);
                 setInputVal('');
@@ -107,12 +128,27 @@ function InequalitiesSolveContent({ phase, setPhase }) {
 
             if (symMatch && parseInt(inputVal) === practicePair.res) {
                 setStep(2);
-                setFeedback({ type: 'success', text: 'مجموعة الحلول محددة بدقة!' });
-                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-                rewardService.claimLabReward('inequality-solve')
-                    .then(data => data.status === 'success' && setReward(data))
-                    .catch(console.error);
+                setInputVal(''); setInputSym('');
                 setError(false);
+                if (round < 2) {
+                    setFeedback({ type: 'success', text: `مجموعة الحلول محددة بدقة! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                    setTimeout(() => {
+                        setRound(r => r + 1);
+                        setStep(0);
+                        setFeedback(null);
+                    }, 1600);
+                } else {
+                    setFeedback({ type: 'success', text: 'مجموعة الحلول محددة بدقة!' });
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    await labProgressService.update('ineq-solve', 'completed', 100).catch(() => { });
+                    try {
+                        const data = await rewardService.claimLabReward('ineq-solve', {
+                            type: 'ineq-solve', a: practicePair.a, b: practicePair.b, c: practicePair.c, res: practicePair.res, aNeg: practicePair.a < 0,
+                        });
+                        if (data.status === 'success') setReward(data);
+                    } catch (err) { console.error(err); }
+                }
             } else {
                 setError(true);
                 setFeedback({ type: 'error', text: 'تحقق من اتجاه الرمز وقيمة الناتج.' });
@@ -143,9 +179,12 @@ function InequalitiesSolveContent({ phase, setPhase }) {
                 >
                     مشاهدة الخطوات
                 </button>
+                <div className={`mt-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -205,7 +244,7 @@ function InequalitiesSolveContent({ phase, setPhase }) {
             </div>
             <div className="flex gap-3 mt-6 px-4">
                 <button
-                    onClick={learnStep < 3 ? handleNextLearnStep : generateProblem}
+                    onClick={learnStep < 3 ? handleNextLearnStep : startPractice}
                     disabled={isAnimating}
                     className="flex-grow py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black transition-all active:scale-95"
                 >
@@ -226,15 +265,15 @@ function InequalitiesSolveContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={step + 1}
-            total={3}
-            level={practicePair.a < 0 ? 3 : 2}
+            current={round * 2 + step + 1}
+            total={6}
+            level={roundData.level}
             question={`حل: ${practicePair.a}x ${practicePair.b >= 0 ? '+' : ''}${practicePair.b} ${practicePair.sym} ${practicePair.c}`}
             hint={step === 0 ? 'انقل الثابت للطرف الآخر مع عكس إشارته.' : 'اقسم على معامل x — إذا كان سالباً اقلب اتجاه الرمز.'}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(0); setInputVal(''); setInputSym(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-3">
                 {step === 0 && (
@@ -252,6 +291,12 @@ function InequalitiesSolveContent({ phase, setPhase }) {
                             autoFocus
                         />
                     </div>
+                )}
+                {step === 0 && (
+                    <LabTutorialNote
+                        from={`الثابت الحالي في نفس طرف x هو ${practicePair.b}.`}
+                        why={`لعزل الحد الذي يحتوي على x، ننقل الثابت للطرف الآخر مع عكس إشارته: ${practicePair.c} − (${practicePair.b}) = ${practicePair.targetVal}.`}
+                    />
                 )}
                 {step === 1 && (
                     <>
@@ -284,6 +329,12 @@ function InequalitiesSolveContent({ phase, setPhase }) {
                                 <AlertTriangle size={16} /> انتباه: القسمة على سالب تعني قلب الإشارة!
                             </motion.div>
                         )}
+                        <LabTutorialNote
+                            from={`الآن المعادلة: ${practicePair.a}x ${practicePair.sym} ${practicePair.targetVal}. معامل x هو ${practicePair.a}.`}
+                            why={practicePair.a < 0
+                                ? `نقسم كل طرف على ${practicePair.a} (سالب)، وهذا يفرض علينا عكس اتجاه رمز المتراجحة: ${practicePair.sym} تصبح ${practicePair.symFlip}.`
+                                : `نقسم كل طرف على ${practicePair.a} (موجب)، فيبقى اتجاه الرمز كما هو دون تغيير.`}
+                        />
                     </>
                 )}
                 {step === 2 && (
@@ -309,7 +360,7 @@ export default function InequalitiesSolveLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="inequalities-solve"
+            labId="ineq-solve"
             phase={phase}
             title="حل المتراجحات الخطية"
             badgeText="بروتوكول الحماية الجبرية"

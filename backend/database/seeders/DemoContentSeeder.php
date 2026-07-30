@@ -19,6 +19,7 @@ class DemoContentSeeder extends Seeder
             [
                 'name' => 'Student',
                 'password' => Hash::make('password'),
+                'parent_phone' => '1010101010',
                 'is_admin' => false
             ]
         );
@@ -69,7 +70,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'أوجد قواسم العدد $24$',
                 'application_solution' => '$\{1, 2, 3, 4, 6, 8, 12, 24\}$',
                 'application_hint' => 'تذكر أن قواسم العدد هي الأعداد التي تقسمه تماماً بدون باقٍ. ابدأ بالرقم 1 والعدد نفسه.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'divisor_discovery'
             ]
         );
@@ -96,7 +98,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'هل $6$ يقسم مجموع $12$ و $18$؟ علل.',
                 'application_solution' => 'نعم، لأن $6$ يقسم كلاً من $12$ ($12=6 \times 2$) و $18$ ($18=6 \times 3$).',
                 'application_hint' => 'استخدم الخاصية: إذا كان n يقسم a و b، فإنه يقسم مجموعمهما.',
-                'order' => 2, 'is_locked' => false,
+                'order' => 2,
+                'is_locked' => false,
                 'lab_type' => 'divisor_properties'
             ]
         );
@@ -118,7 +121,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'احسب $PGCD(24, 36)$',
                 'application_solution' => '$12$',
                 'application_hint' => 'يمكنك استخدام خوارزمية إقليدس (القسمات المتتالية) لإيجاد القاسم المشترك الأكبر بسرعة.',
-                'order' => 3, 'is_locked' => false,
+                'order' => 3,
+                'is_locked' => false,
                 'lab_type' => 'pgcd_all'
             ]
         );
@@ -141,7 +145,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'هل 21 و 14 أوليان فيما بينهما؟',
                 'application_solution' => 'لا',
                 'application_hint' => 'تكون الأعداد أولية فيما بينها إذا كان PGCD لهما يساوي 1. ابحث عن قاسم مشترك أكبر من 1.',
-                'order' => 4, 'is_locked' => false,
+                'order' => 4,
+                'is_locked' => false,
                 'lab_type' => 'coprime_lab'
             ]
         );
@@ -161,7 +166,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'اختزل الكسر $\frac{15}{25}$',
                 'application_solution' => '3/5',
                 'application_hint' => 'اقسم كلاً من البسط والمقام على قاسمهما المشترك الأكبر.',
-                'order' => 5, 'is_locked' => false,
+                'order' => 5,
+                'is_locked' => false,
                 'lab_type' => 'fraction_simplify'
             ]
         );
@@ -181,7 +187,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'بسط العدد $\sqrt{50}$',
                 'application_solution' => '$5\sqrt{2}$',
                 'application_hint' => 'ابحث عن أكبر مربع تام يقسم العدد تحت الجذر (مثل 4، 9، 16، 25...).',
-                'order' => 6, 'is_locked' => false,
+                'order' => 6,
+                'is_locked' => false,
                 'lab_type' => 'roots_lab'
             ]
         );
@@ -200,7 +207,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'حل المعادلة $x^2 = 7$',
                 'application_solution' => '√7, -√7',
                 'application_hint' => 'تذكر أن أي عدد موجب له جذران تربيعيان (أحدهما موجب والآخر هو مقابله السالب $-\sqrt{a}$).',
-                'order' => 7, 'is_locked' => false,
+                'order' => 7,
+                'is_locked' => false,
                 'lab_type' => 'rational_roots'
             ]
         );
@@ -226,7 +234,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'حل المعادلة: $2x + 4 = 12$',
                 'application_solution' => '$4$',
                 'application_hint' => 'اجعل المجاهيل في طرف والمعاليم في طرف آخر مع تغيير إشارة كل ما تنقله.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'equations_lab'
             ]
         );
@@ -246,7 +255,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'حل المعادلة: $(x+5)(x-5) = 0$',
                 'application_solution' => '-5, 5',
                 'application_hint' => 'يكون جداء عددين معدوماً إذا كان أحد العاملين على الأقل يساوي الصفر.',
-                'order' => 2, 'is_locked' => false,
+                'order' => 2,
+                'is_locked' => false,
                 'lab_type' => 'equations_product_lab'
             ]
         );
@@ -265,7 +275,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'حل المتراجحة: -x + 5 ≤ 3',
                 'application_solution' => 'x ≥ 2',
                 'application_hint' => 'تذكر: اقلب رمز التراجُح عند الضرب أو القسمة في عدد سالب.',
-                'order' => 3, 'is_locked' => false,
+                'order' => 3,
+                'is_locked' => false,
                 'lab_type' => 'inequalities_lab'
             ]
         );
@@ -284,7 +295,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'مثل حلول $x > -2$',
                 'application_solution' => 'Open at -2 towards right',
                 'application_hint' => 'ارسم مستقيماً وحدد عليه الصفر والعدد -2. الحلول هي القيم التي تقع يمين -2.',
-                'order' => 4, 'is_locked' => false,
+                'order' => 4,
+                'is_locked' => false,
                 'lab_type' => 'inequalities_graph_lab'
             ]
         );
@@ -303,7 +315,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'انشر: $(2x - 1)^2$',
                 'application_solution' => '$4x^2 - 4x + 1$',
                 'application_hint' => 'استخدم القاعدة $(a-b)^2 = a^2 - 2ab + b^2$. هنا $a=2x$ و $b=1$.',
-                'order' => 5, 'is_locked' => false,
+                'order' => 5,
+                'is_locked' => false,
                 'lab_type' => 'identities_lab'
             ]
         );
@@ -326,7 +339,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'عمر أمين ربع عمر أبيه، وعمر جده ضعف عمر أبيه. إذا كان مجموع أعمارهم $117$ سنة، فما هو عمر الأب؟',
                 'application_solution' => '36',
                 'application_hint' => 'نضع $x$ هو سن الأب، وبالتالي يكون عمر أمين $\dfrac{1}{4}x$ وعمر الجد $2x$. مجموعهم: $x + \dfrac{1}{4}x + 2x = 117$.',
-                'order' => 6, 'is_locked' => false,
+                'order' => 6,
+                'is_locked' => false,
                 'lab_type' => 'word_problems_lab'
             ]
         );
@@ -353,7 +367,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'لتكن الدالة الخطية $g(x) = -3x$. أحسب $g(-2)$.',
                 'application_solution' => '6',
                 'application_hint' => 'لحساب صورة عدد بدالة، نعوض $x$ بذلك العدد في عبارة الدالة: $g(-2) = -3 \times (-2)$.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'linear_functions'
             ]
         );
@@ -372,7 +387,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'لتكن $f(x) = x - 2$. أحسب $f(5)$.',
                 'application_solution' => '3',
                 'application_hint' => 'عوض $x$ بالعدد $5$ في العبارة: $f(5) = 5 - 2$.',
-                'order' => 2, 'is_locked' => false,
+                'order' => 2,
+                'is_locked' => false,
                 'lab_type' => 'affine_functions'
             ]
         );
@@ -401,7 +417,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'حل الجملة: $\begin{cases} x + y = 3 \\ x - y = 1 \end{cases}$',
                 'application_solution' => '2, 1',
                 'application_hint' => 'بما أن معاملات $y$ متعاكسة ($+1$ و $-1$)، جرب جمع المعادلتين للتخلص من $y$ وإيجاد قيمة $x$.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'systems_lab'
             ]
         );
@@ -433,7 +450,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'في مثلث $ABC$، لدينا $(MN) \parallel (BC)$. إذا كان $AM=2, AB=6, AN=3$. أحسب $AC$.',
                 'application_solution' => '9',
                 'application_hint' => 'طبق تناسبية الأطوال: $\frac{AM}{AB} = \frac{AN}{AC}$. اضرب الطرفين في الوسطين لإيجاد $AC$.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'thales_lab'
             ]
         );
@@ -452,7 +470,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'الضلعان القائمان 5 و 12. احسب الوتر.',
                 'application_solution' => '13',
                 'application_hint' => 'الوتر هو الضلع المقابل للزاوية القائمة. استعمل $c^2 = a^2 + b^2$.',
-                'order' => 2, 'is_locked' => false,
+                'order' => 2,
+                'is_locked' => false,
                 'lab_type' => 'pythagoras_lab'
             ]
         );
@@ -472,7 +491,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'احسب الجيب ($\sin$) لزاوية في مثلث قائم ضلعها المقابل $3$ ووترها $5$.',
                 'application_solution' => '0.6',
                 'application_hint' => 'تذكر أن جيب الزاوية ($\sin$) هو النسبة بين طول الضلع المقابل وطول الوتر.',
-                'order' => 3, 'is_locked' => false,
+                'order' => 3,
+                'is_locked' => false,
                 'lab_type' => 'trigonometry_lab'
             ]
         );
@@ -497,7 +517,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'بسط المجموع الشعاعي: $\vec{MA} + \vec{AB} + \vec{BC}$.',
                 'application_solution' => 'MC',
                 'application_hint' => 'استخدم علاقة شال بشكل متكرر: نهاية الشعاع الأول هي بداية الشعاع الثاني.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'vectors_lab'
             ]
         );
@@ -517,7 +538,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'لتكن $A(0, 0)$ و $B(4, 4)$. احسب مركبتي الشعاع $\vec{AB}$.',
                 'application_solution' => '(4, 4)',
                 'application_hint' => 'مركبات الشعاع $\vec{AB}$ هي $(x_B - x_A, y_B - y_A)$. اظهر الناتج على شكل ثنائية.',
-                'order' => 2, 'is_locked' => false,
+                'order' => 2,
+                'is_locked' => false,
                 'lab_type' => 'vector_coords_lab'
             ]
         );
@@ -543,7 +565,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'ما هي صورة دائرة نصف قطرها $5$ سم بدوران؟',
                 'application_solution' => 'دائرة نصف قطرها 5',
                 'application_hint' => 'بما أن الدوران يحافظ على الأطوال، فإن صورة الدائرة هي دائرة لها نفس نصف القطر تماماً.',
-                'order' => 1, 'is_locked' => true,
+                'order' => 1,
+                'is_locked' => true,
                 'lab_type' => 'rotation_lab'
             ]
         );
@@ -563,7 +586,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'ما هو قيس الزاوية المركزية لمثمن منتظم ($8$ أضلاع)؟',
                 'application_solution' => '45',
                 'application_hint' => 'طبق القاعدة: الزاوية المركزية $= 360^\circ \div n$ حيث $n$ هو عدد الأضلاع.',
-                'order' => 2, 'is_locked' => true,
+                'order' => 2,
+                'is_locked' => true,
                 'lab_type' => 'regular_polygons_lab'
             ]
         );
@@ -589,7 +613,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'احسب مساحة كرة نصف قطرها $2$ سم (بدلالة $\pi$).',
                 'application_solution' => '16π',
                 'application_hint' => 'استخدم قانون مساحة الكرة: $A = 4 \times \pi \times R^2$. هنا $R = 2$.',
-                'order' => 1, 'is_locked' => true,
+                'order' => 1,
+                'is_locked' => true,
                 'lab_type' => 'geometry_3d_sphere'
             ]
         );
@@ -609,7 +634,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'مخروط نصف قطر قاعدته $3$ سم وارتفاعه $6$ سم. احسب حجمه بدلالة $\pi$.',
                 'application_solution' => '18π',
                 'application_hint' => 'طبق القانون: $V = \frac{1}{3} \times \pi \times R^2 \times h$.',
-                'order' => 2, 'is_locked' => true,
+                'order' => 2,
+                'is_locked' => true,
                 'lab_type' => 'geometry_3d_cylinder'
             ]
         );
@@ -639,7 +665,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'إذا كانت التكرارات هي $5$، $3$، $2$. ما هو التكرار الكلي؟',
                 'application_solution' => '10',
                 'application_hint' => 'التكرار الكلي هو مجموع كل التكرارات الجزئية: $5 + 3 + 2$.',
-                'order' => 1, 'is_locked' => false,
+                'order' => 1,
+                'is_locked' => false,
                 'lab_type' => 'statistics_lab'
             ]
         );
@@ -661,7 +688,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'العلامات المجمعة: $12$ (معامل $3$)، $8$ (معامل $1$). أحسب المعدل.',
                 'application_solution' => '$11$',
                 'application_hint' => 'المعدل $= \frac{(12 \times 3) + (8 \times 1)}{3 + 1}$.',
-                'order' => 2, 'is_locked' => true,
+                'order' => 2,
+                'is_locked' => true,
                 'lab_type' => 'statistics_grapher'
             ]
         );
@@ -682,7 +710,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'السلسلة: $10, 20, 15$. أحسب الوسيط.',
                 'application_solution' => '15',
                 'application_hint' => 'أولاً، رتب الأعداد تصاعدياً من الأصغر إلى الأكبر. الوسيط هو العدد الذي يقع في المنتصف بالضبط.',
-                'order' => 3, 'is_locked' => true,
+                'order' => 3,
+                'is_locked' => true,
                 'lab_type' => 'statistics_grapher'
             ]
         );
@@ -708,7 +737,8 @@ class DemoContentSeeder extends Seeder
                 'application_problem' => 'نسحب بطاقة عشوائياً من $4$ بطاقات تحمل الأحرف ($A, B, C, D$). ما احتمال سحب البطاقة التي تحمل الحرف $A$؟',
                 'application_solution' => '0.25',
                 'application_hint' => 'هناك حالة ملائمة واحدة من أصل $4$ حالات ممكنة، إذن الاحتمال هو $\frac{1}{4}$.',
-                'order' => 1, 'is_locked' => true,
+                'order' => 1,
+                'is_locked' => true,
                 'lab_type' => 'probability_lab'
             ]
         );

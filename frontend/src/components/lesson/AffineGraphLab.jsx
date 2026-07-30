@@ -4,18 +4,31 @@ import { RotateCcw, CheckCircle2, Crosshair, Map, Navigation, ArrowRight } from 
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('linear', lvl);
+        const maxCoeff = params.maxCoeff || 4;
+        const a = (Math.floor(Math.random() * maxCoeff) + 1) * (Math.random() > 0.5 ? 1 : -1);
+        const b = (Math.floor(Math.random() * 4) + 1) * (Math.random() > 0.5 ? 1 : -1);
+        return { level: lvl, a, b };
+    });
+}
+
 function AffineGraphContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [a, setA] = useState(2);
-    const [b, setB] = useState(1);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [points, setPoints] = useState([]);
     const [isCompleted, setIsCompleted] = useState(false);
     const [error, setError] = useState(false);
@@ -23,9 +36,18 @@ function AffineGraphContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
     const [cursor, setCursor] = useState({ x: 0, y: 0 }); // مؤشر تنقّل بلوحة المفاتيح
 
+    const roundData = rounds[round];
+    const { a, b } = roundData;
+
     useEffect(() => {
-        labProgressService.getOne('affine-graph')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+        labProgressService.getOne('aff-graph')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -34,17 +56,18 @@ function AffineGraphContent({ phase, setPhase }) {
         { title: 'خوارزمية المسار الثاني', detail: 'نحتاج لنقطة ثانية فقط لرسم المستقيم. عوض x بقيمة سهلة (مثلاً 1) واحسب f(1) = a + b.', math: 'النقطة الثانية: (1, a+b)', icon: <Map size={20} /> },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('linear', level);
-        const maxCoeff = params.maxCoeff || 4;
-        const newA = (Math.floor(Math.random() * maxCoeff) + 1) * (Math.random() > 0.5 ? 1 : -1);
-        const newB = (Math.floor(Math.random() * 4) + 1) * (Math.random() > 0.5 ? 1 : -1);
-
-        setA(newA); setB(newB);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setPoints([]);
+        setError(false); setFeedback(null); setIsCompleted(false);
+    };
+
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
-        setError(false); setFeedback(null); setIsCompleted(false); setReward(null);
-        labProgressService.update('affine-graph', 'practice').catch(() => { });
+        setReward(null);
+        labProgressService.update('aff-graph', 'practice').catch(() => { });
     };
 
     const placePoint = (clampedX, clampedY) => {
@@ -86,14 +109,27 @@ function AffineGraphContent({ phase, setPhase }) {
 
         if (isCorrect) {
             setIsCompleted(true);
-            setFeedback({ type: 'success', text: 'مسار دقيق! كلتا النقطتين على المستقيم الصحيح.' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
             setError(false);
-            await labProgressService.update('affine-graph', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('affine-graph-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `مسار دقيق! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 50, origin: { y: 0.6 } });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setPoints([]);
+                    setIsCompleted(false);
+                    setFeedback(null);
+                }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'مسار دقيق! كلتا النقطتين على المستقيم الصحيح.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('aff-graph', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('aff-graph', {
+                        type: 'linear-2pt', m: a, b, p1: points[0], p2: points[1],
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'إحدى النقطتين لا تحقق المعادلة. تحقق من الحساب.' });
@@ -116,11 +152,15 @@ function AffineGraphContent({ phase, setPhase }) {
                         </div>
                     ))}
                 </div>
+                <p className={`text-xs ${theme.textSub} mt-3 text-center`}>ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.</p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-50 text-orange-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100'}`}>
                     فتح دليل الملاحة
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <motion.button onClick={startPractice} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-orange-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Crosshair size={36} className="animate-pulse" />
@@ -151,7 +191,7 @@ function AffineGraphContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">بدء التخطيط</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">بدء التخطيط</button>
                 }
             </div>
         </div>
@@ -161,15 +201,15 @@ function AffineGraphContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="visual"
-            current={1}
-            total={1}
-            level={level}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`f(x) = ${a}x ${b >= 0 ? '+' : ''} ${b}`}
             hint={`المستقيم يقطع محور التراتيب عند ${b}. اختر نقطة ثانية سهلة، مثل x=1. (لوحة المفاتيح: الأسهم للتنقل، Enter للتثبيت)`}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setPoints([]); setIsCompleted(false); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col md:flex-row items-center justify-center gap-4">
                 <div className={`relative p-3 rounded-[1rem] border-2 overflow-visible shrink-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
@@ -226,6 +266,10 @@ function AffineGraphContent({ phase, setPhase }) {
                             </div>
                         )}
                     </div>
+                    <LabTutorialNote
+                        from={`الدالة f(x) = ${a}x ${b >= 0 ? '+' : ''}${b} تقطع محور التراتيب عند النقطة (0, ${b}).`}
+                        why={`أي نقطة تختارها يجب أن تحقق y = ${a}×x ${b >= 0 ? '+' : ''}${b}. أسهل طريقة: ابدأ من (0, ${b})، ثم أضف نقطة ثانية مثل x=1 حيث y=${a + b}.`}
+                    />
                     {!isCompleted && (
                         <button onClick={handleCheck} disabled={points.length < 2} className="w-full py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all active:scale-95">
                             <CheckCircle2 size={18} /> تأكيد المسار
@@ -241,7 +285,7 @@ export default function AffineGraphLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="affine-graph"
+            labId="aff-graph"
             phase={phase}
             title="رسم الدوال التآلفية"
             badgeText="رادار التخطيط"

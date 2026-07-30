@@ -1,20 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, CheckCircle2, BookOpen, Plus, Microscope } from 'lucide-react';
+import { RotateCcw, CheckCircle2, Plus, Microscope } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('roots-combine', lvl) }));
+}
+
 function RootsAdditionContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(1);
-    const [level, setLevel] = useState(1);
-    const [practicePair, setPracticePair] = useState({ a: 3, b: 5, x: 7, sum: 8 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputA, setInputA] = useState('');
     const [error, setError] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -26,9 +34,18 @@ function RootsAdditionContent({ phase, setPhase }) {
     const elsRef = useRef({});
     const setRef = (id) => (el) => { if (el) elsRef.current[id] = el; };
 
+    const roundData = rounds[round];
+    const practicePair = roundData.problem; // { a, b, x, sum, diff }
+
     useEffect(() => {
         labProgressService.getOne('roots-addition')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -37,17 +54,16 @@ function RootsAdditionContent({ phase, setPhase }) {
         { title: 'خوارزمية الدمج التراكمي', detail: 'تخيل أن الجذور وحدات قياس، فنحن نجمع الكميات الخارجية فقط ونضعها بجانب الوحدة المشتركة.', math: '3√7 + 5√7 = 8√7', icon: <Plus size={20} /> },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('roots', level);
-        const maxCoeff = params.maxCoeff || 15;
-        const a = Math.floor(Math.random() * (maxCoeff / 3)) + 1;
-        const b = Math.floor(Math.random() * (maxCoeff / 3)) + 1;
-        const x = [2, 3, 5, 7, 10, 11][Math.floor(Math.random() * 6)];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setInputA(''); setError(false); setFeedback(null);
+    };
 
-        setPracticePair({ a, b, x, sum: a + b });
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
-        setInputA('');
-        setError(false); setFeedback(null); setReward(null);
+        setReward(null);
         labProgressService.update('roots-addition', 'practice').catch(() => { });
     };
 
@@ -80,14 +96,22 @@ function RootsAdditionContent({ phase, setPhase }) {
 
     const handleCheck = async () => {
         if (parseInt(inputA) === practicePair.sum) {
-            setFeedback({ type: 'success', text: 'صحيح! دمجت المعاملات تحت الجذر المشترك بنجاح.' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            await labProgressService.update('roots-addition', 'completed', 100).catch(() => { });
             setError(false);
-            try {
-                const data = await rewardService.claimLabReward('roots-addition-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setInputA('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'صحيح! دمجت المعاملات تحت الجذر المشترك بنجاح.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('roots-addition', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('roots-addition', {
+                        type: 'roots-combine', a: practicePair.a, b: practicePair.b, result: practicePair.sum, op: 'add',
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع: اجمع المعاملات فقط، والجذر يبقى كما هو.' });
@@ -109,17 +133,21 @@ function RootsAdditionContent({ phase, setPhase }) {
                         <span className="text-rose-400">(a+b)√x</span>
                     </div>
                 </div>
+                <p className={`text-xs ${theme.textSub} mt-2 text-center`}>ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.</p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => { setPhase('learn'); setLearnStep(1); }} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'}`}>
                     مشاهدة الشرح
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <button onClick={startPractice} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-indigo-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Plus size={36} />
                     <span className="font-black text-xl uppercase tracking-widest">بدء الحساب</span>
                 </div>
-            </motion.button>
+            </button>
         </div>
     );
 
@@ -158,7 +186,7 @@ function RootsAdditionContent({ phase, setPhase }) {
                 </div>
             </div>
             <div className="flex gap-3 mt-6 px-4">
-                <button onClick={learnStep < 3 ? handleNextLearnStep : generateProblem} disabled={isAnimating} className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all active:scale-95">
+                <button onClick={learnStep < 3 ? handleNextLearnStep : startPractice} disabled={isAnimating} className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all active:scale-95">
                     {learnStep < 3 ? 'الخطوة التالية' : 'ابدأ التحدي'}
                 </button>
                 <button onClick={() => { setLearnStep(1); setFlightAnim(null); }} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800 text-slate-400 border-white/5' : 'bg-slate-100 text-slate-500 border-slate-200'}`} aria-label="إعادة الشرح">
@@ -172,15 +200,15 @@ function RootsAdditionContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={level}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`${practicePair.a}√${practicePair.x} + ${practicePair.b}√${practicePair.x}`}
             hint="اجمع المعاملات فقط (الأرقام الخارجية)، والجذر يبقى دون تغيير."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setInputA(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={`opacity-40 ${theme.textMain}`}>=</span>
@@ -196,6 +224,12 @@ function RootsAdditionContent({ phase, setPhase }) {
                 />
                 <span className="text-rose-500">√{practicePair.x}</span>
             </div>
+
+            <LabTutorialNote
+                from={`المعاملان الخارجيان هما ${practicePair.a} و${practicePair.b}، والجذر المشترك بينهما هو √${practicePair.x}.`}
+                why={`بما أن الجذر (√${practicePair.x}) متطابق في الحدّين، فهو أشبه بوحدة قياس مشتركة (مثل جمع تفاحات مع تفاحات)؛ نجمع الأعداد الخارجية فقط ونُبقي الجذر كما هو دون أي تغيير.`}
+            />
+
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

@@ -1,58 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sigma, Binary, ArrowRight, ListChecks, Zap as ZapIcon, RotateCcw, Check, AlertCircle } from 'lucide-react';
+import { Sigma, Binary, ArrowRight, ListChecks, Zap as ZapIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel, track) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('divisor-props', lvl), track }));
+}
 
 function DivisorPropertiesContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
     const [track, setTrack] = useState(null); // null | 'sum' | 'remainder'
-    const [inputs, setInputs] = useState({ a: 35, b: 15, n: 5 });
+    const [rounds, setRounds] = useState([]);
+    const [round, setRound] = useState(0);
+    const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    useEffect(() => {
+        labProgressService.getOne('div-props')
+            .then(progress => { if (progress) setBaseLevel(difficultyEngine.getLevel(progress)); })
+            .catch(() => { });
+    }, []);
 
     const learnContent = [
         { title: 'المجموع والفرق', math: 'n | a ∧ n | b ⟶ n | (a±b)', detail: 'إذا كان العدد n يقسم كلاً من a و b، فهو حتماً يقسم مجموعهما وفرقهما.', icon: <Sigma size={20} /> },
         { title: 'باقي القسمة', math: 'n | a ∧ n | b ⟶ n | r', detail: 'إذا كان n يقسم كلاً من a و b، فهو يقسم أيضاً باقي قسمة a على b.', icon: <Binary size={20} /> },
     ];
 
-    const resetTrack = () => {
+    const startTrack = (t) => {
+        setTrack(t);
+        setRounds(buildRounds(baseLevel, t));
+        setRound(0);
+        setInputVal('');
+        setError(false); setFeedback(null); setReward(null);
+        labProgressService.update('div-props', 'practice').catch(() => { });
+    };
+
+    const resetTrackFully = () => {
         setTrack(null);
+        setRounds([]);
+        setRound(0);
         setFeedback(null);
         setError(false);
     };
 
-    const generateInputs = (t) => {
-        const n = [3, 4, 5, 6, 7][Math.floor(Math.random() * 5)];
-        const a = n * (Math.floor(Math.random() * 8) + 3);
-        const b = n * (Math.floor(Math.random() * 6) + 2);
-        setInputs({ a, b, n });
-        setTrack(t);
-        setFeedback(null);
-        setError(false);
-    };
+    const roundData = rounds[round];
+    const problem = roundData ? roundData.problem : null; // { n, a, b, sum, diff, remainder, sumQuot, diffQuot, remainderQuot }
 
     const handleVerify = async () => {
-        const { a, b, n } = inputs;
-        if (a % n === 0 && b % n === 0) {
-            const text = track === 'sum'
-                ? `تحقق: n يقسم المجموع (${a + b}) والفرق (${Math.abs(a - b)}) بنجاح!`
-                : `تحقق: n يقسم باقي القسمة (r = ${a % b}) بنجاح!`;
-            setFeedback({ type: 'success', text });
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            try {
-                const data = await rewardService.claimLabReward(track === 'sum' ? 'divisor-prop-1' : 'divisor-prop-2');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+        if (!problem) return;
+        const target = track === 'sum' ? problem.sumQuot : problem.remainderQuot;
+
+        if (parseInt(inputVal) === target) {
+            setError(false);
+            setInputVal('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `تحقق ناجح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1500);
+            } else {
+                const text = track === 'sum'
+                    ? `تحقق: ${problem.n} يقسم المجموع (${problem.sum}) بنجاح! الناتج = ${problem.sumQuot}.`
+                    : `تحقق: ${problem.n} يقسم باقي القسمة (r = ${problem.remainder}) بنجاح! الناتج = ${problem.remainderQuot}.`;
+                setFeedback({ type: 'success', text });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('div-props', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('div-props', {
+                        type: 'divisor-props', n: problem.n, a: problem.a, b: problem.b, track, ans: target,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
-            setFeedback({ type: 'error', text: a % n !== 0 ? `${n} لا يقسم ${a}.` : `${n} لا يقسم ${b}.` });
+            setFeedback({ type: 'error', text: 'راجع القسمة: هل قسمت العدد الصحيح على n؟' });
             setTimeout(() => { setError(false); setFeedback(null); }, 1200);
         }
     };
@@ -62,7 +97,10 @@ function DivisorPropertiesContent({ phase, setPhase }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-2">
             <div className={`p-6 rounded-[1rem] border backdrop-blur-3xl ${theme.card}`}>
                 <h3 className={`text-base font-black mb-3 ${theme.textMain}`}>موسوعة الخواص:</h3>
-                <p className={`text-sm ${theme.textSub} mb-4`}>تعلم القواعد الأساسية التي تربط قواسم الأعداد ببعضها البعض.</p>
+                <p className={`text-sm ${theme.textSub} mb-3`}>تعلم القواعد الأساسية التي تربط قواسم الأعداد ببعضها البعض.</p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
                     className={`w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'}`}
@@ -121,78 +159,68 @@ function DivisorPropertiesContent({ phase, setPhase }) {
     // ── practice: اختيار المسار ───────────────────────────────────────────────
     if (phase === 'practice' && !track) return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-2">
-            <motion.button whileHover={{ scale: 1.03 }} onClick={() => generateInputs('sum')}
+            <motion.button whileHover={{ scale: 1.03 }} onClick={() => startTrack('sum')}
                 className={`p-5 rounded-[1.5rem] border-2 text-right transition-all backdrop-blur-3xl group ${theme.card} hover:border-emerald-500`}
             >
                 <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Sigma size={20} /></div>
                 <h3 className={`text-base font-black mb-2 ${theme.textMain}`}>مخبر المجموع والفرق</h3>
-                <p className={`text-xs ${theme.textSub} mb-3`}>تحقق كيف ينتقل القاسم n ليقسم المجموع والفرق آلياً.</p>
+                <p className={`text-xs ${theme.textSub} mb-3`}>احسب ناتج قسمة المجموع على n. 3 جولات تصاعدية.</p>
                 <div className="text-emerald-500 font-black text-sm flex items-center gap-2">دخول <ArrowRight size={16} /></div>
             </motion.button>
-            <motion.button whileHover={{ scale: 1.03 }} onClick={() => generateInputs('remainder')}
+            <motion.button whileHover={{ scale: 1.03 }} onClick={() => startTrack('remainder')}
                 className={`p-5 rounded-[1.5rem] border-2 text-right transition-all backdrop-blur-3xl group ${theme.card} hover:border-emerald-500`}
             >
                 <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Binary size={20} /></div>
                 <h3 className={`text-base font-black mb-2 ${theme.textMain}`}>مخبر باقي القسمة</h3>
-                <p className={`text-xs ${theme.textSub} mb-3`}>تحقق كيف يظل n قاسماً لباقي القسمة r دائماً.</p>
+                <p className={`text-xs ${theme.textSub} mb-3`}>احسب ناتج قسمة الباقي r على n. 3 جولات تصاعدية.</p>
                 <div className="text-emerald-500 font-black text-sm flex items-center gap-2">دخول <ArrowRight size={16} /></div>
             </motion.button>
         </div>
     );
 
     // ── practice: التحقق الفعلي — يستخدم LabChallenge ─────────────────────────
+    if (!problem) return null;
+
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={2}
-            question={track === 'sum' ? 'تحقق: هل n يقسم a و b؟ إن كان كذلك، فهو يقسم مجموعهما وفرقهما.' : 'تحقق: هل n يقسم a و b؟ إن كان كذلك، فهو يقسم باقي قسمة a على b.'}
-            hint="تأكد أن a ÷ n و b ÷ n كلاهما بدون باقٍ."
+            current={round + 1}
+            total={3}
+            level={roundData.level}
+            question={track === 'sum'
+                ? `n=${problem.n}, a=${problem.a}, b=${problem.b}. بما أن n يقسم a وb، احسب: (a+b) ÷ n`
+                : `n=${problem.n}, a=${problem.a}, b=${problem.b}. باقي قسمة a على b هو r=${problem.remainder}. احسب: r ÷ n`}
+            hint={track === 'sum' ? `(${problem.a} + ${problem.b}) ÷ ${problem.n}` : `${problem.remainder} ÷ ${problem.n}`}
             feedback={feedback}
             reward={reward}
-            onRefresh={() => generateInputs(track)}
-            onRestart={() => { setPhase('intro'); resetTrack(); setReward(null); }}
+            onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetTrackFully(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="grid grid-cols-3 gap-3 w-full" dir="ltr">
-                    <div className="space-y-1">
-                        <label className={`text-[10px] font-black uppercase tracking-widest block text-center ${theme.textSub}`}>a</label>
-                        <input
-                            type="number" value={inputs.a}
-                            onChange={e => setInputs({ ...inputs, a: parseInt(e.target.value) || 0 })}
-                            aria-label="القيمة a"
-                            className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/40 text-emerald-300 focus:border-emerald-400' : 'bg-white border-emerald-200 text-emerald-700 focus:border-emerald-500'
-                                }`}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className={`text-[10px] font-black uppercase tracking-widest block text-center ${theme.textSub}`}>b</label>
-                        <input
-                            type="number" value={inputs.b}
-                            onChange={e => setInputs({ ...inputs, b: parseInt(e.target.value) || 0 })}
-                            aria-label="القيمة b"
-                            className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/40 text-emerald-300 focus:border-emerald-400' : 'bg-white border-emerald-200 text-emerald-700 focus:border-emerald-500'
-                                }`}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className={`text-[10px] font-black uppercase tracking-widest block text-center ${theme.textSub}`}>n</label>
-                        <input
-                            type="number" value={inputs.n}
-                            onChange={e => setInputs({ ...inputs, n: parseInt(e.target.value) || 0 })}
-                            onKeyDown={e => e.key === 'Enter' && handleVerify()}
-                            aria-label="القاسم n"
-                            className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/40 text-emerald-300 focus:border-emerald-400' : 'bg-white border-emerald-200 text-emerald-700 focus:border-emerald-500'
-                                }`}
-                        />
-                    </div>
-                </div>
+                <input
+                    type="number" value={inputVal}
+                    onChange={e => setInputVal(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                    aria-label="أدخل ناتج القسمة"
+                    dir="ltr"
+                    className={`w-32 rounded-xl p-3 text-center text-xl font-black outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/40 text-emerald-300 focus:border-emerald-400' : 'bg-white border-emerald-200 text-emerald-700 focus:border-emerald-500'
+                        }`}
+                    placeholder="?"
+                    autoFocus
+                />
+                <LabTutorialNote
+                    from={track === 'sum'
+                        ? `العدد n=${problem.n} يقسم a=${problem.a} وb=${problem.b} كلاهما بلا باقٍ.`
+                        : `باقي قسمة ${problem.a} على ${problem.b} هو ${problem.remainder}.`}
+                    why={track === 'sum'
+                        ? `طالما n يقسم a وb، فهو يقسم مجموعهما حتماً — هذه خاصية أساسية في نظرية الأعداد. النتيجة هي ببساطة (a+b) مقسومة على n.`
+                        : `نفس المبدأ ينطبق على الباقي: بما أن n يقسم كلاً من a وb، فهو يقسم الباقي الناتج عن قسمة أحدهما على الآخر أيضاً.`}
+                />
                 <button
                     onClick={handleVerify}
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
                 >
-                    <ZapIcon size={18} /> معالجة البيانات والتحقق
+                    <ZapIcon size={18} /> تأكيد النتيجة
                 </button>
             </div>
         </LabChallenge>
@@ -203,7 +231,7 @@ export default function DivisorPropertiesLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="divisor-properties"
+            labId="div-props"
             phase={phase}
             title="خصائص القواسم"
             badgeText="بروتوكول القواعد الذهبية"

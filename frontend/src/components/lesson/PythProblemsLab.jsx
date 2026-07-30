@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('pyth-problems', lvl) }));
+}
 
 function PythProblemsContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState(null);
-    const [step, setStep] = useState(0); // 0: إدخال، 1: تم
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const problem = roundData.problem; // { a, b, hyp, ans, q, hint }
+
+    useEffect(() => {
+        labProgressService.getOne('pyth-prob')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -31,30 +56,39 @@ function PythProblemsContent({ phase, setPhase }) {
         },
     ];
 
-    const problems = [
-        { q: 'سلم طوله 5m متكئ على حائط. إذا كانت المسافة بين أسفل السلم والحائط 3m، فما هو ارتفاع قمة السلم عن الأرض؟', ans: 4 },
-        { q: 'مشى سعيد 6km شرقاً ثم 8km شمالاً. كم المسافة المباشرة بين نقطة البداية والنهاية؟', ans: 10 },
-        { q: 'شجرة انكسرت، قمتها تلامس الأرض على بعد 5m من الجذع. إذا كان ارتفاع الجزء المتبقي 12m، فما طول الجزء المنكسر؟', ans: 13 },
-        { q: 'طائرة ورقية تحلق بخيط طوله 25m. إذا كانت المسافة الأفقية بين الطفل والطائرة 24m، فما ارتفاع الطائرة؟', ans: 7 },
-    ];
-
-    const generateProblem = () => {
-        const p = problems[Math.floor(Math.random() * problems.length)];
-        setProblem(p);
-        setPhase('practice');
-        setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputVal('');
-        setError(false);
-        setFeedback(null);
-        setReward(null);
+        setError(false); setFeedback(null);
     };
 
-    const handleCheck = () => {
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('pyth-prob', 'practice').catch(() => { });
+    };
+
+    const handleCheck = async () => {
         if (parseInt(inputVal) === problem.ans) {
-            setStep(1);
-            setFeedback({ type: 'success', text: 'ممتاز! حللت المسألة الهندسية بدقة.' });
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('pyth-problems').then(d => d.status === 'success' && setReward(d)).catch(console.error);
+            setError(false);
+            setInputVal('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'ممتاز! حللت المسألة الهندسية بدقة.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('pyth-prob', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('pyth-prob', {
+                        type: 'pyth', a: problem.a, b: problem.b, c: problem.hyp,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'حاول رسم المسألة كمثلث، وحدد الوتر والضلعين القائمين.' });
@@ -71,6 +105,9 @@ function PythProblemsContent({ phase, setPhase }) {
                     <div className={`text-base font-black ${theme.textMain}`}>حوّل النص إلى رسم هندسي</div>
                 </div>
                 <p className={`text-sm ${theme.textSub}`}>بمجرد تحديد الوتر والضلعين القائمين، تصبح المسألة عملية حسابية بسيطة.</p>
+                <div className={`mt-3 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
                     className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100'}`}
@@ -79,7 +116,7 @@ function PythProblemsContent({ phase, setPhase }) {
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -119,26 +156,25 @@ function PythProblemsContent({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">أرني مسألة</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">أرني مسألة</button>
                 }
             </div>
         </div>
     );
 
     // ── practice — يستخدم LabChallenge ───────────────────────────────────────
-    if (!problem) return null;
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={2}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`"${problem.q}"`}
             hint="ارسم المسألة كمثلث قائم، وحدد الوتر والضلعين القائمين قبل التطبيق."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <span className={`text-sm font-bold ${theme.textSub}`}>اكتب الجواب النهائي (رقم فقط):</span>
@@ -153,6 +189,10 @@ function PythProblemsContent({ phase, setPhase }) {
                         }`}
                     placeholder="?"
                     autoFocus
+                />
+                <LabTutorialNote
+                    from={`الأطوال المعروفة في المسألة هي ${problem.a}m و${problem.b === problem.ans ? problem.hyp : problem.b}m (الضلعان القائمان أو أحدهما مع الوتر).`}
+                    why={`ارسم المسألة كمثلث قائم الزاوية: حدد أي الأطوال هو الوتر (أطول ضلع، مقابل الزاوية القائمة)، ثم طبّق: c² = a² + b² لإيجاد الطول المجهول.`}
                 />
                 <button
                     onClick={handleCheck}
@@ -169,7 +209,7 @@ export default function PythProblemsLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="pyth-problems"
+            labId="pyth-prob"
             phase={phase}
             title="مسائل فيثاغورس التطبيقية"
             badgeText="تطبيقات واقعية"

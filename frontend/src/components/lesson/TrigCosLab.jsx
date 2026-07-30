@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -47,7 +48,7 @@ function TrigCosContent({ phase, setPhase }) {
     };
 
     const handleAnswer = async () => {
-        if (parseFloat(input1) === currentChallenge.ans) {
+        if (Math.abs(parseFloat(input1) - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'أحسنت! الكوسينوس يعبر عن العلاقة مع الضلع المجاور.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
@@ -57,7 +58,9 @@ function TrigCosContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-cos', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-cos-mastery');
+                    const data = await rewardService.claimLabReward('trig-cos', {
+                        type: 'ratio', kind: 'cos', adj: currentChallenge.adj, hyp: currentChallenge.hyp, result: currentChallenge.ans,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -155,6 +158,10 @@ function TrigCosContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
+            <LabTutorialNote
+                from={`الضلع المجاور = ${currentChallenge.adj}cm (الضلع الملاصق للزاوية)، والوتر = ${currentChallenge.hyp}cm.`}
+                why={`Cos(α) دائماً = المجاور ÷ الوتر. هذا تعريف ثابت لا يتغير، لذا نقسم بهذا الترتيب بالذات.`}
+            />
             <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

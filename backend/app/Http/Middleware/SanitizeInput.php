@@ -19,7 +19,7 @@ class SanitizeInput
 
         array_walk_recursive($input, function (&$value) {
             if (is_string($value)) {
-                $value = trim(strip_tags($value));
+                $value = strip_tags($value);
             }
         });
 

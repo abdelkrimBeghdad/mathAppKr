@@ -1,59 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Triangle, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('pyth-hypotenuse', lvl) }));
+}
 
 function PythHypotenuseContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ a: 3, b: 4, c: 5 });
-    const [step, setStep] = useState(0); // 0: إدخال، 1: تم
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const roundData = rounds[round];
+    const problem = roundData.problem; // { a, b, ans, q, hint }
+
+    useEffect(() => {
+        labProgressService.getOne('pyth-hyp')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
+
     const learnPages = [
-        {
-            title: 'حساب طول الوتر',
-            detail: 'لحساب طول الوتر (أطول ضلع، المقابل للزاوية القائمة)، نستخدم خاصية فيثاغورس المباشرة.',
-            math: 'AC² = AB² + BC²',
-        },
-        {
-            title: 'خوارزمية الحساب',
-            detail: 'نجمع مربعي طولي الضلعين القائمين، ثم نحسب الجذر التربيعي للمجموع للحصول على الوتر.',
-            math: 'AC = √(AB² + BC²)',
-        },
+        { title: 'حساب طول الوتر', detail: 'لحساب طول الوتر (أطول ضلع، المقابل للزاوية القائمة)، نستخدم خاصية فيثاغورس المباشرة.', math: 'AC² = AB² + BC²' },
+        { title: 'خوارزمية الحساب', detail: 'نجمع مربعي طولي الضلعين القائمين، ثم نحسب الجذر التربيعي للمجموع للحصول على الوتر.', math: 'AC = √(AB² + BC²)' },
+        { title: 'الجولات الثلاث', detail: 'ستحل 3 مثلثات مختلفة تتصاعد صعوبتها. المكافأة تُمنح فقط بعد الجولة الثالثة (الأصعب) لضمان إتقانك الحقيقي.', math: 'مبتدئ ➜ متوسط ➜ متقدم' },
     ];
 
-    const problems = [
-        { a: 3, b: 4, c: 5 }, { a: 5, b: 12, c: 13 },
-        { a: 6, b: 8, c: 10 }, { a: 8, b: 15, c: 17 },
-        { a: 9, b: 12, c: 15 }, { a: 7, b: 24, c: 25 },
-    ];
-
-    const generateProblem = () => {
-        const p = problems[Math.floor(Math.random() * problems.length)];
-        setProblem(p);
-        setPhase('practice');
-        setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputVal('');
-        setError(false);
-        setFeedback(null);
-        setReward(null);
+        setError(false); setFeedback(null);
     };
 
-    const handleCheck = () => {
-        if (parseInt(inputVal) === problem.c) {
-            setStep(1);
-            setFeedback({ type: 'success', text: 'إجابة دقيقة! حسبت طول الوتر بنجاح.' });
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('pyth-hypotenuse').then(d => d.status === 'success' && setReward(d)).catch(console.error);
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('pyth-hyp', 'practice').catch(() => { });
+    };
+
+    const handleCheck = async () => {
+        if (parseInt(inputVal) === problem.ans) {
+            setError(false);
+            setInputVal('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `إجابة دقيقة! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'إجابة دقيقة! حسبت طول الوتر بنجاح.' });
+                confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update('pyth-hyp', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('pyth-hyp', {
+                        type: 'pyth', a: problem.a, b: problem.b, c: problem.ans,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع: مربع الوتر = مجموع مربعي الضلعين القائمين.' });
@@ -71,25 +98,21 @@ function PythHypotenuseContent({ phase, setPhase }) {
                         AC = <span className="text-rose-400">√(AB² + BC²)</span>
                     </div>
                 </div>
-                <p className={`text-sm ${theme.textSub}`}>مربع الوتر يساوي مجموع مربعي الضلعين القائمين.</p>
-                <button
-                    onClick={() => setPhase('learn')}
-                    className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'}`}
-                >
+                <p className={`text-sm ${theme.textSub}`}>مربع الوتر يساوي مجموع مربعي الضلعين القائمين. ستمر بـ 3 جولات تصاعدية الصعوبة.</p>
+                <div className={`mt-3 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
+                <button onClick={() => setPhase('learn')} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'}`}>
                     تعلّم الطريقة
                 </button>
             </div>
-            <motion.button
-                onClick={generateProblem}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="relative rounded-[1rem] shadow-2xl overflow-hidden"
-            >
+            <button onClick={startPractice} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-rose-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Triangle size={36} />
                     <span className="font-black text-xl uppercase tracking-widest">بدء الحساب</span>
                 </div>
-            </motion.button>
+            </button>
         </div>
     );
 
@@ -97,9 +120,7 @@ function PythHypotenuseContent({ phase, setPhase }) {
     if (phase === 'learn') return (
         <div className="w-full max-w-3xl px-2">
             <AnimatePresence mode="wait">
-                <motion.div
-                    key={learnStep}
-                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                <motion.div key={learnStep} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                     className={`p-5 rounded-[1.5rem] border-2 shadow-2xl backdrop-blur-3xl ${theme.card}`}
                 >
                     <div className="flex flex-col items-center text-center">
@@ -112,15 +133,12 @@ function PythHypotenuseContent({ phase, setPhase }) {
                 </motion.div>
             </AnimatePresence>
             <div className="flex justify-between items-center mt-6 px-4">
-                <button
-                    onClick={() => learnStep > 0 ? setLearnStep(l => l - 1) : setPhase('intro')}
+                <button onClick={() => learnStep > 0 ? setLearnStep(l => l - 1) : setPhase('intro')}
                     className={`px-4 py-2 rounded-xl font-black transition-all ${isDarkMode ? 'bg-white/5 text-white border border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                >
-                    السابق
-                </button>
+                >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ الحساب</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ الحساب</button>
                 }
             </div>
         </div>
@@ -130,18 +148,17 @@ function PythHypotenuseContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={problem.c > 15 ? 2 : 1}
-            hint="مربع الوتر = مجموع مربعي الضلعين القائمين، ثم استخرج الجذر التربيعي للناتج."
+            current={round + 1}
+            total={3}
+            level={roundData.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
-
-                {/* رسم المثلث */}
                 <svg width="150" height="105" viewBox="0 0 200 140">
                     <path d="M40 120 L40 30 L160 120 Z" fill="none" stroke={isDarkMode ? '#f43f5e' : '#e11d48'} strokeWidth="3" strokeLinejoin="round" />
                     <path d="M40 105 L55 105 L55 120" fill="none" stroke={isDarkMode ? '#f43f5e' : '#e11d48'} strokeWidth="2" />
@@ -153,26 +170,24 @@ function PythHypotenuseContent({ phase, setPhase }) {
                     <text x="110" y="65" fontSize="14" fill="#fbbf24" fontWeight="bold">AC = ?</text>
                 </svg>
 
-                {/* الإدخال */}
                 <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                     <span className={theme.textMain}>AC =</span>
                     <input
-                        type="number"
-                        value={inputVal}
-                        onChange={e => setInputVal(e.target.value)}
+                        type="number" value={inputVal} onChange={e => setInputVal(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleCheck()}
-                        aria-label="أدخل طول الوتر"
+                        aria-label="أدخل طول الوتر" autoFocus
                         className={`w-24 rounded-xl text-center p-3 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400 focus:border-rose-400' : 'bg-white border-rose-200 text-rose-700 focus:border-rose-500'
                             }`}
                         placeholder="?"
-                        autoFocus
                     />
                 </div>
 
-                <button
-                    onClick={handleCheck}
-                    className="px-8 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"
-                >
+                <LabTutorialNote
+                    from={`الضلعان القائمان معروفان: AB = ${problem.a}cm و BC = ${problem.b}cm.`}
+                    why={`الوتر AC هو دائماً الضلع المقابل للزاوية القائمة، وطوله = √(${problem.a}² + ${problem.b}²) = √(${problem.a * problem.a} + ${problem.b * problem.b}) = √${problem.a * problem.a + problem.b * problem.b}.`}
+                />
+
+                <button onClick={handleCheck} className="px-8 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تحقق من الإجابة
                 </button>
             </div>
@@ -184,7 +199,7 @@ export default function PythHypotenuseLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="pyth-hypotenuse"
+            labId="pyth-hyp"
             phase={phase}
             title="حساب طول الوتر"
             badgeText="فيثاغورس — إيجاد المجهول"

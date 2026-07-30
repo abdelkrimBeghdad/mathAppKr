@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('vec-calc', lvl) }));
+}
 
 function VecCalcContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: تطبيق القانون، 1: النتيجة النهائية
-    const [challengeStep, setChallengeStep] = useState(0);
     const [input1, setInput1] = useState('');
     const [input2, setInput2] = useState('');
     const [input3, setInput3] = useState('');
@@ -21,13 +32,20 @@ function VecCalcContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const challenges = [
-        { ax: 1, ay: 2, bx: 4, by: 5 },
-        { ax: -2, ay: 3, bx: 1, by: -1 },
-        { ax: 0, ay: -4, bx: -3, by: -4 },
-    ];
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { ax, ay, bx, by, dx, dy }
 
-    const currentChallenge = challenges[challengeStep];
+    useEffect(() => {
+        labProgressService.getOne('vec-calc')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -81,10 +99,19 @@ function VecCalcContent({ phase, setPhase }) {
         'قم بإجراء العملية الحسابية. تذكر أن: ناقص عدد سالب يساوي زائد!',
     ];
 
-    const resetChallenges = () => {
-        setChallengeStep(0); setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setStep(0);
         setInput1(''); setInput2(''); setInput3(''); setInput4('');
         setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('vec-calc', 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
@@ -93,9 +120,7 @@ function VecCalcContent({ phase, setPhase }) {
             isCorrect = parseInt(input1) === currentChallenge.bx && parseInt(input2) === currentChallenge.ax &&
                 parseInt(input3) === currentChallenge.by && parseInt(input4) === currentChallenge.ay;
         } else {
-            const ansX = currentChallenge.bx - currentChallenge.ax;
-            const ansY = currentChallenge.by - currentChallenge.ay;
-            isCorrect = parseInt(input1) === ansX && parseInt(input2) === ansY;
+            isCorrect = parseInt(input1) === currentChallenge.dx && parseInt(input2) === currentChallenge.dy;
         }
 
         if (isCorrect) {
@@ -105,19 +130,20 @@ function VecCalcContent({ phase, setPhase }) {
             if (step === 0) {
                 setFeedback({ type: 'success', text: 'صحيح! الآن أجرِ العملية الحسابية.' });
                 setTimeout(() => { setStep(1); setFeedback(null); }, 900);
+            } else if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setStep(0); setFeedback(null); }, 1300);
             } else {
-                if (challengeStep < challenges.length - 1) {
-                    setFeedback({ type: 'success', text: 'ممتاز! التحدي التالي.' });
-                    confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
-                    setTimeout(() => { setChallengeStep(s => s + 1); setStep(0); setFeedback(null); }, 900);
-                } else {
-                    setFeedback({ type: 'success', text: 'أتقنت حساب مركبات المتجه!' });
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                    try {
-                        const data = await rewardService.claimLabReward('vec-calc-mastery');
-                        if (data.status === 'success') setReward(data);
-                    } catch (err) { console.error(err); }
-                }
+                setFeedback({ type: 'success', text: 'أتقنت حساب مركبات المتجه!' });
+                confetti({ particleCount: 130, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update('vec-calc', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('vec-calc', {
+                        type: 'vec-calc', ax: currentChallenge.ax, ay: currentChallenge.ay, bx: currentChallenge.bx, by: currentChallenge.by, dx: currentChallenge.dx, dy: currentChallenge.dy,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
             }
         } else {
             setError(true);
@@ -135,12 +161,16 @@ function VecCalcContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     لا حاجة للرسم بعد الآن! تعلم كيف تحسب مركبات أي شعاع باستخدام إحداثيات بدايته ونهايته بدقة تامة.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -166,7 +196,7 @@ function VecCalcContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -176,15 +206,15 @@ function VecCalcContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`احسب مركبات الشعاع AB : A(${currentChallenge.ax}, ${currentChallenge.ay})  B(${currentChallenge.bx}, ${currentChallenge.by})`}
             hint={hints[step]}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setInput3(''); setInput4(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
@@ -220,6 +250,13 @@ function VecCalcContent({ phase, setPhase }) {
                     )}
                     <span className="text-emerald-400 text-xl">)</span>
                 </div>
+
+                {step === 1 && (
+                    <LabTutorialNote
+                        from={`طبّقت القانون: AB = (${currentChallenge.bx} − ${currentChallenge.ax}, ${currentChallenge.by} − ${currentChallenge.ay}).`}
+                        why={`الآن فقط عملية حسابية بسيطة${currentChallenge.ax < 0 || currentChallenge.ay < 0 ? '، احذر: طرح رقم سالب يتحول إلى جمع!' : '.'}`}
+                    />
+                )}
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

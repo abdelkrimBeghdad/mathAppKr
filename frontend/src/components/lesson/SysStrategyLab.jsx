@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, ArrowRight, CheckCircle2, Layers, Sigma } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('sys-strategy', lvl) }));
+}
 
 function SysStrategyContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { best, sys, reason }
+
+    useEffect(() => {
+        labProgressService.getOne('sys-strategy')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -53,26 +79,42 @@ function SysStrategyContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        { sys: ['x - 2y = 4', '3x + y = 5'], best: 'subst', reason: 'المعامل x في المعادلة الأولى هو 1. وكذلك المعامل y في المعادلة الثانية هو 1. التعويض سهل جداً هنا.' },
-        { sys: ['4x + 3y = 10', '2x - 3y = 2'], best: 'add', reason: 'لاحظ أن لدينا +3y و -3y. الجمع سيخفي y فوراً بخطوة واحدة!' },
-        { sys: ['3x + 2y = 8', '5x + 4y = 14'], best: 'add', reason: 'لا يوجد أي مجهول معامله 1. التعويض سينتج كسوراً. لذا يفضل ضرب المعادلة الأولى في -2 واستخدام الجمع.' },
-    ];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setError(false); setFeedback(null);
+    };
 
-    const currentChallenge = challenges[challengeStep];
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('sys-strategy', 'practice').catch(() => { });
+    };
 
     const handleAnswer = async (choice) => {
         if (choice === currentChallenge.best) {
             setFeedback({ type: 'success', text: 'اختيار ذكي وموفق!' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            setError(false);
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setFeedback({ type: 'success', text: `أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => setFeedback(null), 1000);
+                }, 1000);
             } else {
-                try {
-                    const data = await rewardService.claimLabReward('sys-strategy-mastery');
-                    if (data.status === 'success') setReward(data);
-                } catch (err) { console.error(err); }
+                setTimeout(async () => {
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    await labProgressService.update('sys-strategy', 'completed', 100).catch(() => { });
+                    try {
+                        const data = await rewardService.claimLabReward('sys-strategy', {
+                            type: 'sys-strategy', best: currentChallenge.best, choice,
+                        });
+                        if (data.status === 'success') setReward(data);
+                    } catch (err) { console.error(err); }
+                }, 900);
             }
         } else {
             setError(true);
@@ -91,11 +133,14 @@ function SysStrategyContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     الآن بعد أن أتقنت الطريقتين، اختبر ذكاءك في تحديد الطريقة الأسرع والأسهل لحل أي جملة تظهر أمامك.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-50 text-violet-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-violet-500 hover:bg-violet-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل الإستراتيجي
                 </button>
             </div>
-            <button onClick={() => setPhase('practice')} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -121,7 +166,7 @@ function SysStrategyContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-violet-500 hover:bg-violet-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => setPhase('practice')} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -131,20 +176,29 @@ function SysStrategyContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             hint={currentChallenge.reason}
             feedback={feedback}
             reward={reward}
-            onRefresh={() => { setChallengeStep(0); setFeedback(null); }}
-            onRestart={() => { setPhase('intro'); setChallengeStep(0); setReward(null); }}
+            onRefresh={() => setFeedback(null)}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className={`w-full p-4 rounded-xl border flex flex-col items-center justify-center gap-2 font-mono text-base font-black ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>1) {currentChallenge.sys[0]}</div>
                     <div>2) {currentChallenge.sys[1]}</div>
                 </div>
+
+                <LabTutorialNote
+                    from={currentChallenge.best === 'subst'
+                        ? `لاحظ معامل x في المعادلة الأولى.`
+                        : `لاحظ معاملات y في المعادلتين.`}
+                    why={currentChallenge.best === 'subst'
+                        ? `عندما يكون معامل مجهول ما يساوي 1 بالضبط، عزله فوري بلا أي قسمة أو كسور — هذا يجعل التعويض الخيار الأسرع.`
+                        : `عندما تتطابق أو تتعاكس معاملات نفس المجهول في المعادلتين، الجمع (أو الطرح) يُلغي هذا المجهول بخطوة واحدة فقط.`}
+                />
 
                 <div className="w-full flex flex-col md:flex-row gap-3" role="group" aria-label="اختر طريقة الحل الأسهل">
                     <button

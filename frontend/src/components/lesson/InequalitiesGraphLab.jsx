@@ -1,21 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ArrowRight, Crosshair, ArrowLeftRight, Layers } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('ineq-graph', lvl) }));
+}
 
 function InequalitiesGraphContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [practicePair, setPracticePair] = useState({ q: 'x > 3', boundary: 3, dir: 'right', inc: false });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [userDir, setUserDir] = useState(null); // 'left' | 'right'
     const [userInc, setUserInc] = useState(null); // true | false
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const practicePair = roundData.problem; // { boundary, sym, dir, inc, q }
+
+    useEffect(() => {
+        labProgressService.getOne('ineq-graph')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -38,31 +64,41 @@ function InequalitiesGraphContent({ phase, setPhase }) {
         },
     ];
 
-    const generateProblem = () => {
-        const options = [
-            { q: 'x > 3', boundary: 3, dir: 'right', inc: false },
-            { q: 'x ≤ 5', boundary: 5, dir: 'left', inc: true },
-            { q: 'x < -2', boundary: -2, dir: 'left', inc: false },
-            { q: 'x ≥ 0', boundary: 0, dir: 'right', inc: true },
-            { q: 'x > -4', boundary: -4, dir: 'right', inc: false },
-            { q: 'x ≤ 2', boundary: 2, dir: 'left', inc: true },
-        ];
-        const newProb = options[Math.floor(Math.random() * options.length)];
-        setPracticePair(newProb);
-        setPhase('practice');
-        setUserDir(null);
-        setUserInc(null);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setUserDir(null); setUserInc(null);
         setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
         setReward(null);
+        labProgressService.update('ineq-graph', 'practice').catch(() => { });
     };
 
     const handleCheck = async () => {
         if (userDir === practicePair.dir && userInc === practicePair.inc) {
-            setFeedback({ type: 'success', text: 'إسقاط بياني مثالي! تم تحديد النطاق بنجاح.' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            rewardService.claimLabReward('inequality-graph-mastery')
-                .then(data => data.status === 'success' && setReward(data))
-                .catch(console.error);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `إسقاط بياني مثالي! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setUserDir(null); setUserInc(null);
+                    setFeedback(null);
+                }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'إسقاط بياني مثالي! تم تحديد النطاق بنجاح.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('ineq-graph', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('ineq-graph', {
+                        type: 'ineq-graph', sym: practicePair.sym, dir: userDir, inc: userInc,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setFeedback({ type: 'error', text: 'تحليل غير دقيق. تأكد من اتجاه الحلول وحالة العارضة.' });
         }
@@ -87,9 +123,12 @@ function InequalitiesGraphContent({ phase, setPhase }) {
                 >
                     فتح دليل الإسقاط
                 </button>
+                <div className={`mt-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -133,7 +172,7 @@ function InequalitiesGraphContent({ phase, setPhase }) {
                         التالي <ArrowRight size={18} />
                     </button>
                 ) : (
-                    <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">
+                    <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">
                         بدء الرصد <Crosshair size={18} />
                     </button>
                 )}
@@ -145,15 +184,15 @@ function InequalitiesGraphContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={1}
-            total={1}
-            level={practicePair.dir === 'left' ? 2 : 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={practicePair.q}
             hint="لاحظ اتجاه رمز المتراجحة، ثم حدد هل الحد الحدّي مشمول (≤،≥) أم مستبعد (<،>)."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setUserDir(null); setUserInc(null); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -247,6 +286,11 @@ function InequalitiesGraphContent({ phase, setPhase }) {
                     </div>
                 </div>
 
+                <LabTutorialNote
+                    from={`الرمز في السؤال هو "${practicePair.sym}"، والحد الحدّي هو ${practicePair.boundary}.`}
+                    why={`الرمزان > و≥ يشيران دائماً لجهة اليمين (قيم أكبر)، بينما < و≤ يشيران لجهة اليسار (قيم أصغر). أما نوع العارضة فيعتمد فقط على وجود خط تحت الرمز (≤،≥ = مشمول) أو غيابه (<،> = مستبعد).`}
+                />
+
                 <button
                     onClick={handleCheck}
                     disabled={userDir === null || userInc === null}
@@ -263,7 +307,7 @@ export default function InequalitiesGraphLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="inequalities-graph"
+            labId="ineq-graph"
             phase={phase}
             title="رادار المجالات البيانية"
             badgeText="بروتوكول الإسقاط البياني"

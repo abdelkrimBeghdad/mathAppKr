@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -26,7 +27,7 @@ function ScientificNotationContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     useEffect(() => {
-        labProgressService.getOne('scientific-notation')
+        labProgressService.getOne('scientific-not')
             .then(progress => {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
@@ -56,9 +57,9 @@ function ScientificNotationContent({ phase, setPhase }) {
             if (challengeStep < challenges.length - 1) {
                 setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
             } else {
-                await labProgressService.update('scientific-notation', 'completed', 100).catch(() => { });
+                await labProgressService.update('scientific-not', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('scientific-notation-mastery');
+                    const data = await rewardService.claimLabReward('scientific-not');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -177,6 +178,10 @@ function ScientificNotationContent({ phase, setPhase }) {
                         placeholder="n"
                     />
                 </div>
+                <LabTutorialNote
+                    from={`العدد المطلوب كتابته: ${currentChallenge.q}.`}
+                    why={`الصيغة العلمية دائماً a × 10ⁿ حيث a رقم واحد قبل الفاصلة بين 1 و10. ${currentChallenge.hint}`}
+                />
                 <button
                     onClick={handleAnswer}
                     className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
@@ -192,7 +197,7 @@ export default function ScientificNotationLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="scientific-notation"
+            labId="scientific-not"
             phase={phase}
             title="الكتابة العلمية"
             badgeText="الماسح الضوئي العلمي"

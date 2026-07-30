@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -58,7 +59,7 @@ function TrigAngleContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-angle', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-angle-mastery');
+                    const data = await rewardService.claimLabReward('trig-angle');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -159,6 +160,10 @@ function TrigAngleContent({ phase, setPhase }) {
                 />
                 <span className={theme.textMain}>°</span>
             </div>
+            <LabTutorialNote
+                from={`السؤال أعطاك قيمة نسبة مثلثية جاهزة (مثل sin أو cos أو tan) بدل طول الأضلاع.`}
+                why={`هذه المرة نعمل بالاتجاه المعاكس: بدل حساب النسبة من الأضلاع، نبحث عن الزاوية التي تُنتج هذه النسبة تحديداً. تذكر جدول القيم الخاصة للزوايا 30°، 45°، 60°، 90°.`}
+            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-black transition-all">
                 تحقق من الزاوية
             </button>

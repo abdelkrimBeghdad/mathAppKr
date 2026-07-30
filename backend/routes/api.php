@@ -152,7 +152,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Daily Reward Routes
             Route::get('/rewards/daily/status', [RewardController::class , 'getDailyStatus']);
             Route::post('/rewards/daily/claim', [RewardController::class , 'claimDaily']);
-            Route::post('/rewards/lab/claim', [RewardController::class , 'awardLabCompletion']);
+            Route::post('/rewards/lab/claim', [RewardController::class , 'awardLabCompletion'])
+                ->middleware('throttle:30,1');
 
             // Forum Routes
             Route::get('/forum', [ForumController::class , 'index']);
@@ -197,7 +198,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Lab Progress Routes
             Route::get('/lab-progress', [LabProgressController::class, 'index']);
             Route::get('/lab-progress/{labId}', [LabProgressController::class, 'show']);
-            Route::post('/lab-progress', [LabProgressController::class, 'update']);
+            Route::post('/lab-progress', [LabProgressController::class, 'update'])
+                ->middleware('throttle:60,1');
         }
 
         );

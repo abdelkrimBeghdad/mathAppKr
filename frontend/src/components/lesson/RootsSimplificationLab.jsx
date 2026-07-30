@@ -1,41 +1,60 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Target, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { rewardService } from '../../utils/rewardService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
+
+// 3 جولات تصاعدية الصعوبة (مبتدئ ➜ متوسط ➜ متقدم) قبل منح المكافأة
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('roots-simplify', lvl) }));
+}
 
 function RootsSimplificationContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(1);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: تفكيك، 1: تحرير الجذر
-    const [practicePair, setPracticePair] = useState({ n: 50, square: 25, root: 5, remainder: 2 });
     const [inputA, setInputA] = useState('');
     const [inputB, setInputB] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const options = [
-        { n: 50, square: 25, root: 5, remainder: 2 }, { n: 75, square: 25, root: 5, remainder: 3 },
-        { n: 32, square: 16, root: 4, remainder: 2 }, { n: 20, square: 4, root: 2, remainder: 5 },
-        { n: 45, square: 9, root: 3, remainder: 5 }, { n: 72, square: 36, root: 6, remainder: 2 },
-        { n: 8, square: 4, root: 2, remainder: 2 }, { n: 12, square: 4, root: 2, remainder: 3 },
-        { n: 18, square: 9, root: 3, remainder: 2 }, { n: 24, square: 4, root: 2, remainder: 6 },
-        { n: 27, square: 9, root: 3, remainder: 3 }, { n: 28, square: 4, root: 2, remainder: 7 },
-    ];
+    const roundData = rounds[round];
+    const practicePair = roundData.problem; // { n, square, root, remainder }
 
-    const generateProblem = () => {
-        const newProb = options[Math.floor(Math.random() * options.length)];
-        setPracticePair(newProb);
-        setPhase('practice');
+    useEffect(() => {
+        labProgressService.getOne('roots-simplification')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
+
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(0);
         setInputA(''); setInputB('');
         setError(false); setFeedback(null); setReward(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
         labProgressService.update('roots-simplification', 'practice').catch(() => { });
     };
 
@@ -51,13 +70,25 @@ function RootsSimplificationContent({ phase, setPhase }) {
                 setInputA(''); setInputB('');
                 setTimeout(() => { setStep(1); setFeedback(null); }, 900);
             } else {
-                setFeedback({ type: 'success', text: 'تفكيك مثالي! وصلت لأبسط صورة للجذر.' });
-                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-                await labProgressService.update('roots-simplification', 'completed', 100).catch(() => { });
-                try {
-                    const data = await rewardService.claimLabReward('roots-simplification-mastery');
-                    if (data.status === 'success') setReward(data);
-                } catch (err) { console.error(err); }
+                setInputA(''); setInputB('');
+                if (round < 2) {
+                    setFeedback({ type: 'success', text: `تفكيك مثالي! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => {
+                        setRound(r => r + 1);
+                        setStep(0);
+                        setFeedback(null);
+                    }, 1400);
+                } else {
+                    setFeedback({ type: 'success', text: 'تفكيك مثالي! وصلت لأبسط صورة للجذر.' });
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    await labProgressService.update('roots-simplification', 'completed', 100).catch(() => { });
+                    try {
+                        const data = await rewardService.claimLabReward('roots-simplification', {
+                            type: 'root', n: practicePair.n, square: practicePair.square, remainder: practicePair.remainder,
+                        });
+                        if (data.status === 'success') setReward(data);
+                    } catch (err) { console.error(err); }
+                }
             }
         } else {
             setError(true);
@@ -80,17 +111,23 @@ function RootsSimplificationContent({ phase, setPhase }) {
                         <span className="text-orange-400">a√b</span>
                     </div>
                 </div>
+                <p className={`${theme.textSub} text-xs font-medium mt-3 text-center`}>
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
+                </p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => { setPhase('learn'); setLearnStep(1); }} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'}`}>
                     مشاهدة الشرح
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <button onClick={startPractice} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-rose-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Target size={36} />
                     <span className="font-black text-xl uppercase tracking-widest">بدء التحدي</span>
                 </div>
-            </motion.button>
+            </button>
         </div>
     );
 
@@ -125,7 +162,7 @@ function RootsSimplificationContent({ phase, setPhase }) {
             </div>
             <div className="flex justify-between items-center mt-6 px-4">
                 <button onClick={() => setPhase('intro')} className={`px-4 py-2 rounded-xl font-black transition-all ${isDarkMode ? 'bg-white/5 text-white border border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>السابق</button>
-                <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحدي</button>
+                <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحدي</button>
             </div>
         </div>
     );
@@ -134,15 +171,15 @@ function RootsSimplificationContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={step + 1}
-            total={2}
-            level={2}
+            current={round * 2 + step + 1}
+            total={6}
+            level={roundData.level}
             question={`√${practicePair.n}`}
             hint={step === 0 ? 'ابحث عن مربع تام (4، 9، 16، 25...) يقسم العدد بدون باقٍ.' : 'استخرج الجذر التربيعي للمربع التام الذي وجدته.'}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(0); setInputA(''); setInputB(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); }}
         >
             <div className="flex flex-wrap items-center justify-center gap-3 font-mono font-black text-lg" dir="ltr">
                 {step === 0 ? (
@@ -165,6 +202,16 @@ function RootsSimplificationContent({ phase, setPhase }) {
                     </>
                 )}
             </div>
+
+            <LabTutorialNote
+                from={step === 0
+                    ? `العدد ${practicePair.n} تحت الجذر ليس مربعاً تاماً بحد ذاته، لكنه حاصل ضرب مربع تام (${practicePair.square}) في عدد آخر (${practicePair.remainder}).`
+                    : `المربع التام الذي وجدته هو ${practicePair.square}.`}
+                why={step === 0
+                    ? `نبحث دائماً عن أكبر مربع تام يقسم العدد بدون باقٍ، لأن هذا يعطينا أبسط صورة ممكنة للجذر بخطوة واحدة فقط.`
+                    : `جذر أي مربع تام هو عدد صحيح؛ يخرج هذا العدد من تحت الجذر بينما يبقى الباقي (${practicePair.remainder}) تحت الجذر لأنه ليس مربعاً تاماً.`}
+            />
+
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> {step === 0 ? 'تأكيد التفكيك' : 'تأكيد التحرير'}
             </button>

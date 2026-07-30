@@ -7,27 +7,53 @@ import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('linear', lvl);
+        const maxCoeff = params.maxCoeff || 5;
+        const a = (Math.floor(Math.random() * maxCoeff) + 1) * (Math.random() > 0.5 ? 1 : -1);
+        const b = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+        const x1 = Math.floor(Math.random() * 3) + 1;
+        const x2 = x1 + Math.floor(Math.random() * 2) + 1;
+        return {
+            level: lvl, a, b,
+            p1: { x: x1, y: a * x1 + b },
+            p2: { x: x2, y: a * x2 + b },
+        };
+    });
+}
 
 function AffineFormulaContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: إيجاد a، 1: إيجاد b
-    const [a, setA] = useState(2);
-    const [b, setB] = useState(3);
-    const [p1, setP1] = useState({ x: 1, y: 5 });
-    const [p2, setP2] = useState({ x: 2, y: 7 });
     const [inputA, setInputA] = useState('');
     const [inputB, setInputB] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const roundData = rounds[round];
+    const { a, b, p1, p2 } = roundData;
+
     useEffect(() => {
-        labProgressService.getOne('affine-formula')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+        labProgressService.getOne('aff-formula')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -36,23 +62,19 @@ function AffineFormulaContent({ phase, setPhase }) {
         { title: 'خوارزمية تحديد الثابت', detail: 'بعد إيجاد a، نعوض في إحدى النقاط لاستنتاج الثابت b.', math: 'b = f(x₁) - a × x₁', icon: <Target size={20} /> },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('linear', level);
-        const maxCoeff = params.maxCoeff || 5;
-
-        const newA = (Math.floor(Math.random() * maxCoeff) + 1) * (Math.random() > 0.5 ? 1 : -1);
-        const newB = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
-        const x1 = Math.floor(Math.random() * 3) + 1;
-        const x2 = x1 + Math.floor(Math.random() * 2) + 1;
-
-        setA(newA); setB(newB);
-        setP1({ x: x1, y: newA * x1 + newB });
-        setP2({ x: x2, y: newA * x2 + newB });
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(0);
         setInputA(''); setInputB('');
-        setError(false); setFeedback(null); setReward(null);
-        labProgressService.update('affine-formula', 'practice').catch(() => { });
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('aff-formula', 'practice').catch(() => { });
     };
 
     const handleCheckA = () => {
@@ -72,13 +94,21 @@ function AffineFormulaContent({ phase, setPhase }) {
     const handleCheckB = async () => {
         if (parseFloat(inputB) === b) {
             setError(false);
-            setFeedback({ type: 'success', text: 'أحسنت! فككت الشيفرة بالكامل.' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            await labProgressService.update('affine-formula', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('affine-formula-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setInputA(''); setInputB('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `فككت الشيفرة بالكامل! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => { setRound(r => r + 1); setStep(0); setFeedback(null); }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'أحسنت! فككت الشيفرة بالكامل.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('aff-formula', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('aff-formula', {
+                        type: 'linear', x: p1.x, y: p1.y, m: a, b,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع: b = f(x₁) − a × x₁.' });
@@ -95,15 +125,16 @@ function AffineFormulaContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تستخرج معادلة الدالة التآلفية الكاملة f(x) = ax + b من نقطتين معطاتين فقط.
+                    ستمر بـ 3 جولات تصاعدية الصعوبة قبل الحصول على المكافأة.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-50 text-orange-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black transition-all">
                     فتح دليل البروتوكول
                 </button>
             </div>
-            <button onClick={generateProblem} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -130,7 +161,7 @@ function AffineFormulaContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -140,17 +171,17 @@ function AffineFormulaContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={step + 1}
-            total={2}
-            level={level}
+            current={round * 2 + step + 1}
+            total={6}
+            level={roundData.level}
             question={`النقاط المعطاة: f(${p1.x}) = ${p1.y}   و   f(${p2.x}) = ${p2.y}`}
             hint={step === 0
                 ? `a = (${p2.y} − ${p1.y}) ÷ (${p2.x} − ${p1.x})`
                 : `b = ${p1.y} − ${a} × ${p1.x}`}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(0); setInputA(''); setInputB(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             {step === 0 ? (
                 <>
@@ -167,6 +198,10 @@ function AffineFormulaContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
+                    <LabTutorialNote
+                        from={`النقطتان المعطاتان: (${p1.x}, ${p1.y}) و(${p2.x}, ${p2.y}).`}
+                        why={`الميل a يقيس معدل التغير بين نقطتين: نقسم فرق الصور (${p2.y} - ${p1.y}) على فرق السوابق (${p2.x} - ${p1.x}).`}
+                    />
                     <button onClick={handleCheckA} className="mt-4 w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black transition-all">
                         تأكيد الميل a
                     </button>
@@ -189,6 +224,10 @@ function AffineFormulaContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
+                    <LabTutorialNote
+                        from={`عرفنا الآن a = ${a}، والنقطة الأولى هي (${p1.x}, ${p1.y}).`}
+                        why={`بعد معرفة الميل، نعوّض بإحدى النقاط الأصلية في المعادلة f(x)=ax+b ونحل من أجل b: ${p1.y} − ${a}×${p1.x} = ${b}.`}
+                    />
                     <button onClick={handleCheckB} className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black transition-all">
                         تأكيد الثابت b
                     </button>
@@ -202,7 +241,7 @@ export default function AffineFormulaLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="affine-formula"
+            labId="aff-formula"
             phase={phase}
             title="استخراج العبارة"
             badgeText="وحدة الاستقصاء"

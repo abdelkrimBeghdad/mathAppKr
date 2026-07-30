@@ -1,31 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('vec-midpoint', lvl) }));
+}
 
 function VecMidpointContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: مجموع، 1: قسمة
-    const [challengeStep, setChallengeStep] = useState(0);
     const [input1, setInput1] = useState('');
     const [input2, setInput2] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const challenges = [
-        { ax: 2, ay: 4, bx: 8, by: 6 },
-        { ax: -4, ay: 3, bx: 2, by: -1 },
-        { ax: -3, ay: -5, bx: 1, by: 3 },
-    ];
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { ax, ay, bx, by, mx, my, sumX, sumY }
 
-    const currentChallenge = challenges[challengeStep];
+    useEffect(() => {
+        labProgressService.getOne('vec-midpoint')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -67,21 +85,27 @@ function VecMidpointContent({ phase, setPhase }) {
         'اقسم المجموع الذي حصلت عليه على 2 لتحصل على إحداثيات نقطة المنتصف.',
     ];
 
-    const resetChallenges = () => {
-        setChallengeStep(0); setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setStep(0);
         setInput1(''); setInput2('');
         setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('vec-midpoint', 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
         let isCorrect = false;
         if (step === 0) {
-            isCorrect = parseInt(input1) === currentChallenge.ax + currentChallenge.bx &&
-                parseInt(input2) === currentChallenge.ay + currentChallenge.by;
+            isCorrect = parseInt(input1) === currentChallenge.sumX && parseInt(input2) === currentChallenge.sumY;
         } else {
-            const ansX = (currentChallenge.ax + currentChallenge.bx) / 2;
-            const ansY = (currentChallenge.ay + currentChallenge.by) / 2;
-            isCorrect = parseInt(input1) === ansX && parseInt(input2) === ansY;
+            isCorrect = parseInt(input1) === currentChallenge.mx && parseInt(input2) === currentChallenge.my;
         }
 
         if (isCorrect) {
@@ -91,19 +115,20 @@ function VecMidpointContent({ phase, setPhase }) {
             if (step === 0) {
                 setFeedback({ type: 'success', text: 'صحيح! الآن اقسم الناتج على 2.' });
                 setTimeout(() => { setStep(1); setFeedback(null); }, 900);
+            } else if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setStep(0); setFeedback(null); }, 1300);
             } else {
-                if (challengeStep < challenges.length - 1) {
-                    setFeedback({ type: 'success', text: 'ممتاز! التحدي التالي.' });
-                    confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
-                    setTimeout(() => { setChallengeStep(s => s + 1); setStep(0); setFeedback(null); }, 900);
-                } else {
-                    setFeedback({ type: 'success', text: 'أتقنت حساب نقطة المنتصف!' });
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                    try {
-                        const data = await rewardService.claimLabReward('vec-midpoint-mastery');
-                        if (data.status === 'success') setReward(data);
-                    } catch (err) { console.error(err); }
-                }
+                setFeedback({ type: 'success', text: 'أتقنت حساب نقطة المنتصف!' });
+                confetti({ particleCount: 130, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update('vec-midpoint', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('vec-midpoint', {
+                        type: 'vec-midpoint', ax: currentChallenge.ax, ay: currentChallenge.ay, bx: currentChallenge.bx, by: currentChallenge.by, mx: currentChallenge.mx, my: currentChallenge.my,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
             }
         } else {
             setError(true);
@@ -121,12 +146,16 @@ function VecMidpointContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف توجد النقطة المركزية (المنتصف) بين نقطتين، باستخدام قانون المتوسط الحسابي.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -152,7 +181,7 @@ function VecMidpointContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -162,15 +191,15 @@ function VecMidpointContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`احسب إحداثيات المنتصف M : A(${currentChallenge.ax}, ${currentChallenge.ay})  B(${currentChallenge.bx}, ${currentChallenge.by})`}
             hint={hints[step]}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
@@ -198,6 +227,15 @@ function VecMidpointContent({ phase, setPhase }) {
                     )}
                     <span className="text-emerald-400 text-xl">)</span>
                 </div>
+
+                <LabTutorialNote
+                    from={step === 0
+                        ? `النقطتان: A(${currentChallenge.ax}, ${currentChallenge.ay}) وB(${currentChallenge.bx}, ${currentChallenge.by}).`
+                        : `مجموع الإحداثيات الذي وجدته: (${currentChallenge.sumX}, ${currentChallenge.sumY}).`}
+                    why={step === 0
+                        ? `المنتصف هو المتوسط الحسابي، لذا نبدأ بجمع كل محور على حدة: Xₐ+Xᵦ وYₐ+Yᵦ.`
+                        : `نقسم كل مجموع على 2 للحصول على نقطة المنتصف الفعلية: (${currentChallenge.sumX}/2, ${currentChallenge.sumY}/2) = (${currentChallenge.mx}, ${currentChallenge.my}).`}
+                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -59,7 +60,7 @@ function TrigLengthContent({ phase, setPhase }) {
     };
 
     const handleAnswer = async () => {
-        if (parseFloat(input1) === currentChallenge.ans) {
+        if (Math.abs(parseFloat(input1) - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'رائع! الضرب التبادلي أعطاك النتيجة الصحيحة.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
@@ -69,7 +70,7 @@ function TrigLengthContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-length', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-length-mastery');
+                    const data = await rewardService.claimLabReward('trig-length');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -160,17 +161,23 @@ function TrigLengthContent({ phase, setPhase }) {
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
         >
             {step === 0 ? (
-                <div className="flex gap-2 w-full" role="group" aria-label="اختر النسبة المناسبة">
-                    {['Sin', 'Cos', 'Tan'].map(r => (
-                        <button
-                            key={r}
-                            onClick={() => handleRatioSelection(r)}
-                            className={`flex-1 py-3 rounded-xl font-black border-2 transition-all ${isDarkMode ? 'bg-black/40 border-white/10 text-white hover:border-emerald-500' : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-400'
-                                }`}
-                        >
-                            {r}
-                        </button>
-                    ))}
+                <div className="flex flex-col w-full gap-3">
+                    <div className="flex gap-2 w-full" role="group" aria-label="اختر النسبة المناسبة">
+                        {['Sin', 'Cos', 'Tan'].map(r => (
+                            <button
+                                key={r}
+                                onClick={() => handleRatioSelection(r)}
+                                className={`flex-1 py-3 rounded-xl font-black border-2 transition-all ${isDarkMode ? 'bg-black/40 border-white/10 text-white hover:border-emerald-500' : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-400'
+                                    }`}
+                            >
+                                {r}
+                            </button>
+                        ))}
+                    </div>
+                    <LabTutorialNote
+                        from={`المعطى: ${currentChallenge.given}. المطلوب: ${currentChallenge.needed}.`}
+                        why={`اختر النسبة (Sin أو Cos أو Tan) التي تربط الضلع المطلوب إيجاده بالضلع المعطى (الوتر هنا)، بحسب موقع الضلعين من الزاوية.`}
+                    />
                 </div>
             ) : (
                 <>
@@ -187,6 +194,10 @@ function TrigLengthContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
+                    <LabTutorialNote
+                        from={`اخترت نسبة ${currentChallenge.correctRatio} — وهي الصحيحة لهذا السؤال.`}
+                        why={`بعد اختيار النسبة الصحيحة، نضرب الضلع المعطى (${currentChallenge.given}) في قيمة تلك النسبة عند هذه الزاوية لنحصل على الضلع المجهول مباشرة.`}
+                    />
                     <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <CheckCircle2 size={18} /> تحقق من الطول
                     </button>

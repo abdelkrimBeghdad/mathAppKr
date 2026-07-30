@@ -4,26 +4,48 @@ import { Star, Layers, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('expansion', lvl);
+        const maxB = params.maxCoeff || 9;
+        const b = Math.floor(Math.random() * maxB) + 1;
+        return { level: lvl, b };
+    });
+}
+
 function ExpansionIdentity1Content({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [problem, setProblem] = useState({ b: 5 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(1); // 1: تحديد x، 2: تحديد b، 3: إدخال، 4: تم
     const [inputs, setInputs] = useState({ mid: '', last: '' });
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const roundData = rounds[round];
+    const problem = roundData; // { level, b }
+
     useEffect(() => {
-        labProgressService.getOne('expansion-identity-1')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+        labProgressService.getOne('id1')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -32,16 +54,19 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
         { title: 'قانون الحدود الثلاثة', detail: 'النتيجة دائماً تتكون من: مربع الأول، زائد ضعف الأول في الثاني، زائد مربع الثاني.', math: '2 × a × b ⟶ الحد الأوسط', icon: <Layers size={20} /> },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('expansion', level);
-        const maxB = params.maxCoeff || 9;
-        const b = Math.floor(Math.random() * maxB) + 1;
-        setProblem({ b });
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(1);
         setInputs({ mid: '', last: '' });
-        setError(false); setFeedback(null); setReward(null);
-        labProgressService.update('expansion-identity-1', 'practice').catch(() => { });
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('id1', 'practice').catch(() => { });
     };
 
     const handleTermClick = (term) => {
@@ -54,13 +79,26 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
         const correctLast = problem.b * problem.b;
         if (parseInt(inputs.mid) === correctMid && parseInt(inputs.last) === correctLast) {
             setStep(4);
-            setFeedback({ type: 'success', text: 'نشر مثالي! طبّقت المتطابقة بدقة.' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            await labProgressService.update('expansion-identity-1', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('expansion-identity-1');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `نشر مثالي! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setStep(1);
+                    setInputs({ mid: '', last: '' });
+                    setFeedback(null);
+                }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'نشر مثالي! طبّقت المتطابقة بدقة.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('id1', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('id1', {
+                        type: 'identity-sum-sq', b: problem.b, midTerm: correctMid, lastTerm: correctLast,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع: الحد الأوسط = 2×a×b، والأخير = b².' });
@@ -76,11 +114,15 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
                 <div className={`p-4 rounded-2xl border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-indigo-50 border-indigo-100'}`}>
                     <span className="font-mono font-black text-indigo-400 text-sm" dir="ltr">(a + b)² = a² + 2ab + b²</span>
                 </div>
+                <p className={`text-xs ${theme.textSub} mt-2 text-center`}>ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.</p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'}`}>
                     عرض بروتوكول النشر
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <motion.button onClick={startPractice} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-indigo-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Star size={36} />
@@ -111,7 +153,7 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول التجربة</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول التجربة</button>
                 }
             </div>
         </div>
@@ -121,14 +163,14 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
     return (
         <LabChallenge
             type="visual"
-            current={1}
-            total={1}
-            level={level}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             hint="اضغط على x أولاً، ثم على الرقم الثاني، لتظهر خطوة الإدخال."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(1); setInputs({ mid: '', last: '' }); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="flex items-center justify-center font-mono font-black text-lg gap-1" dir="ltr">
@@ -169,6 +211,10 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
                                 <input type="number" value={inputs.last} onChange={e => setInputs({ ...inputs, last: e.target.value })} onKeyDown={e => e.key === 'Enter' && checkMastery()} aria-label="الحد الأخير"
                                     className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/50 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'}`} placeholder="؟" />
                             </div>
+                            <LabTutorialNote
+                                from={`الحد الثاني في القوس هو ${problem.b}.`}
+                                why={`القانون ثابت دائماً: الحد الأوسط = ضعف حاصل ضرب الحدين (2×1×${problem.b}=${2 * problem.b})، والحد الأخير = مربع الحد الثاني (${problem.b}²=${problem.b * problem.b}).`}
+                            />
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد الهيكلية
                             </button>
@@ -197,7 +243,7 @@ export default function ExpansionIdentity1Lab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="expansion-identity-1"
+            labId="id1"
             phase={phase}
             title="نشر مربع المجموع"
             badgeText="المتطابقة الشهيرة #1"

@@ -5,16 +5,25 @@ import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('sys-graph', lvl) }));
+}
+
 function SystemsGraphContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0..4: خطوات، 5: تم
     const [input1, setInput1] = useState('');
     const [input2, setInput2] = useState('');
@@ -22,31 +31,33 @@ function SystemsGraphContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const roundData = rounds[round];
+    const problem = roundData.problem; // { m1, b1, m2, b2, ansX, ansY, pt1_y1, pt1_y2, pt2_y1, pt2_y2 }
+
     useEffect(() => {
         labProgressService.getOne('sys-graph')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
-
-    // المسألة: x + y = 3  و  x - y = 1  →  (2, 1)
-    const problem = {
-        m1: -1, b1: 3, pt1_y1: 3, pt1_y2: 0,
-        m2: 1, b2: -1, pt2_y1: -1, pt2_y2: 2,
-        ans_x: 2, ans_y: 1,
-    };
 
     const learnPages = [
         { title: 'مبدأ الرسم البياني', detail: 'كل معادلة في الجملة تمثل خطاً مستقيماً. الحل هو النقطة الوحيدة التي يتقاطع فيها المستقيمان.' },
         { title: 'الصياغة الدالية', detail: 'نعزل y لتصبح المعادلة على شكل y = ax + b قابلة للرسم.', math: 'x + y = 3 ⟶ y = -x + 3' },
         { title: 'النقطتان السحريتان', detail: 'نعطي قيمتين اختياريتين لـ x (مثلاً 0 و3) ونحسب y المقابلة لرسم المستقيم.' },
-        { title: 'المسح الإحداثي', detail: 'نرسم المستقيم الثاني بنفس الطريقة، ثم نقرأ إحداثيات نقطة التقاطع.', math: '(2, 1)' },
+        { title: 'المسح الإحداثي', detail: 'نرسم المستقيم الثاني بنفس الطريقة، ثم نقرأ إحداثيات نقطة التقاطع.' },
     ];
 
     const hints = [
-        'انقل x إلى الطرف الآخر وغيّر إشارته ليصبح -x.',
-        'عوض x بصفر في المعادلة (y = -x + 3)، ثم بـ 3.',
-        'انقل -y للطرف الآخر لتصبح موجبة، وانقل 1 ليصبح سالباً.',
-        'عوض x بصفر في المعادلة (y = x - 1)، ثم بـ 3.',
+        'المعادلة معطاة مباشرة على شكل y = mx + b؛ حدد m وb كما هما.',
+        'عوض x بصفر في معادلة المستقيم الأول، ثم بـ 3.',
+        'المعادلة الثانية معطاة أيضاً على شكل y = mx + b؛ حدد m وb.',
+        'عوض x بصفر في معادلة المستقيم الثاني، ثم بـ 3.',
         'اقرأ إحداثيات نقطة تقاطع المستقيمين على الرسم.',
     ];
 
@@ -58,10 +69,18 @@ function SystemsGraphContent({ phase, setPhase }) {
         'إحداثيات نقطة التقاطع (x, y)',
     ];
 
-    const resetChallenge = () => {
-        setStep(0); setInput1(''); setInput2('');
-        setError(false); setFeedback(null); setReward(null);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setStep(0);
+        setInput1(''); setInput2('');
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
+        setReward(null);
         labProgressService.update('sys-graph', 'practice').catch(() => { });
     };
 
@@ -71,7 +90,7 @@ function SystemsGraphContent({ phase, setPhase }) {
         else if (step === 1) isCorrect = parseInt(input1) === problem.pt1_y1 && parseInt(input2) === problem.pt1_y2;
         else if (step === 2) isCorrect = parseInt(input1) === problem.m2 && parseInt(input2) === problem.b2;
         else if (step === 3) isCorrect = parseInt(input1) === problem.pt2_y1 && parseInt(input2) === problem.pt2_y2;
-        else if (step === 4) isCorrect = parseInt(input1) === problem.ans_x && parseInt(input2) === problem.ans_y;
+        else if (step === 4) isCorrect = parseInt(input1) === problem.ansX && parseInt(input2) === problem.ansY;
 
         if (isCorrect) {
             setError(false);
@@ -81,13 +100,25 @@ function SystemsGraphContent({ phase, setPhase }) {
             if (step < 4) {
                 confetti({ particleCount: 30, spread: 40, origin: { y: 0.8 } });
                 setTimeout(() => { setStep(s => s + 1); setFeedback(null); }, 900);
+            } else if (round < 2) {
+                setTimeout(() => {
+                    setFeedback({ type: 'success', text: `أحسنت! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => {
+                        setRound(r => r + 1);
+                        setStep(0);
+                        setFeedback(null);
+                    }, 1400);
+                }, 300);
             } else {
                 setTimeout(async () => {
                     setStep(5);
                     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
                     await labProgressService.update('sys-graph', 'completed', 100).catch(() => { });
                     try {
-                        const data = await rewardService.claimLabReward('sys-graph-mastery');
+                        const data = await rewardService.claimLabReward('sys-graph', {
+                            type: 'linear-2pt', m: problem.m1, b: problem.b1,
+                            p1: { x: 0, y: problem.pt1_y1 }, p2: { x: 3, y: problem.pt1_y2 },
+                        });
                         if (data.status === 'success') setReward(data);
                     } catch (err) { console.error(err); }
                 }, 900);
@@ -108,12 +139,16 @@ function SystemsGraphContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تحول المعادلات الجبرية إلى خطوط مستقيمة على الشبكة لتجد الحل بالعين المجردة.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-50 text-cyan-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={resetChallenge} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالمسح
             </button>
         </div>
@@ -141,31 +176,37 @@ function SystemsGraphContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={resetChallenge} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">بدء التدريب <Rocket size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">بدء التدريب <Rocket size={18} /></button>
                 }
             </div>
         </div>
     );
 
-    // ── practice — يستخدم LabChallenge + LabStepsPanel (رسم بياني حي) ────────
+    // ── practice — يستخدم LabChallenge + LabStepsPanel (رسم بياني حي يتكيّف مع كل مسألة) ────────
     const stepsForPanel = [
-        { label: 'Eq (1): x + y = 3', done: step > 0 },
-        { label: 'Eq (2): x - y = 1', done: step > 2 },
-        ...(step > 3 ? [{ label: `تقاطع: (${problem.ans_x}, ${problem.ans_y})`, active: step === 4 }] : []),
+        { label: `Eq (1): y = ${problem.m1}x ${problem.b1 >= 0 ? '+' : ''}${problem.b1}`, done: step > 0 },
+        { label: `Eq (2): y = ${problem.m2}x ${problem.b2 >= 0 ? '+' : ''}${problem.b2}`, done: step > 2 },
+        ...(step > 3 ? [{ label: `تقاطع: (${problem.ansX}, ${problem.ansY})`, active: step === 4 }] : []),
     ];
+
+    // إحداثيات خط الرسم عند حدود العرض (x = -6 و x = 6) لكل مستقيم — تتكيّف ديناميكياً مع كل مسألة
+    const line1X1 = -6, line1Y1 = problem.m1 * -6 + problem.b1;
+    const line1X2 = 6, line1Y2 = problem.m1 * 6 + problem.b1;
+    const line2X1 = -6, line2Y1 = problem.m2 * -6 + problem.b2;
+    const line2X2 = 6, line2Y2 = problem.m2 * 6 + problem.b2;
 
     return (
         <LabChallenge
             type="text"
-            current={step + 1}
-            total={5}
-            level={level}
+            current={round * 5 + step + 1}
+            total={15}
+            level={roundData.level}
             question={stepInstructions[step]}
             hint={hints[step]}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenge}
-            onRestart={() => { setPhase('intro'); resetChallenge(); setReward(null); }}
+            onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={
                 <div className="w-full md:w-56 flex-shrink-0 flex flex-col gap-3">
                     <LabStepsPanel title="سجل المعادلتين" steps={stepsForPanel} />
@@ -176,15 +217,15 @@ function SystemsGraphContent({ phase, setPhase }) {
                             <g transform="scale(1, -1)">
                                 {step > 1 && (
                                     <motion.line initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1 }}
-                                        x1="-6" y1="9" x2="6" y2="-3" stroke="#f59e0b" strokeWidth="0.25" strokeLinecap="round" />
+                                        x1={line1X1} y1={line1Y1} x2={line1X2} y2={line1Y2} stroke="#f59e0b" strokeWidth="0.25" strokeLinecap="round" />
                                 )}
                                 {step > 3 && (
                                     <motion.line initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1 }}
-                                        x1="-4.5" y1="-5.5" x2="6.5" y2="5.5" stroke="#6366f1" strokeWidth="0.25" strokeLinecap="round" />
+                                        x1={line2X1} y1={line2Y1} x2={line2X2} y2={line2Y2} stroke="#6366f1" strokeWidth="0.25" strokeLinecap="round" />
                                 )}
                                 {step > 3 && (
                                     <motion.circle initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.6 }}
-                                        cx="2" cy="1" r="0.4" fill="#22d3ee" />
+                                        cx={problem.ansX} cy={problem.ansY} r="0.4" fill="#22d3ee" />
                                 )}
                             </g>
                         </svg>
@@ -229,6 +270,16 @@ function SystemsGraphContent({ phase, setPhase }) {
                     </>
                 )}
             </div>
+            <LabTutorialNote
+                from={step < 4
+                    ? `المعادلة الحالية: y = ${step < 2 ? problem.m1 : problem.m2}x ${(step < 2 ? problem.b1 : problem.b2) >= 0 ? '+' : ''}${step < 2 ? problem.b1 : problem.b2}.`
+                    : `المستقيمان مرسومان الآن، وتقاطعهما ظاهر في الشبكة الجانبية.`}
+                why={step === 0 || step === 2
+                    ? `المعامل m هو الرقم الملاصق لـ x، والثابت b هو الرقم المستقل عنه.`
+                    : step === 1 || step === 3
+                        ? `نعوّض قيمتين مختلفتين لـ x في نفس المعادلة لنحصل على نقطتين، وهما كافيتان لرسم مستقيم كامل.`
+                        : `نقطة التقاطع هي الإحداثيات المشتركة بين المستقيمين — وهي حل الجملة الوحيد.`}
+            />
             <button onClick={handleCheckStep} className="mt-4 w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تأكيد الخطوة
             </button>

@@ -7,10 +7,12 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
-function buildChallenge(level) {
-    return difficultyEngine.generateChallenge('stat-freq', level);
+// 3 جولات تصاعدية الصعوبة (مبتدئ ➜ متوسط ➜ متقدم) بدل سؤال واحد ثابت
+function buildChallenges(level) {
+    return difficultyEngine.generateChallengeSet('stat-freq', level, 3);
 }
 
 function StatFreqContent({ phase, setPhase }) {
@@ -18,12 +20,14 @@ function StatFreqContent({ phase, setPhase }) {
 
     const [learnStep, setLearnStep] = useState(0);
     const [level, setLevel] = useState(1);
-    const [challenge, setChallenge] = useState(() => buildChallenge(1));
+    const [challenges, setChallenges] = useState(() => buildChallenges(1));
+    const [challengeStep, setChallengeStep] = useState(0);
     const [userCounts, setUserCounts] = useState({});
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const challenge = challenges[challengeStep];
     const uniqueValues = Object.keys(challenge.correct).map(Number);
 
     useEffect(() => {
@@ -32,15 +36,15 @@ function StatFreqContent({ phase, setPhase }) {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
                     setLevel(lvl);
-                    setChallenge(buildChallenge(lvl));
+                    setChallenges(buildChallenges(lvl));
                 }
             })
             .catch(() => { });
     }, []);
 
-    const resetChallenge = () => {
-        const c = buildChallenge(level);
-        setChallenge(c);
+    const resetChallenges = () => {
+        setChallenges(buildChallenges(level));
+        setChallengeStep(0);
         setUserCounts({});
         setError(false);
         setFeedback(null);
@@ -52,11 +56,18 @@ function StatFreqContent({ phase, setPhase }) {
         if (isCorrect) {
             setFeedback({ type: 'success', text: 'رائع! لقد نظمت البيانات بنجاح. هذا هو أساس العمل الإحصائي.' });
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-            await labProgressService.update('stat-freq', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('stat-freq-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setUserCounts({});
+            setError(false);
+
+            if (challengeStep < challenges.length - 1) {
+                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            } else {
+                await labProgressService.update('stat-freq', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('stat-freq');
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'خطأ في العد. حاول مرة أخرى ببطء.' });
@@ -77,15 +88,16 @@ function StatFreqContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تحول الأرقام المبعثرة إلى معلومات مفيدة من خلال تنظيمها في جداول تكرارية احترافية.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all">
                     دخول مختبر البيانات
                 </button>
             </div>
-            <button onClick={() => { resetChallenge(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -122,7 +134,7 @@ function StatFreqContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenge(); setPhase('practice'); }} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -132,15 +144,15 @@ function StatFreqContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
+            current={challengeStep + 1}
+            total={challenges.length}
             level={level}
             question={challenge.q}
             hint="عُد كل رقم بتركيز عالٍ، واحداً تلو الآخر."
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenge}
-            onRestart={() => { setPhase('intro'); resetChallenge(); setReward(null); }}
+            onRefresh={resetChallenges}
+            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className={`flex flex-wrap justify-center gap-2 p-4 rounded-2xl border ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
@@ -177,6 +189,11 @@ function StatFreqContent({ phase, setPhase }) {
                         </tbody>
                     </table>
                 </div>
+
+                <LabTutorialNote
+                    from={`القائمة أعلاه تحتوي ${challenge.data.length} رقماً، وفيها ${uniqueValues.length} قيمة مختلفة فقط (${uniqueValues.join('، ')}).`}
+                    why={`التكرار يعني: كم مرة ظهرت كل قيمة مختلفة داخل القائمة؟ عُدّ ظهور كل رقم على حدة واكتب العدد في الخانة المقابلة له.`}
+                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all">
                     تأكيد الجدول

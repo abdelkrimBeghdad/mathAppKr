@@ -29,10 +29,6 @@ class User extends Authenticatable
         'birth_date',
         'grade_level',
         'suspension_reason',
-        'coins',
-        'points',
-        'level',
-        'xp',
         'last_daily_reward_at',
     ];
 

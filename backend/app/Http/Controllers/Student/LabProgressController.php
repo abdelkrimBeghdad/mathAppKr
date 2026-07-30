@@ -29,7 +29,7 @@ class LabProgressController extends Controller
         $request->validate([
             'lab_id' => 'required|string',
             'phase' => 'required|in:intro,learn,practice,completed',
-            'score' => 'nullable|integer',
+            'score' => 'nullable|integer|min:0|max:1000',
         ]);
 
         $progress = LabProgress::firstOrNew([

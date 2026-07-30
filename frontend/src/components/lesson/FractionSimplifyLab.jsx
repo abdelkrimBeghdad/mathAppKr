@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function gcd(x, y) {
@@ -37,7 +38,7 @@ function FractionSimplifyContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     useEffect(() => {
-        labProgressService.getOne('fraction-simplify')
+        labProgressService.getOne('frac-simplify')
             .then(progress => {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
@@ -79,9 +80,9 @@ function FractionSimplifyContent({ phase, setPhase }) {
             if (challengeStep < challenges.length - 1) {
                 setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
             } else {
-                await labProgressService.update('fraction-simplify', 'completed', 100).catch(() => { });
+                await labProgressService.update('frac-simplify', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('fraction-simplify-mastery');
+                    const data = await rewardService.claimLabReward('frac-simplify');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -210,6 +211,11 @@ function FractionSimplifyContent({ phase, setPhase }) {
                     />
                 </div>
 
+                <LabTutorialNote
+                    from={`الكسر ${currentChallenge.num}/${currentChallenge.den}: القاسم المشترك الأكبر بين ${currentChallenge.num} و${currentChallenge.den} هو ${gcd(currentChallenge.num, currentChallenge.den)}.`}
+                    why={`قسمة البسط والمقام على نفس العدد (القاسم المشترك الأكبر) لا تغيّر قيمة الكسر، لكنها تعطينا أصغر صورة ممكنة له.`}
+                />
+
                 <button
                     onClick={handleAnswer}
                     className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
@@ -225,7 +231,7 @@ export default function FractionSimplifyLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="fraction-simplify"
+            labId="frac-simplify"
             phase={phase}
             title="تبسيط الكسور"
             badgeText="بروتوكول التصفية الرقمية"

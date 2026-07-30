@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -48,7 +49,7 @@ function TrigTanContent({ phase, setPhase }) {
     };
 
     const handleAnswer = async () => {
-        if (parseFloat(input1) === currentChallenge.ans) {
+        if (Math.abs(parseFloat(input1) - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'أحسنت! الظل يعبر عن نسبة المقابل للمجاور.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
@@ -58,7 +59,9 @@ function TrigTanContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-tan', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-tan-mastery');
+                    const data = await rewardService.claimLabReward('trig-tan', {
+                        type: 'ratio', kind: 'tan', opp: currentChallenge.opp, adj: currentChallenge.adj, result: currentChallenge.ans,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -152,6 +155,10 @@ function TrigTanContent({ phase, setPhase }) {
                     placeholder="النتيجة"
                 />
             </div>
+            <LabTutorialNote
+                from={`الضلع المقابل = ${currentChallenge.opp}cm، والضلع المجاور = ${currentChallenge.adj}cm (بدون استخدام الوتر هنا).`}
+                why={`Tan(α) هو الاستثناء بين النسب الثلاث: لا يستخدم الوتر إطلاقاً، بل يقارن الضلعين القائمين ببعضهما مباشرة: مقابل ÷ مجاور.`}
+            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

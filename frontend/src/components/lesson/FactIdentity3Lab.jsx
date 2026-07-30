@@ -1,22 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Binary, ArrowDown, Split } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('expansion', lvl);
+        const maxB = params.maxCoeff || 9;
+        const b = Math.floor(Math.random() * maxB) + 2;
+        return { level: lvl, b };
+    });
+}
 
 function FactIdentity3Content({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ b: 9 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(1); // 1:x² 2:b² 3:input 4:done
     const [inputB, setInputB] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const problem = roundData; // { level, b }
+
+    useEffect(() => {
+        labProgressService.getOne('fact-id3')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -33,15 +64,19 @@ function FactIdentity3Content({ phase, setPhase }) {
         },
     ];
 
-    const generateProblem = () => {
-        const b = Math.floor(Math.random() * 8) + 2;
-        setProblem({ b });
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(1);
         setInputB('');
-        setError(false);
-        setFeedback(null);
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
         setReward(null);
+        labProgressService.update('fact-id3', 'practice').catch(() => { });
     };
 
     const handleFirstTermClick = () => { if (step === 1) setStep(2); };
@@ -50,12 +85,27 @@ function FactIdentity3Content({ phase, setPhase }) {
     const checkMastery = async () => {
         if (parseInt(inputB) === problem.b) {
             setStep(4);
-            setFeedback({ type: 'success', text: 'تم الانشطار الجبري إلى قوسين متناظرين!' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            try {
-                const data = await rewardService.claimLabReward('fact-identity-3');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `تم الانشطار الجبري بنجاح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setStep(1);
+                    setInputB('');
+                    setFeedback(null);
+                }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'تم الانشطار الجبري إلى قوسين متناظرين!' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('fact-id3', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('fact-id3', {
+                        type: 'identity-diff-sq2', b: problem.b, lastTerm: problem.b * problem.b,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'تحقق من جذر الحد الأخير.' });
@@ -71,6 +121,9 @@ function FactIdentity3Content({ phase, setPhase }) {
                 <div className={`p-4 rounded-xl border font-mono text-center text-sm text-cyan-400 mb-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-cyan-50 border-cyan-100'}`}>
                     a² - b² = (a - b)(a + b)
                 </div>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-50 text-cyan-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
                     className={`w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100'}`}
@@ -79,7 +132,7 @@ function FactIdentity3Content({ phase, setPhase }) {
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -122,7 +175,7 @@ function FactIdentity3Content({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول المختبر</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول المختبر</button>
                 }
             </div>
         </div>
@@ -132,14 +185,14 @@ function FactIdentity3Content({ phase, setPhase }) {
     return (
         <LabChallenge
             type="visual"
-            current={1}
-            total={1}
-            level={1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             hint="استخرج جذري الحدين، ثم ضعهما في قوسين متناظرين (فرق ومجموع)."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(1); setInputB(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -233,6 +286,10 @@ function FactIdentity3Content({ phase, setPhase }) {
                                     <span className={`opacity-40 ${theme.textMain}`}>)</span>
                                 </div>
                             </div>
+                            <LabTutorialNote
+                                from={`الحد الثاني هو ${problem.b * problem.b} (وهو مربع تام: ${problem.b}²).`}
+                                why={`فرق المربعين ينشطر دائماً إلى قوسين متناظرين: أحدهما بفرق الجذرين والآخر بمجموعهما — (x−${problem.b})(x+${problem.b}). لهذا نحتاج فقط جذر الحد الأخير (${problem.b}) لإكمال كلا القوسين.`}
+                            />
                             <button
                                 onClick={checkMastery}
                                 className="px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"
@@ -274,7 +331,7 @@ export default function FactIdentity3Lab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="fact-identity-3"
+            labId="fact-id3"
             phase={phase}
             title="تحليل فرق المربعين"
             badgeText="الانشطار الجبري — المتطابقة الثالثة"

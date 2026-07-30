@@ -1,22 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Droplet, ArrowRight, CheckCircle2, Waves } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('geo-volume', lvl) }));
+}
 
 function GeoVolumeContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
     const [fillLevel, setFillLevel] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [input1, setInput1] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { type, ans, q, formula, ... }
+
+    useEffect(() => {
+        labProgressService.getOne('geo-volume')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -39,32 +65,44 @@ function GeoVolumeContent({ phase, setPhase }) {
         { title: 'القاعدة الذهبية', detail: 'حجم أي مجسم قاعدته ثابتة هو: مساحة القاعدة (B) ضرب الارتفاع (h).', math: 'V = B × h' },
     ];
 
-    const challenges = [
-        { q: 'مكعب طول ضلعه 3cm. احسب حجمه.', ans: 27, formula: 'V = 3 × 3 × 3' },
-        { q: 'متوازي مستطيلات مساحة قاعدته 10cm² وارتفاعه 5cm. ما هو حجمه؟', ans: 50, formula: 'V = 10 × 5' },
-    ];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setInput1('');
+        setError(false); setFeedback(null);
+    };
 
-    const currentChallenge = challenges[challengeStep];
-
-    const resetChallenges = () => { setChallengeStep(0); setInput1(''); setError(false); setFeedback(null); };
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('geo-volume', 'practice').catch(() => { });
+    };
 
     const handleAnswer = async () => {
         if (parseInt(input1) === currentChallenge.ans) {
-            setFeedback({ type: 'success', text: 'صحيح! لقد ملأت الفراغ بالحساب الدقيق.' });
-            confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            setError(false);
             setInput1('');
-
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                setFeedback({ type: 'success', text: 'صحيح! لقد ملأت الفراغ بالحساب الدقيق.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('geo-volume', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('geo-volume-mastery');
+                    const data = await rewardService.claimLabReward('geo-volume', {
+                        type: 'geo-volume', kind: currentChallenge.type, ans: currentChallenge.ans,
+                        side: currentChallenge.side, baseArea: currentChallenge.baseArea, height: currentChallenge.height,
+                        triBase: currentChallenge.triBase, triHeight: currentChallenge.triHeight, prismLength: currentChallenge.prismLength,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
         } else {
             setError(true);
-            setFeedback({ type: 'error', text: 'خطأ. اضرب مساحة القاعدة في الارتفاع.' });
+            setFeedback({ type: 'error', text: 'خطأ. راجع القانون المناسب لهذا المجسم.' });
             setTimeout(() => { setError(false); setFeedback(null); }, 1200);
         }
     };
@@ -79,11 +117,14 @@ function GeoVolumeContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تقيس الفراغ الداخلي للمجسمات وتكتشف القوانين التي تسمح لنا بحساب سعة الخزانات والمباني الضخمة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-black transition-all">
                     دخول مختبر السعة
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -114,7 +155,7 @@ function GeoVolumeContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -124,15 +165,15 @@ function GeoVolumeContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={currentChallenge.q}
             hint={currentChallenge.formula}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>V =</span>
@@ -147,6 +188,18 @@ function GeoVolumeContent({ phase, setPhase }) {
                     placeholder="cm³"
                 />
             </div>
+            <LabTutorialNote
+                from={currentChallenge.type === 'cube'
+                    ? `ضلع المكعب هو ${currentChallenge.side}cm — وكل أضلاعه متساوية.`
+                    : currentChallenge.type === 'rect'
+                        ? `مساحة القاعدة معطاة مباشرة (${currentChallenge.baseArea}cm²)، والارتفاع (${currentChallenge.height}cm).`
+                        : `قاعدة الموشور مثلث (قاعدة=${currentChallenge.triBase}cm، ارتفاع=${currentChallenge.triHeight}cm)، وطول الموشور (${currentChallenge.prismLength}cm).`}
+                why={currentChallenge.type === 'cube'
+                    ? `المكعب حالة خاصة من "مساحة القاعدة × الارتفاع": بما أن كل الأبعاد متساوية، نضرب الضلع في نفسه 3 مرات.`
+                    : currentChallenge.type === 'rect'
+                        ? `القانون العام V = B × h ينطبق مباشرة هنا؛ لا حاجة لحساب مساحة القاعدة لأنها مُعطاة سلفاً.`
+                        : `أولاً نحسب مساحة قاعدة المثلث (قاعدة×ارتفاع÷2)، ثم نضربها في طول الموشور لنحصل على الحجم الكلي.`}
+            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black transition-all">
                 تحقق من الحجم
             </button>

@@ -7,51 +7,74 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
-function buildChallenge(level) {
-    return difficultyEngine.generateChallenge('stat-chart', level);
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('stat-chart', lvl) }));
 }
 
 function StatChartContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [challenge, setChallenge] = useState(() => buildChallenge(1));
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [input1, setInput1] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const challenge = roundData.problem;
 
     useEffect(() => {
         labProgressService.getOne('stat-chart')
             .then(progress => {
                 if (progress) {
                     const lvl = difficultyEngine.getLevel(progress);
-                    setLevel(lvl);
-                    setChallenge(buildChallenge(lvl));
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
                 }
             })
             .catch(() => { });
     }, []);
 
-    const resetChallenge = () => {
-        setChallenge(buildChallenge(level));
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInput1('');
-        setError(false);
-        setFeedback(null);
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('stat-chart', 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
         if (parseInt(input1) === challenge.ans) {
-            setFeedback({ type: 'success', text: 'صحيح! أتقنت حساب زاوية القطاع الدائري.' });
-            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-            await labProgressService.update('stat-chart', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('stat-chart-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            setInput1('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'صحيح! أتقنت حساب زاوية القطاع الدائري.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('stat-chart', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('stat-chart', {
+                        type: 'stat-chart', total: challenge.total, value: challenge.value, ans: challenge.ans,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'خطأ. استخدم قاعدة التناسب: (التكرار ÷ الكلي) × 360.' });
@@ -95,13 +118,13 @@ function StatChartContent({ phase, setPhase }) {
                     تعلم كيف تحول الجداول الجافة إلى لوحات فنية تخبرك بالقصة كاملة في ثوانٍ. المخططات هي لغة العالم الحديث.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition-all">
                     فتح مختبر الرسوم
                 </button>
             </div>
-            <button onClick={() => { resetChallenge(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -125,7 +148,7 @@ function StatChartContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenge(); setPhase('practice'); }} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -135,15 +158,15 @@ function StatChartContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={level}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={challenge.q}
             hint={challenge.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenge}
-            onRestart={() => { setPhase('intro'); resetChallenge(); setReward(null); }}
+            onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-xl" dir="ltr">
                 <input
@@ -158,6 +181,10 @@ function StatChartContent({ phase, setPhase }) {
                 />
                 <span className={theme.textMain}>°</span>
             </div>
+            <LabTutorialNote
+                from={`التكرار الكلي هو ${challenge.total}، وتكرار القيمة المطلوبة هو ${challenge.value}.`}
+                why={`الدائرة الكاملة تساوي 360°، فنسبة الزاوية من الدائرة تساوي نسبة التكرار من الإجمالي: (${challenge.value}/${challenge.total}) × 360°.`}
+            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all">
                 تحقق من الزاوية
             </button>

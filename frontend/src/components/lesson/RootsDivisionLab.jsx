@@ -1,45 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Divide, ArrowRight, Layers } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import { rewardService } from '../../utils/rewardService';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('roots-divide', lvl) }));
+}
 
 function RootsDivisionContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(1);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: توحيد تحت جذر واحد، 1: استخراج الجذر
-    const [practicePair, setPracticePair] = useState({ a: 50, b: 2, quot: 25, result: 5 });
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const options = [
-        { a: 50, b: 2, quot: 25, result: 5 },
-        { a: 72, b: 2, quot: 36, result: 6 },
-        { a: 100, b: 4, quot: 25, result: 5 },
-        { a: 48, b: 3, quot: 16, result: 4 },
-        { a: 80, b: 5, quot: 16, result: 4 },
-        { a: 162, b: 2, quot: 81, result: 9 },
-    ];
+    const roundData = rounds[round];
+    const practicePair = roundData.problem; // { a, b, quot, result }
+
+    useEffect(() => {
+        labProgressService.getOne('roots-division')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         { title: 'بروتوكول التوحيد التقسيمي', detail: 'قسمة جذرين تربيعيين تعني توحيدهما تحت جذر واحد، بقسمة العدد الأول على الثاني داخل الجذر.', math: '√a ÷ √b = √(a ÷ b)', icon: <Divide size={20} /> },
         { title: 'خوارزمية الاستخراج النهائي', detail: 'بعد الحصول على القيمة الموحدة تحت الجذر، نستخرج جذرها التربيعي للوصول للناتج النهائي.', math: '√25 = 5', icon: <Layers size={20} /> },
     ];
 
-    const generateProblem = () => {
-        const newProb = options[Math.floor(Math.random() * options.length)];
-        setPracticePair(newProb);
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(0);
-        setInputVal('');
-        setError(false); setFeedback(null); setReward(null);
+        setInputVal(''); setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
         labProgressService.update('roots-division', 'practice').catch(() => { });
     };
 
@@ -48,16 +68,21 @@ function RootsDivisionContent({ phase, setPhase }) {
 
         if (isCorrect) {
             setError(false);
+            setInputVal('');
             if (step === 0) {
                 setFeedback({ type: 'success', text: 'صحيح! الآن استخرج الجذر التربيعي.' });
-                setInputVal('');
                 setTimeout(() => { setStep(1); setFeedback(null); }, 900);
+            } else if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => { setRound(r => r + 1); setStep(0); setFeedback(null); }, 1400);
             } else {
                 setFeedback({ type: 'success', text: 'ممتاز! وحّدت الجذرين واستخرجت الناتج بدقة.' });
                 confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
                 await labProgressService.update('roots-division', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('roots-division-mastery');
+                    const data = await rewardService.claimLabReward('roots-division', {
+                        type: 'roots-divide', a: practicePair.a, b: practicePair.b, quot: practicePair.quot, result: practicePair.result,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -82,17 +107,21 @@ function RootsDivisionContent({ phase, setPhase }) {
                         <span className="text-rose-400">√(a÷b)</span>
                     </div>
                 </div>
+                <p className={`text-xs ${theme.textSub} mt-2 text-center`}>ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.</p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => { setPhase('learn'); setLearnStep(1); }} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'}`}>
                     مشاهدة الشرح
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <button onClick={startPractice} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-rose-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Divide size={36} />
                     <span className="font-black text-xl uppercase tracking-widest">بدء الحساب</span>
                 </div>
-            </motion.button>
+            </button>
         </div>
     );
 
@@ -117,7 +146,7 @@ function RootsDivisionContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < 2
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحدي</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحدي</button>
                 }
             </div>
         </div>
@@ -127,15 +156,15 @@ function RootsDivisionContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={step + 1}
-            total={2}
-            level={2}
+            current={round * 2 + step + 1}
+            total={6}
+            level={roundData.level}
             question={step === 0 ? `√${practicePair.a} ÷ √${practicePair.b} = √(؟)` : `√${practicePair.quot} = ؟`}
             hint={step === 0 ? `اقسم ${practicePair.a} ÷ ${practicePair.b}.` : `أي عدد مضروب في نفسه يعطي ${practicePair.quot}؟`}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(0); setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 {step === 1 && <span className="text-rose-500">√</span>}
@@ -150,6 +179,16 @@ function RootsDivisionContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
+
+            <LabTutorialNote
+                from={step === 0
+                    ? `العدد الأول تحت الجذر هو ${practicePair.a}، والثاني هو ${practicePair.b}.`
+                    : `القيمة الموحدة التي وجدتها تحت الجذر هي ${practicePair.quot}.`}
+                why={step === 0
+                    ? `قسمة جذرين تساوي جذر ناتج القسمة: √a ÷ √b = √(a÷b). اقسم العددين أولاً لتوحيدهما تحت جذر واحد.`
+                    : `بما أن ${practicePair.quot} مربع تام (تم تصميم المسألة لضمان ذلك)، فإن جذره عدد صحيح — وهو الناتج النهائي للعملية.`}
+            />
+
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> {step === 0 ? 'تأكيد التوحيد' : 'استخراج الناتج'}
             </button>

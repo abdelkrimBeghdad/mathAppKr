@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function EquationsProductContent({ phase, setPhase }) {
@@ -23,7 +24,7 @@ function EquationsProductContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     useEffect(() => {
-        labProgressService.getOne('equations-product')
+        labProgressService.getOne('eq-product')
             .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
             .catch(() => { });
     }, []);
@@ -38,18 +39,12 @@ function EquationsProductContent({ phase, setPhase }) {
         const numProblems = Math.min(4 + Math.floor(level / 2), 8);
         const list = [];
         for (let i = 0; i < numProblems; i++) {
-            const a = Math.floor(Math.random() * 10) - 5;
-            const b = Math.floor(Math.random() * 10) - 5;
-            let root1 = a === 0 ? 1 : a;
-            let root2 = b === root1 ? root1 + 1 : b;
-
-            const formatFactor = (r) => r === 0 ? 'x' : `(x ${r > 0 ? '-' : '+'} ${Math.abs(r)})`;
-            const q = `${formatFactor(root1)}${formatFactor(root2)} = 0`;
+            const p = difficultyEngine.generateChallenge('eq-product', level);
             list.push({
-                q,
-                a1: root1.toString(),
-                a2: root2.toString(),
-                hint: `إما ${formatFactor(root1).replace(/[()]/g, '')} = 0 أو ${formatFactor(root2).replace(/[()]/g, '')} = 0.`,
+                q: p.q,
+                a1: p.root1.toString(),
+                a2: p.root2.toString(),
+                hint: p.hint,
             });
         }
         return list;
@@ -61,7 +56,7 @@ function EquationsProductContent({ phase, setPhase }) {
         setChallengeStep(0);
         setInput1(''); setInput2('');
         setError(false); setFeedback(null); setReward(null);
-        labProgressService.update('equations-product', 'practice').catch(() => { });
+        labProgressService.update('eq-product', 'practice').catch(() => { });
     };
 
     const currentChallenge = challenges[challengeStep] || {};
@@ -84,9 +79,11 @@ function EquationsProductContent({ phase, setPhase }) {
             if (challengeStep < challenges.length - 1) {
                 setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
             } else {
-                await labProgressService.update('equations-product', 'completed', 100).catch(() => { });
+                await labProgressService.update('eq-product', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('equations-product');
+                    const data = await rewardService.claimLabReward('eq-product', {
+                        type: 'eq-product', root1: parseInt(currentChallenge.a1), root2: parseInt(currentChallenge.a2),
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -179,6 +176,10 @@ function EquationsProductContent({ phase, setPhase }) {
                     </div>
                 </div>
             </div>
+            <LabTutorialNote
+                from={`المعادلة على شكل ضرب قوسين يساوي صفر: ${currentChallenge.q}`}
+                why={`إذا كان حاصل ضرب عددين يساوي صفراً، فأحدهما على الأقل لا بد أن يكون صفراً. لذا نحل كل قوس على حدة كأنه معادلة مستقلة بسيطة.`}
+            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <FastForward size={18} /> تأكيد الانشطار
             </button>
@@ -190,7 +191,7 @@ export default function EquationsProductLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="equations-product"
+            labId="eq-product"
             phase={phase}
             title="معادلات الانشطار"
             badgeText="بروتوكول الجداء المعدوم"

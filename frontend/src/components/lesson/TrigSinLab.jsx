@@ -7,6 +7,7 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -47,7 +48,7 @@ function TrigSinContent({ phase, setPhase }) {
     };
 
     const handleAnswer = async () => {
-        if (parseFloat(input1) === currentChallenge.ans) {
+        if (Math.abs(parseFloat(input1) - currentChallenge.ans) < 0.1) {
             setFeedback({ type: 'success', text: 'أحسنت! السينوس دائماً يعبر عن العلاقة مع الضلع المقابل.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
@@ -57,7 +58,9 @@ function TrigSinContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-sin', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-sin-mastery');
+                    const data = await rewardService.claimLabReward('trig-sin', {
+                        type: 'ratio', kind: 'sin', opp: currentChallenge.opp, hyp: currentChallenge.hyp, result: currentChallenge.ans,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -155,6 +158,10 @@ function TrigSinContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
+            <LabTutorialNote
+                from={`الضلع المقابل = ${currentChallenge.opp}cm (الضلع البعيد عن الزاوية)، والوتر = ${currentChallenge.hyp}cm (أطول ضلع، مقابل الزاوية القائمة).`}
+                why={`Sin(α) دائماً = المقابل ÷ الوتر. هذا تعريف ثابت، لذا نقسم الرقمين المُعطيين بهذا الترتيب بالذات.`}
+            />
             <button onClick={handleAnswer} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

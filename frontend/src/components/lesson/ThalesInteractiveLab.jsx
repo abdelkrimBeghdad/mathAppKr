@@ -1,28 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, CheckCircle2, ArrowRight, Mountain, Eye, SunDim } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('thales-shadow', lvl) }));
+}
 
 function ThalesInteractiveContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
     const [sunAngle, setSunAngle] = useState(45);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [input1, setInput1] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    // حسابات الظل
-    const stickHeight = 2;   // متر
-    const pyramidHeight = 140; // متر (الهرم الأكبر)
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { stickHeight, stickShadow, tallShadow, tallHeight, q, hint }
+
+    // حسابات ظل شريط الشرح التفاعلي (لا علاقة له بمنطق الأسئلة)
+    const stickHeight = 2;
+    const pyramidHeight = 140;
     const stickShadow = stickHeight / Math.tan((sunAngle * Math.PI) / 180);
     const pyramidShadow = pyramidHeight / Math.tan((sunAngle * Math.PI) / 180);
+
+    useEffect(() => {
+        labProgressService.getOne('thales-shadow')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -86,24 +112,40 @@ function ThalesInteractiveContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        { q: 'عصا طولها 2م وظلها 3م. إذا كان ظل الهرم 210م، فما ارتفاع الهرم؟', ans: 140, hint: '(2 / 3) = (؟ / 210) → ؟ = 2 × 210 / 3' },
-        { q: 'شجرة ظلها 8م. عصا طولها 1.5م وظلها 2م. كم طول الشجرة؟', ans: 6, hint: '(1.5 / 2) = (؟ / 8) → ؟ = 1.5 × 8 / 2' },
-    ];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setInput1('');
+        setError(false); setFeedback(null);
+    };
 
-    const currentChallenge = challenges[challengeStep];
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('thales-shadow', 'practice').catch(() => { });
+    };
 
     const handleAnswer = async () => {
-        if (parseInt(input1) === currentChallenge.ans) {
+        if (parseInt(input1) === currentChallenge.tallHeight) {
             setFeedback({ type: 'success', text: 'صحيح! استخدمت حيلة طاليس كالمحترفين.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
+            setError(false);
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setFeedback({ type: 'success', text: `أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => setFeedback(null), 1000);
+                }, 700);
             } else {
+                await labProgressService.update('thales-shadow', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('thales-shadow');
+                    const data = await rewardService.claimLabReward('thales-shadow', {
+                        type: 'thales', stickHeight: currentChallenge.stickHeight, stickShadow: currentChallenge.stickShadow,
+                        tallShadow: currentChallenge.tallShadow, tallHeight: currentChallenge.tallHeight,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -123,12 +165,16 @@ function ThalesInteractiveContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     سافر عبر الزمن إلى مصر القديمة وتعلم كيف استخدم طاليس ظل عصا صغيرة لقياس ارتفاع الهرم الأكبر دون لمسه!
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black transition-all">
                     السفر إلى مصر القديمة
                 </button>
             </div>
-            <button onClick={() => setPhase('practice')} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -162,7 +208,7 @@ function ThalesInteractiveContent({ phase, setPhase }) {
                         التالي <ArrowRight size={18} />
                     </button>
                 ) : (
-                    <button onClick={() => setPhase('practice')} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">
+                    <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">
                         التدريب <CheckCircle2 size={18} />
                     </button>
                 )}
@@ -174,15 +220,15 @@ function ThalesInteractiveContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={currentChallenge.q}
             hint={currentChallenge.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={() => { setChallengeStep(0); setInput1(''); setFeedback(null); }}
-            onRestart={() => { setPhase('intro'); setChallengeStep(0); setInput1(''); setReward(null); }}
+            onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>=</span>
@@ -198,6 +244,10 @@ function ThalesInteractiveContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
+            <LabTutorialNote
+                from={`العصا معلومة: طولها ${currentChallenge.stickHeight}م وظلها ${currentChallenge.stickShadow}م، وظل الجسم الكبير معلوم أيضاً: ${currentChallenge.tallShadow}م.`}
+                why={`أشعة الشمس متوازية دائماً، لذا النسبة بين الطول والظل ثابتة للجميع في نفس اللحظة: (${currentChallenge.stickHeight}/${currentChallenge.stickShadow}) = (؟/${currentChallenge.tallShadow})، فنحل بضرب تبادلي.`}
+            />
             <button
                 onClick={handleAnswer}
                 className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
@@ -212,7 +262,7 @@ export default function ThalesInteractiveLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="thales-interactive"
+            labId="thales-shadow"
             phase={phase}
             title="مختبر طاليس التاريخي"
             badgeText="ظل الأهرامات"

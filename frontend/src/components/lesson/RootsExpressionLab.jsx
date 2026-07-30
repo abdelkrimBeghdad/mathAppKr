@@ -60,7 +60,7 @@ function RootsExpressionContent({ phase, setPhase }) {
                 confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
                 await labProgressService.update('roots-expression', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('roots-expression-mastery');
+                    const data = await rewardService.claimLabReward('roots-expression');
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

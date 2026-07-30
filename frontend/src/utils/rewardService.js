@@ -8,11 +8,11 @@ export const rewardService = {
      * @param {string} labId - The identifier for the lab (e.g., 'expansion-simple')
      * @returns {Promise} - The API response
      */
-    claimLabReward: async (labId) => {
+    claimLabReward: async (labId, verification = null) => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(`${API_URL}/rewards/lab/claim`, 
-                { lab_id: labId },
+                { lab_id: labId, verification },
                 {
                     headers: {
                         Authorization: `Bearer ${token}`

@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('thales-problems', lvl) }));
+}
 
 function ThalesProblemsContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState(null);
-    const [step, setStep] = useState(0); // 0: إدخال، 1: تم
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const problem = roundData.problem; // { type, a, b, c, ans, q }
+
+    useEffect(() => {
+        labProgressService.getOne('thales-prob')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -31,29 +56,39 @@ function ThalesProblemsContent({ phase, setPhase }) {
         },
     ];
 
-    const problems = [
-        { q: 'مبنى يلقي ظلاً طوله 15m. في نفس الوقت، عصا طولها 2m تلقي ظلاً طوله 3m. ما هو ارتفاع المبنى؟ (أطوال متناسبة بسبب أشعة الشمس المتوازية).', ans: 10 },
-        { q: 'في تصميم جسر، قطعة طولها الحقيقي 12m رُسمت بطول 4cm. قطعة أخرى طولها الحقيقي 18m، كم سيكون طولها على الرسم بـ cm؟', ans: 6 },
-        { q: 'مخروط دائري ارتفاعه الكلي 12cm ونصف قطر قاعدته 4cm. قطعناه بمستوٍ يوازي القاعدة على ارتفاع 3cm من الرأس. ما هو نصف قطر الدائرة الناتجة؟', ans: 1 },
-    ];
-
-    const generateProblem = () => {
-        const p = problems[Math.floor(Math.random() * problems.length)];
-        setProblem(p);
-        setPhase('practice');
-        setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputVal('');
-        setError(false);
-        setFeedback(null);
-        setReward(null);
+        setError(false); setFeedback(null);
     };
 
-    const handleCheck = () => {
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('thales-prob', 'practice').catch(() => { });
+    };
+
+    const handleCheck = async () => {
         if (parseFloat(inputVal) === problem.ans) {
-            setStep(1);
-            setFeedback({ type: 'success', text: 'ممتاز! طبّقت التناسب بدقة.' });
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('thales-problems').then(d => d.status === 'success' && setReward(d)).catch(console.error);
+            setError(false);
+            setInputVal('');
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: 'ممتاز! طبّقت التناسب بدقة في 3 سياقات مختلفة.' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('thales-prob', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('thales-prob', {
+                        type: 'thales-problem', kind: problem.type, a: problem.a, b: problem.b, c: problem.c, ans: parseFloat(inputVal),
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'ابحث عن الأشياء المتوازية ورتّب النسب: صغير على كبير.' });
@@ -69,7 +104,10 @@ function ThalesProblemsContent({ phase, setPhase }) {
                 <div className={`p-4 rounded-xl border text-center mb-3 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-indigo-50 border-indigo-100'}`}>
                     <div className={`text-base font-black ${theme.textMain}`}>التناسب هو المفتاح</div>
                 </div>
-                <p className={`text-sm ${theme.textSub}`}>ابحث عن الأشياء المتوازية (ظلال، دعامات...) ورتّب النسب: صغير على كبير.</p>
+                <p className={`text-sm ${theme.textSub}`}>ابحث عن الأشياء المتوازية (ظلال، دعامات، مخاريط...) ورتّب النسب: صغير على كبير. ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً.</p>
+                <div className={`mt-3 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
                     className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'}`}
@@ -78,7 +116,7 @@ function ThalesProblemsContent({ phase, setPhase }) {
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -118,26 +156,41 @@ function ThalesProblemsContent({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">أرني مسألة</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">أرني مسألة</button>
                 }
             </div>
         </div>
     );
 
     // ── practice — يستخدم LabChallenge ───────────────────────────────────────
-    if (!problem) return null;
+    const tutorialByType = {
+        shadow: {
+            from: `العصا معلومة الطول (${problem.a}) والظل (${problem.b})، وظل المبنى معلوم أيضاً (${problem.c}).`,
+            why: `أشعة الشمس متوازية، فالنسبة بين الطول والظل ثابتة: ${problem.a}/${problem.b} = ؟/${problem.c}.`,
+        },
+        scale: {
+            from: `القطعة الأولى: طولها الحقيقي ${problem.a}m ورُسمت بطول ${problem.b}cm، والقطعة الثانية طولها الحقيقي ${problem.c}m.`,
+            why: `مقياس الرسم ثابت لكل القطع: ${problem.a}/${problem.b} = ${problem.c}/؟.`,
+        },
+        cone: {
+            from: `المخروط ارتفاعه الكلي ${problem.a}cm ونصف قطر قاعدته ${problem.b}cm، وقُطع على ارتفاع ${problem.c}cm من الرأس.`,
+            why: `القطاع الموازي للقاعدة يحافظ على نفس النسبة: ${problem.a}/${problem.b} = ${problem.c}/؟.`,
+        },
+    };
+    const note = tutorialByType[problem.type];
+
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={2}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={`"${problem.q}"`}
             hint="ابحث عن التوازي في المسألة، ورتّب النسب: صغير على كبير في كل جهة."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <span className={`text-sm font-bold ${theme.textSub}`}>اكتب الجواب النهائي (رقم فقط):</span>
@@ -154,6 +207,7 @@ function ThalesProblemsContent({ phase, setPhase }) {
                     placeholder="?"
                     autoFocus
                 />
+                <LabTutorialNote from={note.from} why={note.why} />
                 <button
                     onClick={handleCheck}
                     className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"
@@ -169,7 +223,7 @@ export default function ThalesProblemsLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="thales-problems"
+            labId="thales-prob"
             phase={phase}
             title="مسائل طاليس التطبيقية"
             badgeText="تطبيقات طاليس"

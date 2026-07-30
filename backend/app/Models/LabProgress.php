@@ -18,10 +18,12 @@ class LabProgress extends Model
         'best_score',
         'attempts',
         'completed_at',
+        'reward_claimed_at',
     ];
 
     protected $casts = [
         'completed_at' => 'datetime',
+        'reward_claimed_at' => 'datetime',
         'best_score' => 'integer',
         'attempts' => 'integer',
     ];

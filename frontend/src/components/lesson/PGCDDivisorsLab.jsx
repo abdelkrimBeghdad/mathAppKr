@@ -8,6 +8,7 @@ import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function getDivisors(n) {
@@ -16,12 +17,24 @@ function getDivisors(n) {
     return divs;
 }
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('pgcd', lvl);
+        const pairs = params.pairs || [[12, 18], [15, 25], [20, 30]];
+        const [a, b] = pairs[Math.floor(Math.random() * pairs.length)];
+        return { level: lvl, a, b };
+    });
+}
+
 function PGCDDivisorsContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [numbers, setNumbers] = useState({ a: 12, b: 18 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(1); // 1: قواسم a، 2: قواسم b، 3: المشتركة، 4: PGCD
     const [foundDivisorsA, setFoundDivisorsA] = useState([]);
     const [foundDivisorsB, setFoundDivisorsB] = useState([]);
@@ -32,9 +45,18 @@ function PGCDDivisorsContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const roundData = rounds[round];
+    const numbers = { a: roundData.a, b: roundData.b };
+
     useEffect(() => {
         labProgressService.getOne('pgcd-divisors')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
@@ -48,16 +70,19 @@ function PGCDDivisorsContent({ phase, setPhase }) {
         { title: 'المنطقة المشتركة', detail: 'بعد إيجاد قواسم كل عدد، نحدد الأرقام الموجودة في المجموعتين معاً. أكبر هذه الأرقام هو PGCD.', math: 'D(a) ∩ D(b) → Max = PGCD' },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('pgcd', level);
-        const pairs = params.pairs || [[12, 18], [15, 25], [20, 30]];
-        const pair = pairs[Math.floor(Math.random() * pairs.length)];
-        setNumbers({ a: pair[0], b: pair[1] });
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(1);
         setFoundDivisorsA([]); setFoundDivisorsB([]); setFoundCommon([]);
         setPgcdInput(''); setInputVal('');
-        setError(false); setFeedback(null); setReward(null);
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
+        setReward(null);
         labProgressService.update('pgcd-divisors', 'practice').catch(() => { });
     };
 
@@ -98,13 +123,27 @@ function PGCDDivisorsContent({ phase, setPhase }) {
 
     const checkPGCD = async () => {
         if (parseInt(pgcdInput) === pgcd) {
-            setFeedback({ type: 'success', text: `صحيح! القاسم المشترك الأكبر هو ${pgcd}.` });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            await labProgressService.update('pgcd-divisors', 'completed', 100).catch(() => { });
-            try {
-                const data = await rewardService.claimLabReward('pgcd-divisors');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setStep(1);
+                    setFoundDivisorsA([]); setFoundDivisorsB([]); setFoundCommon([]);
+                    setPgcdInput('');
+                    setFeedback(null);
+                }, 1400);
+            } else {
+                setFeedback({ type: 'success', text: `صحيح! القاسم المشترك الأكبر هو ${pgcd}.` });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('pgcd-divisors', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('pgcd-divisors', {
+                        type: 'pgcd', a: numbers.a, b: numbers.b, result: pgcd,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع القواسم المشتركة، واختر أكبرها.' });
@@ -118,11 +157,15 @@ function PGCDDivisorsContent({ phase, setPhase }) {
             <div className={`p-6 rounded-[1rem] border backdrop-blur-3xl ${theme.card}`}>
                 <h3 className={`text-base font-black mb-3 ${theme.textMain}`}>طريقة القوائم:</h3>
                 <div className={`p-4 rounded-xl font-mono text-center ${isDarkMode ? 'bg-black/20 border border-white/5 text-emerald-400' : 'bg-emerald-50 border border-emerald-100 text-emerald-600'}`}>D(a) ∩ D(b) = Common</div>
+                <p className={`text-xs ${theme.textSub} mt-2 text-center`}>ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.</p>
+                <div className={`mt-2 mb-1 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
                     فتح الدليل النظري
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <motion.button onClick={startPractice} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-emerald-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-3">
                     <Search size={36} />
@@ -152,7 +195,7 @@ function PGCDDivisorsContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black">دخول الميدان</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black">دخول الميدان</button>
                 }
             </div>
         </div>
@@ -175,15 +218,15 @@ function PGCDDivisorsContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={step}
-            total={4}
-            level={level}
+            current={round * 4 + step}
+            total={12}
+            level={roundData.level}
             question={stepLabels[step]}
             hint={step < 4 ? 'اكتب القواسم واحداً تلو الآخر — سيتم التحقق من كل رقم فور إدخاله.' : 'اختر أكبر رقم موجود في قائمة القواسم المشتركة.'}
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(1); setFoundDivisorsA([]); setFoundDivisorsB([]); setFoundCommon([]); setPgcdInput(''); setInputVal(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={stepsForPanel.length ? <LabStepsPanel title="سجل الاكتشاف" steps={stepsForPanel} /> : undefined}
         >
             {step < 4 ? (
@@ -203,6 +246,14 @@ function PGCDDivisorsContent({ phase, setPhase }) {
                     <button onClick={handleAddDivisor} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <Send size={18} /> إضافة القاسم
                     </button>
+                    <LabTutorialNote
+                        from={step === 1 ? `العدد المطلوب إيجاد قواسمه هو ${numbers.a}.`
+                            : step === 2 ? `العدد المطلوب إيجاد قواسمه هو ${numbers.b}.`
+                                : `لديك الآن قائمتا قواسم ${numbers.a} و${numbers.b} كاملتين.`}
+                        why={step < 3
+                            ? `القاسم هو أي عدد يقسم العدد الأصلي بدون باقٍ. جرّب الأعداد بالترتيب من 1 حتى العدد نفسه، وتحقق من كل واحد.`
+                            : `القاسم المشترك هو أي رقم موجود في القائمتين معاً. ابحث عن الأرقام المتكررة بين المجموعتين.`}
+                    />
                 </>
             ) : (
                 <>
@@ -222,6 +273,10 @@ function PGCDDivisorsContent({ phase, setPhase }) {
                     <button onClick={checkPGCD} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <CheckCircle2 size={18} /> تأكيد PGCD
                     </button>
+                    <LabTutorialNote
+                        from={`القواسم المشتركة التي جمعتها هي: {${foundCommon.join('، ')}}.`}
+                        why={`القاسم المشترك الأكبر (PGCD) هو ببساطة أكبر رقم في قائمة القواسم المشتركة — لا حاجة لأي حساب إضافي، فقط اختر الأكبر.`}
+                    />
                 </>
             )}
         </LabChallenge>

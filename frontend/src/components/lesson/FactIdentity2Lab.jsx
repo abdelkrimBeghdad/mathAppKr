@@ -1,22 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Binary, ArrowDown, MinusCircle, Microscope } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('expansion', lvl);
+        const maxB = params.maxCoeff || 9;
+        const a = Math.floor(Math.random() * maxB) + 2;
+        return { level: lvl, a };
+    });
+}
 
 function FactIdentity2Content({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ a: 6 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(1); // 1:x² 2:b² 3:mid 4:input 5:done
     const [inputA, setInputA] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const problem = roundData; // { level, a }
+
+    useEffect(() => {
+        labProgressService.getOne('fact-id2')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -33,15 +64,19 @@ function FactIdentity2Content({ phase, setPhase }) {
         },
     ];
 
-    const generateProblem = () => {
-        const a = Math.floor(Math.random() * 8) + 2;
-        setProblem({ a });
-        setPhase('practice');
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setStep(1);
         setInputA('');
-        setError(false);
-        setFeedback(null);
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
         setReward(null);
+        labProgressService.update('fact-id2', 'practice').catch(() => { });
     };
 
     const handleFirstTermClick = () => { if (step === 1) setStep(2); };
@@ -51,12 +86,27 @@ function FactIdentity2Content({ phase, setPhase }) {
     const checkMastery = async () => {
         if (parseInt(inputA) === problem.a) {
             setStep(5);
-            setFeedback({ type: 'success', text: 'تمت استعادة مربع الفرق بنجاح!' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            try {
-                const data = await rewardService.claimLabReward('fact-identity-2');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setError(false);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `تمت استعادة مربع الفرق بنجاح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setStep(1);
+                    setInputA('');
+                    setFeedback(null);
+                }, 1600);
+            } else {
+                setFeedback({ type: 'success', text: 'تمت استعادة مربع الفرق بنجاح!' });
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update('fact-id2', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('fact-id2', {
+                        type: 'identity-diff-sq', b: problem.a, midTerm: 2 * problem.a, lastTerm: problem.a * problem.a,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'تحقق من الجذر التربيعي للحد الأخير.' });
@@ -72,6 +122,9 @@ function FactIdentity2Content({ phase, setPhase }) {
                 <div className={`p-4 rounded-xl border font-mono text-center text-sm text-cyan-400 mb-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-cyan-50 border-cyan-100'}`}>
                     a² - 2ab + b² = (a - b)²
                 </div>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-50 text-cyan-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
                     className={`w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100'}`}
@@ -80,7 +133,7 @@ function FactIdentity2Content({ phase, setPhase }) {
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -123,7 +176,7 @@ function FactIdentity2Content({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول المختبر</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول المختبر</button>
                 }
             </div>
         </div>
@@ -133,14 +186,14 @@ function FactIdentity2Content({ phase, setPhase }) {
     return (
         <LabChallenge
             type="visual"
-            current={1}
-            total={1}
-            level={1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             hint="انتبه للإشارة السالبة — الحد الأوسط سالب هو علامة مربع الفرق."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setStep(1); setInputA(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -239,6 +292,10 @@ function FactIdentity2Content({ phase, setPhase }) {
                                 />
                                 <span className={`opacity-50 ${theme.textMain}`}>)²</span>
                             </div>
+                            <LabTutorialNote
+                                from={`استخرجت جذر الحد الأول (x) وجذر الحد الأخير (√${problem.a * problem.a} = ${problem.a}).`}
+                                why={`لتأكيد صحة التحليل، يجب أن يساوي الحد الأوسط (سالب) ضعف حاصل ضرب الجذرين: -2 × x × ${problem.a} = -${2 * problem.a}x — الإشارة السالبة هي ما يميز هذه المتطابقة عن الأولى.`}
+                            />
                             <button
                                 onClick={checkMastery}
                                 className="px-8 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"
@@ -271,7 +328,7 @@ export default function FactIdentity2Lab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="fact-identity-2"
+            labId="fact-id2"
             phase={phase}
             title="تحليل مربع الفرق"
             badgeText="التحليل العكسي — المتطابقة الثانية"

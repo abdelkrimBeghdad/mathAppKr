@@ -1,35 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ruler, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('vec-distance', lvl) }));
+}
 
 function VecDistanceContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(0); // 0: dx,dy  1: مجموع المربعات  2: الجذر
-    const [challengeStep, setChallengeStep] = useState(0);
     const [input1, setInput1] = useState('');
     const [input2, setInput2] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const challenges = [
-        { ax: 1, ay: 2, bx: 4, by: 6 },
-        { ax: -2, ay: 1, bx: 4, by: -7 },
-        { ax: -3, ay: -2, bx: 2, by: 10 },
-    ];
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { ax, ay, bx, by, dx, dy, sumSq, dist }
+    const { dx, dy, sumSq } = currentChallenge;
+    const ans = currentChallenge.dist;
 
-    const currentChallenge = challenges[challengeStep];
-    const dx = currentChallenge.bx - currentChallenge.ax;
-    const dy = currentChallenge.by - currentChallenge.ay;
-    const sumSq = dx * dx + dy * dy;
-    const ans = Math.sqrt(sumSq);
+    useEffect(() => {
+        labProgressService.getOne('vec-distance')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -54,10 +70,19 @@ function VecDistanceContent({ phase, setPhase }) {
         'ما هو العدد الذي إذا ضربته في نفسه يعطيك الرقم الموجود تحت الجذر؟',
     ];
 
-    const resetChallenges = () => {
-        setChallengeStep(0); setStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setStep(0);
         setInput1(''); setInput2('');
         setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('vec-distance', 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
@@ -73,19 +98,20 @@ function VecDistanceContent({ phase, setPhase }) {
             if (step < 2) {
                 setFeedback({ type: 'success', text: 'صحيح! الخطوة التالية.' });
                 setTimeout(() => { setStep(s => s + 1); setFeedback(null); }, 900);
+            } else if (round < 2) {
+                setFeedback({ type: 'success', text: `ممتاز! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setStep(0); setFeedback(null); }, 1300);
             } else {
-                if (challengeStep < challenges.length - 1) {
-                    setFeedback({ type: 'success', text: 'ممتاز! التحدي التالي.' });
-                    confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
-                    setTimeout(() => { setChallengeStep(s => s + 1); setStep(0); setFeedback(null); }, 900);
-                } else {
-                    setFeedback({ type: 'success', text: 'أتقنت حساب طول المسافة!' });
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                    try {
-                        const data = await rewardService.claimLabReward('vec-distance-mastery');
-                        if (data.status === 'success') setReward(data);
-                    } catch (err) { console.error(err); }
-                }
+                setFeedback({ type: 'success', text: 'أتقنت حساب طول المسافة!' });
+                confetti({ particleCount: 130, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update('vec-distance', 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward('vec-distance', {
+                        type: 'vec-distance', ax: currentChallenge.ax, ay: currentChallenge.ay, bx: currentChallenge.bx, by: currentChallenge.by, dist: ans,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
             }
         } else {
             setError(true);
@@ -103,12 +129,16 @@ function VecDistanceContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تحسب المسافة الدقيقة بين نقطتين (طويلة الشعاع) باستخدام قانون الجذر التربيعي المستمد من فيثاغورس.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -136,7 +166,7 @@ function VecDistanceContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -146,15 +176,15 @@ function VecDistanceContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={step + 1}
+            current={round * 3 + step + 1}
+            total={9}
+            level={roundData.level}
             question={`احسب المسافة AB : A(${currentChallenge.ax}, ${currentChallenge.ay})  B(${currentChallenge.bx}, ${currentChallenge.by})`}
             hint={hints[step]}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
@@ -187,6 +217,19 @@ function VecDistanceContent({ phase, setPhase }) {
                         </>
                     )}
                 </div>
+
+                <LabTutorialNote
+                    from={step === 0
+                        ? `النقطتان: A(${currentChallenge.ax}, ${currentChallenge.ay}) وB(${currentChallenge.bx}, ${currentChallenge.by}).`
+                        : step === 1
+                            ? `وجدت المركبتين: dx = ${dx}، dy = ${dy}.`
+                            : `مجموع المربعات الذي وجدته هو ${sumSq}.`}
+                    why={step === 0
+                        ? `أول خطوة دائماً: احسب مركبات الشعاع (النهاية ناقص البداية) قبل أي شيء آخر.`
+                        : step === 1
+                            ? `نظرية فيثاغورس: نربّع كل مركبة على حدة ثم نجمع الناتجين: ${dx}² + ${dy}² = ${dx * dx} + ${dy * dy} = ${sumSq}.`
+                            : `المسافة هي الجذر التربيعي لهذا المجموع (لأنه مصمم ليكون مربعاً تاماً دائماً): √${sumSq} = ${ans}.`}
+                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

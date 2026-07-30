@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Grid, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
-function VectorGrid({ dx, dy, startX, startY, isDarkMode }) {
+function VectorGrid({ dx, dy, startX, startY }) {
     return (
         <div className="relative w-full max-w-[220px] aspect-square bg-slate-950/50 rounded-2xl border-2 border-white/10 overflow-hidden mx-auto mb-2 shadow-inner">
             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(#38bdf8 1px, transparent 1px), linear-gradient(90deg, #38bdf8 1px, transparent 1px)', backgroundSize: '10% 10%', backgroundPosition: 'center center' }} />
@@ -28,16 +31,39 @@ function VectorGrid({ dx, dy, startX, startY, isDarkMode }) {
     );
 }
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('vec-read', lvl) }));
+}
+
 function VecReadContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputX, setInputX] = useState('');
     const [inputY, setInputY] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { dx, dy, startX, startY }
+
+    useEffect(() => {
+        labProgressService.getOne('vec-read')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         { title: 'قراءة المسار', detail: 'لكتابة مركبات شعاع، نحلل حركته المائلة إلى حركتين بسيطتين: أفقية (x) ثم عمودية (y).' },
@@ -45,34 +71,36 @@ function VecReadContent({ phase, setPhase }) {
         { title: 'المركبة العمودية (y)', detail: 'بعد الوصول، نصعد (موجب) أو ننزل (سالب) لنصل إلى رأس السهم.' },
     ];
 
-    const challenges = [
-        { dx: 3, dy: 2, startX: -2, startY: -1 },
-        { dx: -4, dy: 1, startX: 2, startY: -1 },
-        { dx: 0, dy: -3, startX: 0, startY: 2 },
-        { dx: -2, dy: -2, startX: 1, startY: 1 },
-    ];
-
-    const currentChallenge = challenges[challengeStep];
-
-    const resetChallenges = () => {
-        setChallengeStep(0);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputX(''); setInputY('');
         setError(false); setFeedback(null);
     };
 
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('vec-read', 'practice').catch(() => { });
+    };
+
     const handleAnswer = async () => {
         if (parseInt(inputX) === currentChallenge.dx && parseInt(inputY) === currentChallenge.dy) {
-            setFeedback({ type: 'success', text: 'صحيح! قرأت مركبات الشعاع بدقة.' });
             setError(false);
             setInputX(''); setInputY('');
-
-            if (challengeStep < challenges.length - 1) {
-                confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1000);
+            if (round < 2) {
+                setFeedback({ type: 'success', text: `صحيح! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1300);
             } else {
-                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                setFeedback({ type: 'success', text: 'صحيح! قرأت مركبات الشعاع بدقة.' });
+                confetti({ particleCount: 130, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update('vec-read', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('vec-read-mastery');
+                    const data = await rewardService.claimLabReward('vec-read', {
+                        type: 'vec-read', dx: currentChallenge.dx, dy: currentChallenge.dy,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -92,12 +120,16 @@ function VecReadContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تقرأ مركبات الشعاع من الشبكة، بالانتقال خطوة بخطوة من البداية إلى النهاية.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -132,7 +164,7 @@ function VecReadContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -142,17 +174,17 @@ function VecReadContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep < 2 ? 1 : 2}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             hint="ابدأ من النقطة الخضراء، عد المربعات لليمين أو اليسار للوصول لـ x، ثم للأعلى أو الأسفل للوصول لـ y."
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => { setInputX(''); setInputY(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-3">
-                <VectorGrid dx={currentChallenge.dx} dy={currentChallenge.dy} startX={currentChallenge.startX} startY={currentChallenge.startY} isDarkMode={isDarkMode} />
+                <VectorGrid dx={currentChallenge.dx} dy={currentChallenge.dy} startX={currentChallenge.startX} startY={currentChallenge.startY} />
                 <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
                     <span className="text-fuchsia-400 text-xl">V (</span>
                     <div className="flex flex-col gap-2">
@@ -163,6 +195,10 @@ function VecReadContent({ phase, setPhase }) {
                     </div>
                     <span className="text-fuchsia-400 text-xl">)</span>
                 </div>
+                <LabTutorialNote
+                    from={`نقطة البداية (الخضراء) عند (${currentChallenge.startX}, ${currentChallenge.startY})، ورأس السهم عند (${currentChallenge.startX + currentChallenge.dx}, ${currentChallenge.startY + currentChallenge.dy}).`}
+                    why={`مركبات الشعاع = إحداثيات النهاية − إحداثيات البداية، لكل محور على حدة: x = ${currentChallenge.startX + currentChallenge.dx} − ${currentChallenge.startX} = ${currentChallenge.dx}، وy = ${currentChallenge.startY + currentChallenge.dy} − ${currentChallenge.startY} = ${currentChallenge.dy}.`}
+                />
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد المركبات
                 </button>

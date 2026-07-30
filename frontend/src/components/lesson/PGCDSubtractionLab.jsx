@@ -8,6 +8,7 @@ import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // خوارزمية إقليدس بالطرح المتتالي — تنتهي عندما يتساوى العددان (الفرق = صفر)
@@ -22,13 +23,26 @@ function computeSteps(a, b) {
     return steps;
 }
 
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => {
+        const params = difficultyEngine.getParams('pgcd', lvl);
+        const options = params.pairs || [[24, 18], [30, 20], [36, 24], [48, 18]];
+        const pair = options[Math.floor(Math.random() * options.length)];
+        const a = Math.max(pair[0], pair[1]);
+        const b = Math.min(pair[0], pair[1]);
+        return { level: lvl, a, b, steps: computeSteps(a, b) };
+    });
+}
+
 function PGCDSubtractionContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [level, setLevel] = useState(1);
-    const [numbers, setNumbers] = useState({ a: 48, b: 18 });
-    const [expectedSteps, setExpectedSteps] = useState([]);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [completedRows, setCompletedRows] = useState([]);
@@ -36,37 +50,41 @@ function PGCDSubtractionContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const current = expectedSteps[currentStep];
-    const pgcd = expectedSteps.length > 0 ? expectedSteps[expectedSteps.length - 1].a : numbers.a;
+    const roundData = rounds[round]; // { level, a, b, steps }
+    const current = roundData.steps[currentStep];
+    const pgcd = roundData.steps.length > 0 ? roundData.steps[roundData.steps.length - 1].a : roundData.a;
 
     useEffect(() => {
         labProgressService.getOne('pgcd-subtraction')
-            .then(progress => { if (progress) setLevel(difficultyEngine.getLevel(progress)); })
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
             .catch(() => { });
     }, []);
 
     const learnPages = [
         { title: 'بروتوكول التآكل الرقمي', detail: 'القاسم المشترك الأكبر لعددين هو نفسه القاسم المشترك بين أصغرهما والفارق بينهما. نستمر في الطرح حتى نصل إلى الصفر.', math: 'PGCD(a, b) = PGCD(b, a − b)' },
         { title: 'خوارزمية ترحيل القيم', detail: 'في كل خطوة، ينتقل الفرق والعدد الأصغر ليصبحا طرفي العملية القادمة. عندما يتساوى العددان، يصبح الفرق صفراً، والعدد الأخير هو القاسم المشترك.', math: 'PGCD(24,18) → PGCD(6,6) → 6' },
+        { title: 'الجولات الثلاث', detail: 'ستطبّق الخوارزمية على 3 أزواج مختلفة من الأعداد بصعوبة تصاعدية. المكافأة تُمنح فقط بعد الزوج الثالث (الأصعب).', math: 'مبتدئ ➜ متوسط ➜ متقدم' },
     ];
 
-    const generateProblem = () => {
-        const params = difficultyEngine.getParams('pgcd', level);
-        const options = params.pairs || [[24, 18], [30, 20], [36, 24], [48, 18]];
-        const pair = options[Math.floor(Math.random() * options.length)];
-        const a = Math.max(pair[0], pair[1]);
-        const b = Math.min(pair[0], pair[1]);
-        const steps = computeSteps(a, b);
-
-        setNumbers({ a, b });
-        setExpectedSteps(steps);
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setCurrentStep(0);
         setCompletedRows([]);
         setUserAnswer('');
-        setError(false);
-        setFeedback(null);
-        setReward(null);
+        setError(false); setFeedback(null);
+    };
+
+    const startPractice = () => {
+        resetAll();
         setPhase('practice');
+        setReward(null);
         labProgressService.update('pgcd-subtraction', 'practice').catch(() => { });
     };
 
@@ -87,15 +105,27 @@ function PGCDSubtractionContent({ phase, setPhase }) {
         setError(false);
         setFeedback({ type: 'success', text: 'صحيح! انتقل للخطوة التالية.' });
 
-        if (currentStep >= expectedSteps.length - 1) {
+        if (currentStep < roundData.steps.length - 1) {
+            setTimeout(() => { setCurrentStep(s => s + 1); setFeedback(null); }, 700);
+        } else if (round < 2) {
+            setTimeout(() => {
+                setFeedback({ type: 'success', text: `أحسنت! أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setCurrentStep(0);
+                    setCompletedRows([]);
+                    setFeedback(null);
+                }, 1400);
+            }, 300);
+        } else {
             await labProgressService.update('pgcd-subtraction', 'completed', 100).catch(() => { });
             confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#38bdf8', '#818cf8', '#34d399'] });
             try {
-                const data = await rewardService.claimLabReward('pgcd-subtraction');
+                const data = await rewardService.claimLabReward('pgcd-subtraction', {
+                    type: 'pgcd', a: roundData.a, b: roundData.b, result: pgcd,
+                });
                 if (data.status === 'success') setReward(data);
             } catch (err) { console.error(err); }
-        } else {
-            setTimeout(() => { setCurrentStep(s => s + 1); setFeedback(null); }, 700);
         }
     };
 
@@ -108,15 +138,16 @@ function PGCDSubtractionContent({ phase, setPhase }) {
                 </div>
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     اكتشف القاسم المشترك الأكبر عبر تقليص الفوارق خطوة بخطوة — نسخة الطرح المتتالي من خوارزمية إقليدس.
+                    ستمر بـ 3 جولات تتصاعد صعوبتها تدريجياً قبل الحصول على المكافأة.
                 </p>
                 <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-sky-500/20 text-sky-300' : 'bg-sky-50 text-sky-600'}`}>
-                    المستوى الحالي: {['', 'مبتدئ', 'متوسط', 'متقدم'][level]}
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
                 </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={generateProblem} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -142,7 +173,7 @@ function PGCDSubtractionContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={generateProblem} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">ابدأ التحدي <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -157,18 +188,20 @@ function PGCDSubtractionContent({ phase, setPhase }) {
         ...(current ? [{ label: `${current.a} − ${current.b} = ?`, active: true }] : []),
     ];
 
+    const totalStepsSoFar = rounds.slice(0, round).reduce((s, r) => s + r.steps.length, 0);
+
     return (
         <LabChallenge
             type="text"
-            current={completedRows.length + 1}
-            total={expectedSteps.length}
-            level={level}
+            current={totalStepsSoFar + completedRows.length + 1}
+            total={rounds.reduce((s, r) => s + r.steps.length, 0)}
+            level={roundData.level}
             question={current ? `احسب الفارق: ${current.a} − ${current.b}` : ''}
             hint="نطرح الأصغر من الأكبر في كل خطوة، ونكرر حتى يتساوى العددان."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={() => { setCurrentStep(0); setCompletedRows([]); setUserAnswer(''); setError(false); setFeedback(null); }}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={<LabStepsPanel title="سجل عمليات الطرح" steps={stepsForPanel} />}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
@@ -184,6 +217,12 @@ function PGCDSubtractionContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
+
+            <LabTutorialNote
+                from={current ? `العددان الحاليان هما ${current.a} و${current.b} (إما العددان الأصليان، أو ناتجا الخطوة السابقة).` : ''}
+                why={current ? `في كل خطوة نستبدل الزوج الحالي بالزوج (الأصغر، الفارق)، وهذا يُصغّر المسألة تدريجياً حتى يتساوى العددان (الفارق = صفر) — عندها العدد المتبقي هو القاسم المشترك الأكبر.` : ''}
+            />
+
             <button onClick={handleSubmit} className="mt-4 w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تأكيد الفارق
             </button>

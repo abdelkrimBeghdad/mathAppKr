@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scissors, ArrowRight, CheckCircle2, Eye } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficultyEngine';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+// 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, problem: difficultyEngine.generateChallenge('geo-section', lvl) }));
+}
 
 function GeoSectionContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
     const [isCut, setIsCut] = useState(false);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const roundData = rounds[round];
+    const currentChallenge = roundData.problem; // { q, correct, options }
+
+    useEffect(() => {
+        labProgressService.getOne('geo-section')
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -41,27 +67,41 @@ function GeoSectionContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        { q: 'عند قطع أسطوانة بمستوٍ موازٍ لقاعدتها، ما هو شكل المقطع الناتج؟', correct: 'دائرة', options: ['مربع', 'دائرة', 'مثلث'] },
-        { q: 'عند قطع مكعب بمستوٍ موازٍ لأحد أوجهه، ماذا نتحصل؟', correct: 'مربع', options: ['مربع', 'مستطيل', 'دائرة'] },
-    ];
+    const resetAll = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setFeedback(null);
+    };
 
-    const currentChallenge = challenges[challengeStep];
-
-    const resetChallenges = () => { setChallengeStep(0); setFeedback(null); };
+    const startPractice = () => {
+        resetAll();
+        setPhase('practice');
+        setReward(null);
+        labProgressService.update('geo-section', 'practice').catch(() => { });
+    };
 
     const handleAnswer = async (choice) => {
         if (choice === currentChallenge.correct) {
-            setFeedback({ type: 'success', text: 'صحيح! المقطع دائماً يأخذ شكل القاعدة إذا كان القطع موازياً لها.' });
+            setFeedback({ type: 'success', text: 'صحيح! تخيّلت شكل السطح الناتج عن القطع بدقة.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => {
+                    setRound(r => r + 1);
+                    setFeedback({ type: 'success', text: `أنهيت مستوى ${['', 'مبتدئ', 'متوسط', 'متقدم'][roundData.level]}. الجولة التالية أصعب.` });
+                    setTimeout(() => setFeedback(null), 1000);
+                }, 900);
             } else {
-                try {
-                    const data = await rewardService.claimLabReward('geo-section-mastery');
-                    if (data.status === 'success') setReward(data);
-                } catch (err) { console.error(err); }
+                setTimeout(async () => {
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    await labProgressService.update('geo-section', 'completed', 100).catch(() => { });
+                    try {
+                        const data = await rewardService.claimLabReward('geo-section', {
+                            type: 'identify', correct: currentChallenge.correct, choice,
+                        });
+                        if (data.status === 'success') setReward(data);
+                    } catch (err) { console.error(err); }
+                }, 900);
             }
         } else {
             setFeedback({ type: 'error', text: 'خطأ. تخيل شكل السطح الناتج عن القطع.' });
@@ -78,11 +118,14 @@ function GeoSectionContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تتخيل ما بداخل المجسمات. سنقوم بقطع الأشكال الهندسية بمستويات مختلفة لنكتشف الأشكال المخفية بداخلها.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 w-full justify-center ${isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black transition-all">
                     فتح مختبر القواطع
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -106,7 +149,7 @@ function GeoSectionContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -116,15 +159,15 @@ function GeoSectionContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
+            current={round + 1}
+            total={3}
+            level={roundData.level}
             question={currentChallenge.q}
             hint="تخيل المستوى وهو يقطع المجسم من الداخل، وحدد شكل السطح الناتج."
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRefresh={() => setFeedback(null)}
+            onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
         >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full" role="group" aria-label="اختر الإجابة">
                 {currentChallenge.options.map((opt, i) => (
@@ -136,6 +179,10 @@ function GeoSectionContent({ phase, setPhase }) {
                     </button>
                 ))}
             </div>
+            <LabTutorialNote
+                from={`السؤال يصف مستوى قطع يمر بمجسم معيّن بزاوية أو موقع محدد.`}
+                why={`شكل المقطع يعتمد على المجسم نفسه وعلى اتجاه المستوى: القطع الموازي للقاعدة غالبًا يُعيد شكل القاعدة نفسه، بينما القطع بزاوية مختلفة قد ينتج شكلاً مختلفاً تمامًا.`}
+            />
         </LabChallenge>
     );
 }

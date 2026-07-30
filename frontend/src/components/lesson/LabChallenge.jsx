@@ -31,7 +31,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, RefreshCw, Trophy, Coins, Zap, Award } from 'lucide-react';
+import { HelpCircle, RefreshCw, Trophy, Coins, Zap, Award, GraduationCap, X } from 'lucide-react';
 import { useLabTheme } from './LabThemeContext';
 
 // ─── مؤشر المستوى ─────────────────────────────────────────────────────────────
@@ -111,7 +111,8 @@ export default function LabChallenge({
     total = 3,          // إجمالي الأسئلة
     level = 1,          // مستوى الطالب
     question,           // نص السؤال (اختياري)
-    hint,               // نص التلميح
+    hint,               // نص التلميح (جملة واحدة مختصرة)
+    tutorial,           // مصفوفة خطوات شرح الحل الكامل: [{ title, detail }] — خاصة بالسؤال الحالي
     feedback,           // { type: 'success'|'error', text: '...' }
     reward,             // بيانات المكافأة عند الإكمال
     onRefresh,          // استدعاء عند الضغط على "سؤال جديد"
@@ -121,6 +122,7 @@ export default function LabChallenge({
 }) {
     const { theme, isDarkMode, currentAccent } = useLabTheme();
     const [showHint, setShowHint] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
 
     const progress = (current - 1) / total; // 0 → 1
 
@@ -214,7 +216,7 @@ export default function LabChallenge({
             </AnimatePresence>
 
             {/* ── شريط الأدوات السفلي ─────────────────────────────────────────── */}
-            <div className="w-full flex items-center justify-between">
+            <div className="w-full flex items-center justify-between gap-3">
 
                 {/* زر التلميح */}
                 {hint ? (
@@ -246,18 +248,92 @@ export default function LabChallenge({
                     </div>
                 ) : <div />}
 
-                {/* زر سؤال جديد */}
-                {onRefresh && (
-                    <button
-                        onClick={() => { setShowHint(false); onRefresh(); }}
-                        className={`flex items-center gap-1.5 text-xs font-black transition-all ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
-                        aria-label="سؤال جديد"
-                    >
-                        <RefreshCw size={14} />
-                        سؤال جديد
-                    </button>
-                )}
+                <div className="flex items-center gap-4">
+                    {/* زر شرح الحل الكامل */}
+                    {tutorial && tutorial.length > 0 && (
+                        <button
+                            onClick={() => setShowTutorial(true)}
+                            className={`flex items-center gap-1.5 text-xs font-black transition-all ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+                            aria-label="اشرح لي طريقة الحل بالتفصيل"
+                        >
+                            <GraduationCap size={16} />
+                            كيف أحل هذا؟
+                        </button>
+                    )}
+
+                    {/* زر سؤال جديد */}
+                    {onRefresh && (
+                        <button
+                            onClick={() => { setShowHint(false); onRefresh(); }}
+                            className={`flex items-center gap-1.5 text-xs font-black transition-all ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
+                            aria-label="سؤال جديد"
+                        >
+                            <RefreshCw size={14} />
+                            سؤال جديد
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {/* ── نافذة شرح الحل الكامل (Tutorial Modal) ──────────────────────── */}
+            <AnimatePresence>
+                {showTutorial && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setShowTutorial(false)}
+                        role="dialog" aria-modal="true" aria-label="شرح طريقة الحل"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            onClick={e => e.stopPropagation()}
+                            className={`w-full max-w-md max-h-[80vh] overflow-y-auto rounded-[1.25rem] border shadow-2xl p-5 ${theme.card}`}
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <GraduationCap size={20} className="text-indigo-400" />
+                                    <h3 className={`text-sm font-black ${theme.textMain}`}>طريقة الحل خطوة بخطوة</h3>
+                                </div>
+                                <button
+                                    onClick={() => setShowTutorial(false)}
+                                    aria-label="إغلاق شرح الحل"
+                                    className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                {tutorial && tutorial.map((step, i) => (
+                                    <div
+                                        key={i}
+                                        className={`p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                                    >
+                                        <div className="flex items-start gap-2.5">
+                                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                {i + 1}
+                                            </span>
+                                            <div>
+                                                <p className={`text-xs font-bold mb-1 ${theme.textMain}`}>{step.title}</p>
+                                                <p className={`text-xs leading-relaxed ${theme.textSub}`} dir={step.dir || 'rtl'}>{step.detail}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => setShowTutorial(false)}
+                                className="mt-4 w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-sm transition-all"
+                            >
+                                فهمت، أكمل بنفسي
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
