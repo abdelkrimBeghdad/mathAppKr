@@ -21,7 +21,11 @@ class LabRewardSecurityTest extends TestCase
         // Create initial lab progress record so that generic progress check passes
         \App\Models\LabProgress::create([
             'user_id' => $this->user->id,
+<<<<<<< HEAD
             'lab_id' => 'sys-add',
+=======
+            'lab_id' => 'sys-add-mastery',
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             'phase' => 'practice'
         ]);
     }
@@ -32,7 +36,11 @@ class LabRewardSecurityTest extends TestCase
     public function test_allows_reward_with_correct_math_verification()
     {
         $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+<<<<<<< HEAD
             'lab_id' => 'sys-add',
+=======
+            'lab_id' => 'sys-add-mastery',
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             'verification' => [
                 'type' => 'system',
                 'eq1' => ['a' => 2, 'b' => 1, 'c' => 4],
@@ -58,7 +66,11 @@ class LabRewardSecurityTest extends TestCase
     public function test_blocks_and_logs_missing_verification()
     {
         $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+<<<<<<< HEAD
             'lab_id' => 'sys-add'
+=======
+            'lab_id' => 'sys-add-mastery'
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             // Missing verification
         ]);
 
@@ -82,7 +94,11 @@ class LabRewardSecurityTest extends TestCase
     public function test_blocks_and_logs_incorrect_math_solution()
     {
         $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+<<<<<<< HEAD
             'lab_id' => 'sys-add',
+=======
+            'lab_id' => 'sys-add-mastery',
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             'verification' => [
                 'type' => 'system',
                 'eq1' => ['a' => 2, 'b' => 1, 'c' => 4],
@@ -111,7 +127,11 @@ class LabRewardSecurityTest extends TestCase
     public function test_blocks_and_logs_trivial_equations()
     {
         $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+<<<<<<< HEAD
             'lab_id' => 'sys-add',
+=======
+            'lab_id' => 'sys-add-mastery',
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             'verification' => [
                 'type' => 'system',
                 'eq1' => ['a' => 0, 'b' => 0, 'c' => 0], // Trivial
@@ -143,7 +163,11 @@ class LabRewardSecurityTest extends TestCase
         \App\Models\LabProgress::where('user_id', $this->user->id)->delete();
 
         $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+<<<<<<< HEAD
             'lab_id' => 'sys-add',
+=======
+            'lab_id' => 'sys-add-mastery',
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             'verification' => [
                 'type' => 'system',
                 'eq1' => ['a' => 2, 'b' => 1, 'c' => 4],
@@ -165,6 +189,7 @@ class LabRewardSecurityTest extends TestCase
         $incident = SecurityIncident::where('user_id', $this->user->id)->first();
         $this->assertEquals('missing_lab_progress', $incident->details['cheat_type']);
     }
+<<<<<<< HEAD
 
     /**
      * Test that a second claim for the same lab is blocked (infinite farming fix).
@@ -1457,4 +1482,6 @@ class LabRewardSecurityTest extends TestCase
         ]);
         $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
     }
+=======
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
 }

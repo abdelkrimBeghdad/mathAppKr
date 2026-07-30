@@ -58,12 +58,28 @@ class RewardController extends Controller
         $labId = $request->lab_id;
         $verification = $request->input('verification');
 
+<<<<<<< HEAD
         // 1. التحقق العام من وجود تقدم للمختبر - مطابقة تامة (exact match) فقط.
         // ملاحظة أمنية: تمت إزالة منطق المطابقة الجزئية/البادئة (prefix matching) القديم
         // لأنه كان يسمح لسجل تقدم واحد بمعرف قصير بمطابقة عشرات المختبرات المختلفة.
         $progress = \App\Models\LabProgress::where('user_id', $user->id)
             ->where('lab_id', $labId)
             ->first();
+=======
+        // 1. التحقق العام من وجود تقدم للمختبر لجميع مختبرات MasteryWorld (48+ مختبر)
+        $allProgress = \App\Models\LabProgress::where('user_id', $user->id)->get();
+        $progress = $allProgress->first(function ($p) use ($labId) {
+            $pLabId = $p->lab_id;
+            if ($pLabId === $labId) {
+                return true;
+            }
+            $prefix = substr($labId, 0, 8);
+            if (str_starts_with($labId, $pLabId) || str_starts_with($pLabId, $labId) || str_starts_with($pLabId, $prefix)) {
+                return true;
+            }
+            return false;
+        });
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
 
         if (!$progress || !in_array($progress->phase, ['practice', 'completed'])) {
             $this->logSecurityIncident($user, 'missing_lab_progress', $labId, $request);
@@ -73,6 +89,7 @@ class RewardController extends Controller
             ], 403);
         }
 
+<<<<<<< HEAD
         // 1.b. الحماية من الاستنزاف اللانهائي: مكافأة كل مختبر تُمنح مرة واحدة فقط
         // لكل (user_id, lab_id). أي محاولة لاحقة تُرفض وتُسجَّل كحادثة أمنية.
         if ($progress->reward_claimed_at) {
@@ -98,6 +115,10 @@ class RewardController extends Controller
             'fact-id1', 'fact-id2', 'fact-id3', 'div-props', 'eq-product', 'pyth-prob',
             'stat-cumulative', 'stat-chart', 'coprime', 'sys-graph', 'sys-strategy', 'geo-volume', 'geo-solids', 'geo-net', 'geo-section', 'geo-pyramid',
         ];
+=======
+        // 2. التحقق الرياضي المخصص للمختبرات المفروض عليها التحقق حالياً
+        $enforcedLabs = ['sys-add-mastery'];
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
 
         if (in_array($labId, $enforcedLabs)) {
             if (!$verification || !is_array($verification)) {
@@ -161,6 +182,7 @@ class RewardController extends Controller
                         'message' => 'Trivial equations are not allowed.'
                     ], 403);
                 }
+<<<<<<< HEAD
             } elseif ($type === 'linear') {
                 // تحقق رياضي لمختبرات الدوال التآلفية: y = m*x + b
                 $m = $verification['m'] ?? null;
@@ -1354,6 +1376,8 @@ class RewardController extends Controller
                         'message' => 'The submitted volume is mathematically incorrect.'
                     ], 403);
                 }
+=======
+>>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
             } else {
                 $this->logSecurityIncident($user, 'unknown_verification_type', $labId, $request);
                 return response()->json([

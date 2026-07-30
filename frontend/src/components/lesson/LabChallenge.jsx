@@ -29,7 +29,7 @@
  *  </LabChallenge>
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, RefreshCw, Trophy, Coins, Zap, Award, GraduationCap, X } from 'lucide-react';
 import { useLabTheme } from './LabThemeContext';
@@ -124,6 +124,32 @@ export default function LabChallenge({
     const [showHint, setShowHint] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
 
+    // Anti-Brute Force mechanism
+    const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+    const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+    useEffect(() => {
+        if (feedback?.type === 'error') {
+            setConsecutiveErrors(prev => {
+                const next = prev + 1;
+                if (next >= 3) {
+                    setCooldownRemaining(5); // 5 seconds cooldown
+                    return 0; // reset for next time
+                }
+                return next;
+            });
+        } else if (feedback?.type === 'success') {
+            setConsecutiveErrors(0);
+        }
+    }, [feedback]);
+
+    useEffect(() => {
+        if (cooldownRemaining > 0) {
+            const timer = setTimeout(() => setCooldownRemaining(c => c - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldownRemaining]);
+
     const progress = (current - 1) / total; // 0 → 1
 
     // ── شاشة المكافأة ─────────────────────────────────────────────────────────
@@ -182,8 +208,24 @@ export default function LabChallenge({
                     )}
 
                     {/* المحتوى التفاعلي — يأتي من المختبر */}
-                    <div className={`w-full flex flex-col items-center gap-4 ${type === 'visual' ? 'min-h-[160px] justify-center' : ''}`}>
+                    <div className={`w-full flex flex-col items-center gap-4 ${type === 'visual' ? 'min-h-[160px] justify-center' : ''} relative`}>
                         {children}
+
+                        {/* Cooldown Overlay */}
+                        <AnimatePresence>
+                            {cooldownRemaining > 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }} 
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/70 backdrop-blur-md rounded-xl text-white shadow-2xl border border-white/10"
+                                >
+                                    <span className="text-4xl mb-3 animate-pulse">⏳</span>
+                                    <h3 className="text-lg font-black mb-1">توقف للتفكير...</h3>
+                                    <p className="text-sm font-bold text-slate-300">يمكنك المحاولة مجدداً بعد <span className="text-rose-400 text-lg mx-1">{cooldownRemaining}</span> ثوانٍ</p>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
