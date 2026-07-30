@@ -106,21 +106,12 @@ function SysAdditionContent({ phase, setPhase }) {
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                     await labProgressService.update('sys-add', 'completed', 100).catch(() => { });
                     try {
-<<<<<<< HEAD
                         const data = await rewardService.claimLabReward('sys-add', {
                             type: 'system',
                             eq1: problem.eq1,
                             eq2: problem.eq2,
                             x: problem.x,
                             y: problem.y,
-=======
-                        const data = await rewardService.claimLabReward('sys-add-mastery', {
-                            type: 'system',
-                            eq1: { a: 2, b: 1, c: 4 },
-                            eq2: { a: 1, b: -2, c: -3 },
-                            x: problem.x,
-                            y: problem.y
->>>>>>> df929630834ba2afb74a060109d3bcd680dbd5a9
                         });
                         if (data.status === 'success') setReward(data);
                     } catch (err) { console.error(err); }
