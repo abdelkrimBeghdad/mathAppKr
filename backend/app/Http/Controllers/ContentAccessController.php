@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Models\Section;
 use App\Models\Field;
 use App\Models\SiteFeature;
+use App\Models\PaymentLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -42,14 +43,25 @@ class ContentAccessController extends Controller
             return response()->json(['message' => 'رصيد العملات غير كافٍ.'], 403);
         }
 
-        return DB::transaction(function () use ($user, $resource, $modelClass) {
+        return DB::transaction(function () use ($user, $resource, $modelClass, $type) {
             $user->decrement('coins', $resource->price);
 
-            $user->accessRecords()->create([
+            $record = $user->accessRecords()->create([
                 'accessible_type' => $modelClass,
                 'accessible_id' => $resource->id,
                 'status' => 'active',
                 'payment_method' => 'coins',
+            ]);
+
+            PaymentLedger::create([
+                'user_id' => $user->id,
+                'access_record_id' => $record->id,
+                'amount_dzd' => 0.00,
+                'coins_amount' => $resource->price,
+                'payment_method' => 'coins',
+                'transaction_type' => 'debit',
+                'description' => 'فتح محتوى بالعملات الرقمية: ' . ($resource->title ?? $resource->name ?? $type),
+                'approved_by' => null,
             ]);
 
             return response()->json([
@@ -97,12 +109,25 @@ class ContentAccessController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        $record->update([
-            'status' => 'active',
-            'granted_by' => auth()->id()
-        ]);
+        return DB::transaction(function () use ($record) {
+            $record->update([
+                'status' => 'active',
+                'granted_by' => auth()->id()
+            ]);
 
-        return response()->json(['message' => 'تم تفعيل الوصول بنجاح.']);
+            PaymentLedger::create([
+                'user_id' => $record->user_id,
+                'access_record_id' => $record->id,
+                'amount_dzd' => 0.00,
+                'coins_amount' => 0,
+                'payment_method' => $record->payment_method ?? 'external_receipt',
+                'transaction_type' => 'credit',
+                'description' => 'تفعيل الوصول بالموافقة على وصل الدفع الخارجي',
+                'approved_by' => auth()->id(),
+            ]);
+
+            return response()->json(['message' => 'تم تفعيل الوصول بنجاح.']);
+        });
     }
 
     /**
@@ -122,13 +147,38 @@ class ContentAccessController extends Controller
         return response()->json($records);
     }
 
+    /**
+     * Admin: Get Financial Ledger Audit Records for ERP Management.
+     */
+    public function getFinancialLedger(Request $request)
+    {
+        if (!auth()->user()->is_admin) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $ledgers = PaymentLedger::with(['user:id,name,email', 'approver:id,name', 'accessRecord'])
+            ->latest()
+            ->paginate(30);
+
+        $summary = [
+            'total_transactions' => PaymentLedger::count(),
+            'total_coins_debited' => PaymentLedger::where('transaction_type', 'debit')->sum('coins_amount'),
+            'total_approved_credits' => PaymentLedger::where('transaction_type', 'credit')->count(),
+        ];
+
+        return response()->json([
+            'summary' => $summary,
+            'ledger' => $ledgers,
+        ]);
+    }
+
     protected function getModelClass($type)
     {
         return match ($type) {
-                'lesson' => Lesson::class ,
-                'section' => Section::class ,
-                'field' => Field::class ,
-                'feature' => SiteFeature::class ,
-            };
+            'lesson' => Lesson::class,
+            'section' => Section::class,
+            'field' => Field::class,
+            'feature' => SiteFeature::class,
+        };
     }
 }

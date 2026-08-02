@@ -20,8 +20,10 @@ class ContentController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'order' => 'integer|min:0'
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
         ]);
         return Field::create($validated);
     }
@@ -29,9 +31,11 @@ class ContentController extends Controller
     public function updateField(Request $request, Field $field)
     {
         $validated = $request->validate([
-            'name' => 'string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'order' => 'integer|min:0'
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
         ]);
         $field->update($validated);
         return $field;
@@ -49,8 +53,10 @@ class ContentController extends Controller
         $validated = $request->validate([
             'field_id' => 'required|exists:fields,id',
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'order' => 'integer|min:0'
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
         ]);
         return Section::create($validated);
     }
@@ -58,9 +64,11 @@ class ContentController extends Controller
     public function updateSection(Request $request, Section $section)
     {
         $validated = $request->validate([
-            'name' => 'string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'order' => 'integer|min:0'
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
         ]);
         $section->update($validated);
         return $section;
@@ -78,13 +86,15 @@ class ContentController extends Controller
         $validated = $request->validate([
             'section_id' => 'required|exists:sections,id',
             'name' => 'required|string|max:255',
-            'summary' => 'nullable|string|max:2000',
-            'example_problem' => 'nullable|string|max:5000',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
+            'summary' => 'nullable|string',
+            'example_problem' => 'nullable|string',
             'example_steps' => 'nullable|array',
-            'application_problem' => 'nullable|string|max:5000',
-            'application_solution' => 'nullable|string|max:2000',
-            'order' => 'integer|min:0',
-            'is_locked' => 'boolean',
+            'application_problem' => 'nullable|string',
+            'application_solution' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'is_locked' => 'nullable|boolean',
             'lab_type' => 'nullable|string|max:100',
             'lab_config' => 'nullable|array'
         ]);
@@ -94,14 +104,16 @@ class ContentController extends Controller
     public function updateLesson(Request $request, Lesson $lesson)
     {
         $validated = $request->validate([
-            'name' => 'string|max:255',
-            'summary' => 'nullable|string|max:2000',
-            'example_problem' => 'nullable|string|max:5000',
+            'name' => 'sometimes|required|string|max:255',
+            'access_type' => 'nullable|string|in:classic,premium',
+            'price' => 'nullable|integer|min:0',
+            'summary' => 'nullable|string',
+            'example_problem' => 'nullable|string',
             'example_steps' => 'nullable|array',
-            'application_problem' => 'nullable|string|max:5000',
-            'application_solution' => 'nullable|string|max:2000',
-            'order' => 'integer|min:0',
-            'is_locked' => 'boolean',
+            'application_problem' => 'nullable|string',
+            'application_solution' => 'nullable|string',
+            'order' => 'nullable|integer|min:0',
+            'is_locked' => 'nullable|boolean',
             'lab_type' => 'nullable|string|max:100',
             'lab_config' => 'nullable|array'
         ]);

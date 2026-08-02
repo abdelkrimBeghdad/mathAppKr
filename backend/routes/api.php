@@ -41,7 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/parent/dashboard', [\App\Http\Controllers\ParentController::class , 'dashboard']);
 
         // Admin Routes
-        Route::group(['prefix' => 'admin', 'middleware' => ['admin', 'admin.audit']], function () {
+        Route::group(['prefix' => 'admin', 'middleware' => ['admin', 'admin.audit', 'throttle:60,1']], function () {
             Route::get('/fields', [\App\Http\Controllers\Admin\ContentController::class , 'indexFields']);
             Route::post('/fields', [\App\Http\Controllers\Admin\ContentController::class , 'storeField']);
             Route::put('/fields/{field}', [\App\Http\Controllers\Admin\ContentController::class , 'updateField']);
@@ -211,6 +211,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             Route::get('/access/pending-receipts', [\App\Http\Controllers\ContentAccessController::class , 'getPendingReceipts']);
             Route::post('/access/approve-receipt/{record}', [\App\Http\Controllers\ContentAccessController::class , 'approveAccess']);
+            Route::get('/access/financial-ledger', [\App\Http\Controllers\ContentAccessController::class , 'getFinancialLedger']);
         }
         );
     });

@@ -55,21 +55,35 @@ class BackupController extends Controller
 
     public function download($fileName)
     {
-        $path = storage_path("app/backups/{$fileName}");
+        // Security: Prevent Path Traversal attacks
+        if (basename($fileName) !== $fileName || !preg_match('/^[a-zA-Z0-9_\.-]+$/', $fileName)) {
+            return response()->json(['message' => 'Invalid backup file name.'], 400);
+        }
 
-        if (!File::exists($path)) {
+        $backupDir = realpath(storage_path('app/backups'));
+        $path = storage_path("app/backups/{$fileName}");
+        $realPath = realpath($path);
+
+        if (!$realPath || !$backupDir || !str_starts_with($realPath, $backupDir) || !File::exists($realPath)) {
             return response()->json(['message' => 'File not found.'], 404);
         }
 
-        return Response::download($path);
+        return Response::download($realPath);
     }
 
     public function destroy($fileName)
     {
-        $path = storage_path("app/backups/{$fileName}");
+        // Security: Prevent Path Traversal attacks
+        if (basename($fileName) !== $fileName || !preg_match('/^[a-zA-Z0-9_\.-]+$/', $fileName)) {
+            return response()->json(['message' => 'Invalid backup file name.'], 400);
+        }
 
-        if (File::exists($path)) {
-            File::delete($path);
+        $backupDir = realpath(storage_path('app/backups'));
+        $path = storage_path("app/backups/{$fileName}");
+        $realPath = realpath($path);
+
+        if ($realPath && $backupDir && str_starts_with($realPath, $backupDir) && File::exists($realPath)) {
+            File::delete($realPath);
             return response()->json(['message' => 'Backup deleted successfully.']);
         }
 

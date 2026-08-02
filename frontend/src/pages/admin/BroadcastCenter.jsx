@@ -23,7 +23,7 @@ export default function BroadcastCenter() {
         const values = Object.fromEntries(formData.entries());
 
         try {
-            const { data } = await api.post('/api/admin/broadcast/send', values);
+            const { data } = await api.post('/admin/broadcast/send', values);
             toast.success(data.message);
             e.target.reset();
         } catch (e) {

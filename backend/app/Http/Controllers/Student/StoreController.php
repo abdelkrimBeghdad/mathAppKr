@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\StoreItem;
 use App\Models\UserInventory;
+use App\Models\PaymentLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +50,17 @@ class StoreController extends Controller
                 'user_id' => $user->id,
                 'store_item_id' => $item->id,
                 'is_equipped' => false,
+            ]);
+
+            PaymentLedger::create([
+                'user_id' => $user->id,
+                'access_record_id' => null,
+                'amount_dzd' => 0.00,
+                'coins_amount' => $item->price,
+                'payment_method' => 'coins',
+                'transaction_type' => 'debit',
+                'description' => 'شراء عنصر من المتجر: ' . ($item->name_ar ?? $item->name ?? 'عنصر متجر'),
+                'approved_by' => null,
             ]);
         });
 

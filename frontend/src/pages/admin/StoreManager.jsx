@@ -35,7 +35,7 @@ export default function StoreManager() {
     const handleDelete = async (id) => {
         if (!window.confirm('هل أنت متأكد من حذف هذا العنصر من المتجر؟')) return;
         try {
-            await api.delete(`/api/admin/store/items/${id}`);
+            await api.delete(`/admin/store/items/${id}`);
             toast.success('تم حذف العنصر بنجاح');
             fetchData();
         } catch (e) {
@@ -50,10 +50,10 @@ export default function StoreManager() {
 
         try {
             if (modal.type === 'create') {
-                await api.post('/api/admin/store/items', values);
+                await api.post('/admin/store/items', values);
                 toast.success('تم إضافة العنصر بنجاح');
             } else {
-                await api.put(`/api/admin/store/items/${modal.data.id}`, values);
+                await api.put(`/admin/store/items/${modal.data.id}`, values);
                 toast.success('تم تحديث العنصر بنجاح');
             }
             setModal({ open: false, type: 'create', data: null });

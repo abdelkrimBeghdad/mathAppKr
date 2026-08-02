@@ -55,21 +55,22 @@ const CATEGORIES = [
     }
 ];
 
-export default function EquationEditor({ onInsert, active }) {
+export default function EquationEditor({ onInsert, active, onClose }) {
     const [activeTab, setActiveTab] = useState('basic');
     const [currentLatex, setCurrentLatex] = useState('');
 
     const handleInsert = (symbol) => {
         const latexToAdd = symbol.latex;
         setCurrentLatex(prev => prev + latexToAdd);
-        // We still call onInsert if they click directly, 
-        // but maybe they want to build first? 
-        // Let's make it so they can "build" then "insert all"
     };
 
     const handleConfirm = () => {
         if (currentLatex) {
-            onInsert(currentLatex, 0);
+            let formula = currentLatex.trim();
+            if (!formula.startsWith('$')) {
+                formula = `$${formula}$`;
+            }
+            onInsert(formula, 0);
             setCurrentLatex('');
         }
     };
@@ -82,23 +83,35 @@ export default function EquationEditor({ onInsert, active }) {
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden mb-3"
+            className="bg-white dark:bg-slate-800 border-2 border-sky-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden mb-4"
         >
-            <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1 border-b dark:border-slate-700">
-                {CATEGORIES.map(cat => (
+            <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-900/50 p-1.5 border-b dark:border-slate-700">
+                <div className="flex gap-1">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setActiveTab(cat.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeTab === cat.id
+                                ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                                }`}
+                        >
+                            {cat.icon}
+                            <span>{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+                {onClose && (
                     <button
-                        key={cat.id}
                         type="button"
-                        onClick={() => setActiveTab(cat.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === cat.id
-                            ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-                            }`}
+                        onClick={onClose}
+                        className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                        title="إغلاق محرّر المعادلات"
                     >
-                        {cat.icon}
-                        <span>{cat.label}</span>
+                        <CloseIcon size={16} />
                     </button>
-                ))}
+                )}
             </div>
 
             <div className="p-4 grid grid-cols-5 sm:grid-cols-10 gap-2">

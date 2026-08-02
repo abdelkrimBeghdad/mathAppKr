@@ -56,11 +56,12 @@ export default function ContentManagement() {
                 if (modal.data) await api.put(`/admin/lessons/${modal.data.id}`, finalValues);
                 else await api.post('/admin/lessons', { ...finalValues, section_id: modal.parentId });
             }
+            toast.success('تم حفظ التغييرات بنجاح');
             setModal({ open: false, type: '', data: null, parentId: null });
             fetchContent();
         } catch (e) {
             console.error(e);
-            alert('حدث خطأ أثناء حفظ البيانات');
+            toast.error(e.response?.data?.message || 'حدث خطأ أثناء حفظ البيانات');
         } finally {
             setActionLoading(false);
         }
@@ -233,9 +234,9 @@ export default function ContentManagement() {
             {/* Modal */}
             {modal.open && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setModal({ open: false })} />
-                    <div className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setModal({ open: false, activeField: null })} />
+                    <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                             <h3 className="text-2xl font-black text-slate-800 font-cairo">
                                 {modal.data ? 'تعديل ' : 'إضافة '}
                                 {modal.type === 'field' ? 'مجال' : modal.type === 'section' ? 'فصل' : 'درس'}
@@ -244,7 +245,7 @@ export default function ContentManagement() {
                                 <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-700 ms-2">الاسم</label>
                                 <input
@@ -285,25 +286,44 @@ export default function ContentManagement() {
                                     <EquationEditor
                                         active={!!activeField}
                                         onInsert={insertFormula}
+                                        onClose={() => setActiveField(null)}
                                     />
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 ms-2">خلاصة (الحوصلة)</label>
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-bold text-slate-700 ms-2">خلاصة (الحوصلة)</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveField(prev => prev === 'summary' ? null : 'summary')}
+                                                className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                {activeField === 'summary' ? 'إغلاق لوحة الرموز' : '∑ إدراج رموز رياضية'}
+                                            </button>
+                                        </div>
                                         <textarea
                                             name="summary"
                                             defaultValue={modal.data?.summary}
-                                            rows={3}
+                                            rows={4}
                                             onFocus={() => setActiveField('summary')}
-                                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-sky-500 transition-all font-medium"
+                                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-sky-500 transition-all font-medium leading-relaxed dir-rtl"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 ms-2">المسألة التطبيقية</label>
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-bold text-slate-700 ms-2">المسألة التطبيقية</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveField(prev => prev === 'application_problem' ? null : 'application_problem')}
+                                                className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                {activeField === 'application_problem' ? 'إغلاق لوحة الرموز' : '∑ إدراج رموز رياضية'}
+                                            </button>
+                                        </div>
                                         <textarea
                                             name="application_problem"
                                             defaultValue={modal.data?.application_problem}
-                                            rows={2}
+                                            rows={3}
                                             onFocus={() => setActiveField('application_problem')}
-                                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-sky-500 transition-all font-medium"
+                                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-sky-500 transition-all font-medium leading-relaxed dir-rtl"
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -334,7 +354,7 @@ export default function ContentManagement() {
                                 </>
                             )}
 
-                            <div className="flex gap-4 pt-4">
+                            <div className="flex gap-4 pt-4 sticky bottom-0 bg-white border-t border-slate-100 py-3">
                                 <button
                                     type="submit"
                                     disabled={actionLoading}

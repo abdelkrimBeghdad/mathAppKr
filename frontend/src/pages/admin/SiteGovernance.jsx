@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity } from 'lucide-react';
+import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity, DollarSign, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import LoadingScreen from '../../components/LoadingScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -8,18 +8,21 @@ import toast from 'react-hot-toast';
 export default function SiteGovernance() {
     const [features, setFeatures] = React.useState([]);
     const [pendingReceipts, setPendingReceipts] = React.useState([]);
+    const [financialLedger, setFinancialLedger] = React.useState({ summary: {}, ledger: { data: [] } });
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState('features'); // features, receipts
+    const [activeTab, setActiveTab] = React.useState('features'); // features, receipts, ledger
 
     const fetchData = async () => {
         try {
-            const [featuresRes, receiptsRes] = await Promise.all([
+            const [featuresRes, receiptsRes, ledgerRes] = await Promise.all([
                 api.get('/settings/features'),
-                api.get('/admin/access/pending-receipts')
+                api.get('/admin/access/pending-receipts'),
+                api.get('/admin/access/financial-ledger')
             ]);
             setFeatures(featuresRes.data);
             setPendingReceipts(receiptsRes.data);
+            setFinancialLedger(ledgerRes.data);
         } catch (e) {
             console.error(e);
             toast.error('فشل تحميل البيانات');
@@ -48,14 +51,14 @@ export default function SiteGovernance() {
     const handleApproveAccess = async (recordId) => {
         try {
             await api.post(`/admin/access/approve-receipt/${recordId}`);
-            toast.success('تمت الموافقة وتفعيل الوصول');
+            toast.success('تمت الموافقة وتفعيل الوصول وتوثيقه بالدفتر المالي');
             fetchData();
         } catch (e) {
             toast.error('فشل تفعيل الوصول');
         }
     };
 
-    if (loading) return <LoadingScreen message="جاري تحميل إعدادات الإدارة..." />;
+    if (loading) return <LoadingScreen message="جاري تحميل إعدادات الإدارة والسجل المالي..." />;
 
     return (
         <div className="space-y-8 pb-20" dir="rtl">
@@ -63,21 +66,21 @@ export default function SiteGovernance() {
                 <div>
                     <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3 font-cairo">
                         <Shield className="text-sky-500" size={32} />
-                        إدارة الصلاحيات والحوكمة
+                        إدارة الصلاحيات والحوكمة الماليّة (ERP)
                     </h1>
-                    <p className="text-slate-500 font-medium">التحكم في بوابات الوصول، أسعار الميزات، ومراجعة وصولات الدفع.</p>
+                    <p className="text-slate-500 font-medium">التحكم في بوابات الوصول، مراجعة الوصولات، والتدقيق المالي التراكمي.</p>
                 </div>
 
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-wrap gap-1">
                     <button
                         onClick={() => setActiveTab('features')}
-                        className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'features' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'features' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <Settings size={18} /> بوابات الموقع
                     </button>
                     <button
                         onClick={() => setActiveTab('receipts')}
-                        className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'receipts' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'receipts' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <FileText size={18} />
                         الوصولات المعلقة
@@ -85,11 +88,18 @@ export default function SiteGovernance() {
                             <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">{pendingReceipts.length}</span>
                         )}
                     </button>
+                    <button
+                        onClick={() => setActiveTab('ledger')}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'ledger' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <CreditCard size={18} />
+                        السجل المالي للـ ERP
+                    </button>
                 </div>
             </header>
 
             <AnimatePresence mode="wait">
-                {activeTab === 'features' ? (
+                {activeTab === 'features' && (
                     <motion.div
                         key="features"
                         initial={{ opacity: 0, x: 20 }}
@@ -155,7 +165,9 @@ export default function SiteGovernance() {
                             </div>
                         ))}
                     </motion.div>
-                ) : (
+                )}
+
+                {activeTab === 'receipts' && (
                     <motion.div
                         key="receipts"
                         initial={{ opacity: 0, x: -20 }}
@@ -219,9 +231,6 @@ export default function SiteGovernance() {
                                             >
                                                 <CheckCircle size={16} /> موافقة وتفعيل
                                             </button>
-                                            <button className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
-                                                <XCircle size={20} />
-                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -229,7 +238,108 @@ export default function SiteGovernance() {
                         )}
                     </motion.div>
                 )}
+
+                {activeTab === 'ledger' && (
+                    <motion.div
+                        key="ledger"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-6"
+                    >
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <span className="text-xs font-black text-slate-400 uppercase">إجمالي المعاملات المحاسبية</span>
+                                    <h3 className="text-3xl font-black text-slate-800 mt-1">{financialLedger.summary?.total_transactions || 0}</h3>
+                                </div>
+                                <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                                    <CreditCard size={28} />
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <span className="text-xs font-black text-slate-400 uppercase">إجمالي الاستهلاكات (عملات)</span>
+                                    <h3 className="text-3xl font-black text-amber-600 mt-1">{financialLedger.summary?.total_coins_debited || 0}</h3>
+                                </div>
+                                <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center">
+                                    <Coins size={28} />
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <span className="text-xs font-black text-slate-400 uppercase">التفعيلات المقبولة (إيداعات)</span>
+                                    <h3 className="text-3xl font-black text-emerald-600 mt-1">{financialLedger.summary?.total_approved_credits || 0}</h3>
+                                </div>
+                                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                    <CheckCircle size={28} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ledger Table */}
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                <DollarSign className="text-emerald-500" size={22} />
+                                سجل القيود المالية والتدقيق التراكمي (ERP Audit Ledger)
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-right text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-slate-400 font-black text-xs uppercase">
+                                            <th className="pb-3 px-3">المعاملة</th>
+                                            <th className="pb-3 px-3">التاريخ</th>
+                                            <th className="pb-3 px-3">الطالب</th>
+                                            <th className="pb-3 px-3">وسيلة الدفع</th>
+                                            <th className="pb-3 px-3">النوع</th>
+                                            <th className="pb-3 px-3">العملات / القيمة</th>
+                                            <th className="pb-3 px-3">الوصف</th>
+                                            <th className="pb-3 px-3">المصادق</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 font-medium text-slate-700">
+                                        {(financialLedger.ledger?.data || []).map((row) => (
+                                            <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="py-3 px-3 font-mono font-bold text-slate-400">#{row.id}</td>
+                                                <td className="py-3 px-3 text-xs text-slate-500">{new Date(row.created_at).toLocaleString('ar-DZ')}</td>
+                                                <td className="py-3 px-3 font-black text-slate-800">{row.user?.name || `مستخدم #${row.user_id}`}</td>
+                                                <td className="py-3 px-3">
+                                                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-xs font-bold">{row.payment_method}</span>
+                                                </td>
+                                                <td className="py-3 px-3">
+                                                    {row.transaction_type === 'credit' ? (
+                                                        <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-black">
+                                                            <ArrowDownLeft size={14} /> إيداع / تفعيل
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-black">
+                                                            <ArrowUpRight size={14} /> اقتطاع عملات
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-3 font-mono font-black">
+                                                    {row.coins_amount > 0 ? `${row.coins_amount} عملة` : `${row.amount_dzd} دج`}
+                                                </td>
+                                                <td className="py-3 px-3 text-xs max-w-xs truncate">{row.description}</td>
+                                                <td className="py-3 px-3 text-xs font-bold text-slate-500">{row.approver?.name || 'آلي'}</td>
+                                            </tr>
+                                        ))}
+                                        {(!financialLedger.ledger?.data || financialLedger.ledger.data.length === 0) && (
+                                            <tr>
+                                                <td colSpan={8} className="py-12 text-center text-slate-400 font-bold">لا توجد قيود مالية مسجلة في الدفتر بعد.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         </div>
     );
 }
+
