@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Percent, ArrowRight, CheckCircle2, Play } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'prob-mastery';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function ProbabilityMasteryContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [userAns, setUserAns] = useState('');
     const [isDrawing, setIsDrawing] = useState(false);
     const [drawResult, setDrawResult] = useState(null);
@@ -18,33 +31,49 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const challenge = {
-        red: 3, blue: 7, total: 10,
-        q: 'كيس يحتوي على 3 كرات حمراء و 7 زرقاء. ما هو احتمال سحب كرة حمراء؟ (أعطِ النتيجة كنسبة مئوية %)',
-        ans: 30,
-        hint: '(3 ÷ 10) × 100 = ?',
-    };
+    const problem = rounds[round]; // { level, red, blue, total, askBlue, ans, q, hint }
 
     const learnPages = [
-        {
-            title: 'ما هي الاحتمالات؟',
-            detail: 'الاحتمال هو مقياس لمدى إمكانية وقوع حدث ما. قيمته دائماً تكون بين 0 (مستحيل) و 1 (مؤكد).',
-        },
+        { title: 'ما هي الاحتمالات؟', detail: 'الاحتمال هو مقياس لمدى إمكانية وقوع حدث ما. قيمته دائماً تكون بين 0 (مستحيل) و 1 (مؤكد).' },
         { title: 'قانون الحساب الأساسي', detail: 'نحسب الاحتمال بقسمة "عدد الحالات المواتية" على "العدد الإجمالي للحالات الممكنة".', math: 'P = k / n' },
     ];
 
-    const resetChallenge = () => {
-        setUserAns(''); setDrawResult(null); setError(false); setFeedback(null);
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
+
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0); setUserAns(''); setDrawResult(null);
+        setError(false); setFeedback(null); setReward(null);
+    };
+
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
-        if (parseInt(userAns) === challenge.ans) {
+        if (parseInt(userAns) === problem.ans) {
             setFeedback({ type: 'success', text: 'إجابة عبقرية! لقد أتقنت منطق الاحتمالات.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-            try {
-                const data = await rewardService.claimLabReward('prob-mastery');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+            setUserAns(''); setDrawResult(null);
+
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'prob-mastery-answer', red: problem.red, blue: problem.blue, total: problem.total, askBlue: problem.askBlue, ans: problem.ans,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'خطأ. تذكر: (الجزء ÷ الكل) × 100.' });
@@ -55,7 +84,7 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
     const handleSimDraw = () => {
         setIsDrawing(true);
         setTimeout(() => {
-            const res = Math.random() < (challenge.red / challenge.total) ? 'red' : 'blue';
+            const res = Math.random() < (problem.red / problem.total) ? 'red' : 'blue';
             setDrawResult(res);
             setIsDrawing(false);
         }, 1000);
@@ -71,11 +100,14 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     هل الحظ موجود فعلاً؟ تعلم كيف تتوقع المستقبل "رياضياً" وتفهم القوانين التي تحكم المصادفة والكرات الملونة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     دخول مختبر الاحتمال
                 </button>
             </div>
-            <button onClick={() => { resetChallenge(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -103,7 +135,7 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenge(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -113,22 +145,22 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={2}
-            question={challenge.q}
-            hint={challenge.hint}
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
-            onRefresh={resetChallenge}
-            onRestart={() => { setPhase('intro'); resetChallenge(); setReward(null); }}
+            onRefresh={resetChallenges}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 {/* محاكاة السحب البصرية */}
                 <div className="flex flex-col items-center gap-3">
-                    <div className="grid grid-cols-5 gap-2">
-                        {Array.from({ length: challenge.red }).map((_, i) => <div key={i} className="w-5 h-5 rounded-full bg-rose-500" />)}
-                        {Array.from({ length: challenge.blue }).map((_, i) => <div key={i} className="w-5 h-5 rounded-full bg-sky-500" />)}
+                    <div className="grid grid-cols-5 gap-2 max-w-[180px]">
+                        {Array.from({ length: problem.red }).map((_, i) => <div key={`r${i}`} className="w-5 h-5 rounded-full bg-rose-500" />)}
+                        {Array.from({ length: problem.blue }).map((_, i) => <div key={`b${i}`} className="w-5 h-5 rounded-full bg-sky-500" />)}
                     </div>
                     <button
                         onClick={handleSimDraw} disabled={isDrawing}
@@ -155,12 +187,18 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
                         onChange={e => setUserAns(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                         aria-label="أدخل النسبة المئوية"
+                        autoFocus
                         className={`w-28 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400 focus:border-indigo-400' : 'bg-white border-indigo-200 text-indigo-700 focus:border-indigo-500'
                             }`}
                         placeholder="%"
                     />
                     <span className={theme.textMain}>%</span>
                 </div>
+
+                <LabTutorialNote
+                    from={`الكيس يحتوي على ${problem.red} كرات حمراء و${problem.blue} كرات زرقاء (المجموع = ${problem.total}).`}
+                    why="احتمال وقوع حدث بسيط يُحسب بقسمة عدد الحالات المواتية (اللون المطلوب) على العدد الإجمالي للكرات، ثم ضرب الناتج في 100 للحصول على نسبة مئوية."
+                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                     تحقق من الاحتمال
@@ -174,7 +212,7 @@ export default function ProbabilityMasteryLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="prob-mastery"
+            labId={LAB_ID}
             phase={phase}
             title="مختبر الاحتمالات"
             badgeText="منطق الصدفة"

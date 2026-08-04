@@ -4,7 +4,7 @@ import { CheckCircle2, ArrowRight, Layers, Layout, MousePointer2 } from 'lucide-
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabTutorialNote from './LabTutorialNote';

@@ -1,59 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Triangle, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'thales-length';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function ThalesLengthContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ ad: 2, ab: 6, ae: 3, missing: 'ac', ans: 9 });
-    const [step, setStep] = useState(0); // 0: إدخال، 1: تم
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputVal, setInputVal] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const problem = rounds[round]; // { level, ad, ab, ac, ae }
+
     const learnPages = [
-        {
-            title: 'حساب طول مجهول',
-            detail: 'تسمح نظرية طاليس (الخاصية المباشرة) بحساب طول ضلع مجهول في مثلث إذا علمنا أن هناك مستقيمين متوازيين.',
-            math: 'AD/AB = AE/AC = DE/BC',
-        },
-        {
-            title: 'الرابع المتناسب',
-            detail: 'بما أن النسب متساوية، نستخدم "الرابع المتناسب" (جداء الطرفين يساوي جداء الوسطين) لإيجاد المجهول.',
-            math: 'x = (a × b) / c',
-        },
+        { title: 'حساب طول مجهول', detail: 'تسمح نظرية طاليس (الخاصية المباشرة) بحساب طول ضلع مجهول في مثلث إذا علمنا أن هناك مستقيمين متوازيين.', math: 'AD/AB = AE/AC = DE/BC' },
+        { title: 'الرابع المتناسب', detail: 'بما أن النسب متساوية، نستخدم "الرابع المتناسب" (جداء الطرفين يساوي جداء الوسطين) لإيجاد المجهول.', math: 'AE = (AD × AC) / AB' },
+        { title: 'الجولات الثلاث', detail: 'ستحسب 3 أطوال مجهولة بأرقام تتصاعد صعوبةً — الجولة الأخيرة قد تحتوي أعداداً أكبر.', math: 'مبتدئ ➜ متوسط ➜ متقدم' },
     ];
 
-    const problems = [
-        { ad: 2, ab: 6, ae: 3, missing: 'ac', ans: 9 }, { ad: 4, ab: 10, ae: 6, missing: 'ac', ans: 15 },
-        { ad: 3, ab: 9, ac: 12, missing: 'ae', ans: 4 }, { ab: 10, ae: 2, ac: 8, missing: 'ad', ans: 2.5 },
-        { ad: 5, ab: 15, ae: 4, missing: 'ac', ans: 12 }, { ad: 3, ab: 12, ac: 16, missing: 'ae', ans: 4 },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const generateProblem = () => {
-        const p = problems[Math.floor(Math.random() * problems.length)];
-        setProblem(p);
-        setPhase('practice');
-        setStep(0);
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputVal('');
         setError(false);
         setFeedback(null);
         setReward(null);
     };
 
-    const handleCheck = () => {
-        if (parseFloat(inputVal) === problem.ans) {
-            setStep(1);
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
+
+    const handleCheck = async () => {
+        if (parseFloat(inputVal) === problem.ae) {
             setFeedback({ type: 'success', text: 'حساب دقيق! أتقنت الرابع المتناسب.' });
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('thales-length').then(d => d.status === 'success' && setReward(d)).catch(console.error);
+            setInputVal('');
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
+            } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'thales-problem', kind: 'length',
+                        a: problem.ad, b: problem.ab, c: problem.ac, ans: problem.ae,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'راجع: جداء الطرفين = جداء الوسطين.' });
@@ -72,15 +93,18 @@ function ThalesLengthContent({ phase, setPhase }) {
                     </div>
                 </div>
                 <p className={`text-sm ${theme.textSub}`}>بمعرفة 3 أطوال، يمكننا حساب الطول الرابع (الرابع المتناسب).</p>
+                <div className={`my-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-sky-500/20 text-sky-300' : 'bg-sky-50 text-sky-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
-                    className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100'}`}
+                    className={`mt-1 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100'}`}
                 >
                     تعلّم الطريقة
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -120,7 +144,7 @@ function ThalesLengthContent({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ الحساب</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ الحساب</button>
                 }
             </div>
         </div>
@@ -130,15 +154,15 @@ function ThalesLengthContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={1}
-            total={1}
-            level={2}
-            question={`أوجد الطول المجهول ${problem.missing.toUpperCase()}`}
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question="أوجد الطول المجهول AE"
             hint="استخدم قاعدة الرابع المتناسب: جداء الطرفين = جداء الوسطين."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={resetChallenges}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -156,19 +180,19 @@ function ThalesLengthContent({ phase, setPhase }) {
                 {/* النسبة */}
                 <div className={`p-4 rounded-xl border font-mono text-sm flex justify-center gap-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>
-                        <div className={`border-b-2 border-current pb-1 px-2 ${problem.missing === 'ad' ? 'text-sky-400 font-black' : ''}`}>{problem.missing === 'ad' ? 'AD' : problem.ad}</div>
-                        <div className={`pt-1 px-2 ${problem.missing === 'ab' ? 'text-sky-400 font-black' : ''}`}>{problem.missing === 'ab' ? 'AB' : problem.ab}</div>
+                        <div className="pb-1 px-2 border-b-2 border-current">{problem.ad}</div>
+                        <div className="pt-1 px-2">{problem.ab}</div>
                     </div>
                     <div className="flex items-center font-black">=</div>
                     <div>
-                        <div className={`border-b-2 border-current pb-1 px-2 ${problem.missing === 'ae' ? 'text-sky-400 font-black' : ''}`}>{problem.missing === 'ae' ? 'AE' : problem.ae}</div>
-                        <div className={`pt-1 px-2 ${problem.missing === 'ac' ? 'text-sky-400 font-black' : ''}`}>{problem.missing === 'ac' ? 'AC' : problem.ac}</div>
+                        <div className="pb-1 px-2 border-b-2 border-current text-sky-400 font-black">AE</div>
+                        <div className="pt-1 px-2">{problem.ac}</div>
                     </div>
                 </div>
 
                 {/* الإدخال */}
                 <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
-                    <span className={`uppercase ${theme.textMain}`}>{problem.missing} =</span>
+                    <span className={`uppercase ${theme.textMain}`}>AE =</span>
                     <input
                         type="number"
                         step="0.1"
@@ -182,6 +206,11 @@ function ThalesLengthContent({ phase, setPhase }) {
                         autoFocus
                     />
                 </div>
+
+                <LabTutorialNote
+                    from={`لدينا AD = ${problem.ad}، AB = ${problem.ab}، AC = ${problem.ac}، والمستقيمان (DE) و(BC) متوازيان.`}
+                    why="بما أن التوازي يعطينا AD/AB = AE/AC، نطبّق قاعدة الرابع المتناسب: نضرب الطرفين (AD وAC) ثم نقسم الناتج على الوسط المعلوم (AB) لنحصل على AE."
+                />
 
                 <button
                     onClick={handleCheck}
@@ -198,7 +227,7 @@ export default function ThalesLengthLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="thales-length"
+            labId={LAB_ID}
             phase={phase}
             title="حساب طول بطاليس"
             badgeText="التناسب والهندسة"

@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Compass, ArrowRight, CheckCircle2, RefreshCcw, RotateCw, Target } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'rotation-mastery';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function RotationMasteryContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [userAngle, setUserAngle] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const problem = rounds[round]; // { level, kind, mag, ans }
 
     const learnPages = [
         {
@@ -47,25 +61,39 @@ function RotationMasteryContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        { q: 'دور الشكل بزاوية 90 درجة في الاتجاه الموجب. كم ستكون الدرجة الجبرية؟', ans: 90, hint: 'الاتجاه الموجب هو عكس عقارب الساعة.' },
-        { q: 'دور الشكل بزاوية 60 درجة في الاتجاه السالب (مع عقارب الساعة). ما هي القيمة الجبرية؟', ans: -60, hint: 'الاتجاه السالب يسبق بـ (-).' },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const currentChallenge = challenges[challengeStep];
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0); setUserAngle('');
+        setError(false); setFeedback(null); setReward(null);
+    };
 
-    const resetChallenges = () => { setChallengeStep(0); setUserAngle(''); setError(false); setFeedback(null); };
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
 
     const handleAnswer = async () => {
-        if (parseInt(userAngle) === currentChallenge.ans) {
+        if (parseInt(userAngle) === problem.ans) {
             setFeedback({ type: 'success', text: 'رائع! لقد حددت الدوران بدقة هندسية عالية.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            setUserAngle('');
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); setUserAngle(''); }, 1400);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('rotation-mastery');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'rotation-answer', kind: problem.kind, mag: problem.mag, ans: problem.ans,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -86,11 +114,14 @@ function RotationMasteryContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تدور الأشكال في الفضاء حول مركز ثابت. الدوران هو لغة الهندسة التي تفسر حركة الكواكب والمحركات.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black transition-all">
                     فتح المختبر
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -114,7 +145,7 @@ function RotationMasteryContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -124,15 +155,15 @@ function RotationMasteryContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
-            question={currentChallenge.q}
-            hint={currentChallenge.hint}
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 {/* رادار الدوران التفاعلي */}
@@ -159,6 +190,15 @@ function RotationMasteryContent({ phase, setPhase }) {
                     />
                 </div>
 
+                <LabTutorialNote
+                    from={problem.kind === 'sign-only'
+                        ? `الشكل يدور بمقدار ${problem.mag}°.`
+                        : `الزاوية المعطاة هي ${problem.mag}°، وهي خارج المجال المعتاد [-180°, 180°].`}
+                    why={problem.kind === 'sign-only'
+                        ? 'بالاصطلاح الرياضي، الدوران عكس عقارب الساعة يُعتبر موجباً (+)، بينما الدوران مع عقارب الساعة يُعتبر سالباً (−). لذلك تُكتب القيمة الجبرية بالإشارة المناسبة لاتجاه الدوران.'
+                        : 'أي زاوية أكبر من 180° لها زاوية مكافئة أصغر داخل المجال [-180°, 180°] نحصل عليها بطرح 360° كاملة، لأن الدوران الكامل لا يغيّر موضع الشكل النهائي.'}
+                />
+
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black transition-all">
                     تأكيد الزاوية
                 </button>
@@ -171,7 +211,7 @@ export default function RotationMasteryLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="rotation-mastery"
+            labId={LAB_ID}
             phase={phase}
             title="مختبر الرادار"
             badgeText="هندسة الدوران"

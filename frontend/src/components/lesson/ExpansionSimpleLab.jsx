@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Target, CheckCircle2, ArrowRight } from 'lucide-react';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';

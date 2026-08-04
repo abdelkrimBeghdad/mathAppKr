@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, ScanSearch, Zap as ZapIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';

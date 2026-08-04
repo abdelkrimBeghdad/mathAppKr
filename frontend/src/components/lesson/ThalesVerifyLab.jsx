@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Triangle, Check, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'thales-verify';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function ThalesVerifyContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ ad: 2, ab: 6, ae: 3, ac: 9, isParallel: true });
-    const [step, setStep] = useState(0); // 0: اختيار، 1: تم
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
+    const [answered, setAnswered] = useState(false);
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const problem = rounds[round]; // { level, ad, ab, ae, ac, isParallel }
 
     const learnPages = [
         {
@@ -28,30 +42,52 @@ function ThalesVerifyContent({ phase, setPhase }) {
             detail: 'احسب النسبة الأولى (الصغير على الكبير في جهة)، ثم النسبة الثانية في الجهة الأخرى. إذا تساوتا → المستقيمان متوازيان.',
             math: '2/6 = 3/9 → 0.33 = 0.33 ✓',
         },
+        {
+            title: 'الجولات الثلاث',
+            detail: 'ستُختبر في 3 حالات تصاعدية الصعوبة، بعضها متوازٍ وبعضها ليس كذلك — انتبه للأرقام المتقاربة في المستوى المتقدم.',
+            math: 'مبتدئ ➜ متوسط ➜ متقدم',
+        },
     ];
 
-    const problems = [
-        { ad: 2, ab: 6, ae: 3, ac: 9, isParallel: true }, { ad: 4, ab: 10, ae: 6, ac: 15, isParallel: true },
-        { ad: 3, ab: 5, ae: 6, ac: 10, isParallel: true }, { ad: 2, ab: 5, ae: 3, ac: 8, isParallel: false },
-        { ad: 5, ab: 15, ae: 4, ac: 12, isParallel: true }, { ad: 3, ab: 7, ae: 4, ac: 9, isParallel: false },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const generateProblem = () => {
-        const p = problems[Math.floor(Math.random() * problems.length)];
-        setProblem(p);
-        setPhase('practice');
-        setStep(0);
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setAnswered(false);
         setError(false);
         setFeedback(null);
         setReward(null);
     };
 
-    const handleAnswer = (userAnswer) => {
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
+
+    const handleAnswer = async (userAnswer) => {
         if (userAnswer === problem.isParallel) {
-            setStep(1);
+            setAnswered(true);
             setFeedback({ type: 'success', text: 'إجابة صحيحة! قارنت النسبتين بدقة.' });
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('thales-verify').then(d => d.status === 'success' && setReward(d)).catch(console.error);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setAnswered(false); setFeedback(null); }, 1400);
+            } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'thales-verify-parallel',
+                        ad: problem.ad, ab: problem.ab, ae: problem.ae, ac: problem.ac,
+                        answer: problem.isParallel,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'قارن AD/AB مع AE/AC بدقة أكبر.' });
@@ -70,15 +106,18 @@ function ThalesVerifyContent({ phase, setPhase }) {
                     </div>
                 </div>
                 <p className={`text-sm ${theme.textSub}`}>إذا تساوت النسبتان → المستقيمان متوازيان (DE ∥ BC).</p>
+                <div className={`my-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
-                    className={`mt-4 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'}`}
+                    className={`mt-1 w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'}`}
                 >
                     كيف أتحقق؟
                 </button>
             </div>
             <motion.button
-                onClick={generateProblem}
+                onClick={startPractice}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="relative rounded-[1rem] shadow-2xl overflow-hidden"
             >
@@ -118,7 +157,7 @@ function ThalesVerifyContent({ phase, setPhase }) {
                 </button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحقق</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">ابدأ التحقق</button>
                 }
             </div>
         </div>
@@ -128,15 +167,15 @@ function ThalesVerifyContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={1}
-            total={1}
-            level={1}
+            current={round + 1}
+            total={3}
+            level={problem.level}
             question="هل المستقيمان (DE) و (BC) متوازيان؟"
             hint="قارن النسبة AD/AB مع AE/AC — إن تساوتا فالمستقيمان متوازيان."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
-            onRestart={() => { setPhase('intro'); setReward(null); }}
+            onRefresh={resetChallenges}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -161,17 +200,24 @@ function ThalesVerifyContent({ phase, setPhase }) {
                 <div className="flex gap-3 w-full" role="group" aria-label="هل المستقيمان متوازيان">
                     <button
                         onClick={() => handleAnswer(true)}
-                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white ${error ? 'opacity-60' : ''}`}
+                        disabled={answered}
+                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white ${error || answered ? 'opacity-60' : ''}`}
                     >
                         <Check size={18} /> نعم، متوازيان
                     </button>
                     <button
                         onClick={() => handleAnswer(false)}
-                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white ${error ? 'opacity-60' : ''}`}
+                        disabled={answered}
+                        className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white ${error || answered ? 'opacity-60' : ''}`}
                     >
                         <X size={18} /> لا، غير متوازيين
                     </button>
                 </div>
+
+                <LabTutorialNote
+                    from={`لدينا AD = ${problem.ad}، AB = ${problem.ab}، AE = ${problem.ae}، AC = ${problem.ac}.`}
+                    why="حسب الخاصية العكسية لنظرية طاليس، المستقيمان (DE) و(BC) متوازيان إذا وفقط إذا كانت النسبتان AD/AB وAE/AC متساويتين تماماً. أي فرق ولو بسيط بينهما يعني أنهما غير متوازيين."
+                />
             </div>
         </LabChallenge>
     );
@@ -181,7 +227,7 @@ export default function ThalesVerifyLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="thales-verify"
+            labId={LAB_ID}
             phase={phase}
             title="التحقق من التوازي"
             badgeText="نظرية طاليس العكسية"

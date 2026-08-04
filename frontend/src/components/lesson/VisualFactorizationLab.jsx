@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Binary, Boxes, Microscope } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'fact-common';
+
+// 3 جولات تصاعدية الصعوبة (مبتدئ ➜ متوسط ➜ متقدم) قبل منح المكافأة
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function VisualFactorizationContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [problem, setProblem] = useState({ a: 4, c: 3 });
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [step, setStep] = useState(1); // 1:split 2:factor 3:input 4:done
     const [error, setError] = useState(false);
     const [term1Split, setTerm1Split] = useState(false);
@@ -20,7 +33,21 @@ function VisualFactorizationContent({ phase, setPhase }) {
     const [inputs, setInputs] = useState({ outer: '', inner: '' });
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
-    const [attemptCount, setAttemptCount] = useState(1);
+
+    const problem = rounds[round]; // { level, a, c, q, hint }
+    const term2 = problem.a * problem.c;
+
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const learnPages = [
         {
@@ -35,13 +62,15 @@ function VisualFactorizationContent({ phase, setPhase }) {
             math: '4x + 12 = (4 × x) + (4 × 3)',
             icon: <Binary size={20} />,
         },
+        {
+            title: 'الجولات الثلاث',
+            detail: 'ستحلل 3 عبارات مختلفة: سهلة، ثم أصعب، ثم الأصعب (وقد تحتوي على أعداد سالبة). المكافأة تُمنح فقط بعد الجولة الثالثة لضمان إتقانك الحقيقي.',
+            math: 'مبتدئ ➜ متوسط ➜ متقدم',
+            icon: <Boxes size={20} />,
+        },
     ];
 
-    const generateProblem = () => {
-        const a = Math.floor(Math.random() * 6) + 2;
-        const c = Math.floor(Math.random() * 7) + 2;
-        setProblem({ a, c });
-        setPhase('practice');
+    const resetStep = () => {
         setStep(1);
         setTerm1Split(false);
         setTerm2Split(false);
@@ -49,8 +78,15 @@ function VisualFactorizationContent({ phase, setPhase }) {
         setInputs({ outer: '', inner: '' });
         setFeedback(null);
         setError(false);
+    };
+
+    const startPractice = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        resetStep();
         setReward(null);
-        setAttemptCount(s => s + 1);
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
     };
 
     const handleTerm1Click = () => {
@@ -78,11 +114,27 @@ function VisualFactorizationContent({ phase, setPhase }) {
         if (parseInt(inputs.outer) === problem.a && parseInt(inputs.inner) === problem.c) {
             setStep(4);
             setFeedback({ type: 'success', text: 'تم التحليل بالعامل المشترك بنجاح!' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            try {
-                const data = await rewardService.claimLabReward('fact-common-factor');
-                if (data.status === 'success') setReward(data);
-            } catch (err) { console.error(err); }
+
+            if (round < 2) {
+                setTimeout(() => {
+                    setFeedback({ type: 'success', text: `أحسنت! الجولة التالية أصعب.` });
+                    setTimeout(() => {
+                        setRound(r => r + 1);
+                        resetStep();
+                    }, 1400);
+                }, 500);
+            } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'factor-common',
+                        a: problem.a,
+                        c: problem.c,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
         } else {
             setError(true);
             setFeedback({ type: 'error', text: 'تحقق من العامل المشترك أو الحد الداخلي.' });
@@ -98,11 +150,14 @@ function VisualFactorizationContent({ phase, setPhase }) {
                 <div className={`p-4 rounded-xl border font-mono text-center text-sm text-cyan-400 mb-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-cyan-50 border-cyan-100'}`}>
                     ax + ab = a(x+b)
                 </div>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-50 text-cyan-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className={`w-full py-3 rounded-xl font-bold transition-all border text-sm ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100'}`}>
                     فتح دليل الاستخلاص
                 </button>
             </div>
-            <motion.button onClick={generateProblem} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
+            <motion.button onClick={startPractice} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative rounded-[1rem] shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-cyan-600" />
                 <div className="relative p-8 flex flex-col items-center justify-center text-white gap-2">
                     <Microscope size={40} />
@@ -133,7 +188,7 @@ function VisualFactorizationContent({ phase, setPhase }) {
                 <button onClick={() => learnStep > 0 ? setLearnStep(l => l - 1) : setPhase('intro')} className={`px-4 py-2 rounded-xl font-black transition-all ${isDarkMode ? 'bg-white/5 text-white border border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-black">التالي</button>
-                    : <button onClick={generateProblem} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول التجربة</button>
+                    : <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">دخول التجربة</button>
                 }
             </div>
         </div>
@@ -143,13 +198,13 @@ function VisualFactorizationContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="visual"
-            current={1}
-            total={1}
-            level={1}
+            current={round + 1}
+            total={3}
+            level={problem.level}
             hint="اضغط أولاً على كل حد لتفكيكه، ثم اختر العامل المكرر في الحدين."
             feedback={feedback}
             reward={reward}
-            onRefresh={generateProblem}
+            onRefresh={() => { resetStep(); }}
             onRestart={() => { setPhase('intro'); setReward(null); }}
         >
             {/* ── العبارة التفاعلية ─────────────────────────────────────────── */}
@@ -187,17 +242,17 @@ function VisualFactorizationContent({ phase, setPhase }) {
                         </div>
                     )}
 
-                    <span className="opacity-30">+</span>
+                    <span className="opacity-30">{term2 >= 0 ? '+' : '-'}</span>
 
                     {/* الحد الثاني */}
                     {!term2Split ? (
                         <motion.div
                             onClick={handleTerm2Click}
                             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleTerm2Click())}
-                            role="button" tabIndex={0} aria-label={`فكك الحد ${problem.a * problem.c}`}
+                            role="button" tabIndex={0} aria-label={`فكك الحد ${Math.abs(term2)}`}
                             whileTap={{ scale: 0.95 }}
                             className={`p-4 md:p-6 rounded-2xl border-2 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 ${isDarkMode ? 'bg-black/40 border-cyan-500/30 text-white hover:border-cyan-400' : 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:border-cyan-400'}`}
-                        >{problem.a * problem.c}</motion.div>
+                        >{Math.abs(term2)}</motion.div>
                     ) : (
                         <div className="flex items-center gap-2">
                             <motion.div
@@ -208,7 +263,7 @@ function VisualFactorizationContent({ phase, setPhase }) {
                                 className={`w-14 h-14 flex items-center justify-center rounded-xl border-2 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 ${selectedFactors.right ? 'bg-cyan-500 border-cyan-400 text-white scale-110' : isDarkMode ? 'bg-black/60 border-white/10 text-slate-400 hover:border-cyan-500' : 'bg-white border-slate-200 text-slate-600 hover:border-cyan-400'}`}
                             >{problem.a}</motion.div>
                             <span className="opacity-30 text-sm">×</span>
-                            <div className={`w-14 h-14 flex items-center justify-center rounded-xl border-2 opacity-20 ${isDarkMode ? 'border-white/5 text-white' : 'border-slate-200 text-slate-400'}`}>{problem.c}</div>
+                            <div className={`w-14 h-14 flex items-center justify-center rounded-xl border-2 opacity-20 ${isDarkMode ? 'border-white/5 text-white' : 'border-slate-200 text-slate-400'}`}>{Math.abs(problem.c)}</div>
                         </div>
                     )}
                 </div>
@@ -232,6 +287,12 @@ function VisualFactorizationContent({ phase, setPhase }) {
                                 />
                                 <span className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}>)</span>
                             </div>
+
+                            <LabTutorialNote
+                                from={`العبارة الأصلية هي ${problem.a}x ${term2 >= 0 ? '+' : '-'} ${Math.abs(term2)}، وقد لاحظنا أن ${problem.a} يتكرر في كلا الحدين.`}
+                                why={`بما أن ${problem.a} عامل مشترك للحدين، يمكننا سحبه للخارج وكتابة الباقي بين قوسين: ${problem.a}(x + ${problem.c}). هذا يعيد كتابة الجمع كضرب دون تغيير قيمة العبارة.`}
+                            />
+
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد
                             </button>
@@ -255,10 +316,10 @@ export default function VisualFactorizationLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="visual-factorization"
+            labId={LAB_ID}
             phase={phase}
             title="التحليل بالعامل المشترك"
-            badgeText="وحدة الاستخلاص الجبري"
+            badgeText="استخلاص العامل المشترك"
             badgeIcon={Boxes}
             accentColor="cyan"
             onBack={phase !== 'intro' ? () => setPhase('intro') : undefined}

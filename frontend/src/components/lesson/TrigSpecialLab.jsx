@@ -1,43 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ArrowRight, CheckCircle2, Table } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'trig-special';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function TrigSpecialContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const problem = rounds[round]; // { level, kind, angle, func, correct, options, q, hint }
 
     const learnPages = [
         { title: 'أصدقاء الطالب', detail: 'هناك زوايا تتكرر كثيراً في التمارين والفيزياء، قيمها "جميلة" وسهلة الحفظ. نسميها الزوايا الشهيرة.' },
     ];
 
-    const challenges = [
-        { q: "ما هي قيمة جيب الزاوية (Sin) لـ 30 درجة؟", options: ["0.5", "1", "0.86"], ans: "0.5" },
-        { q: "ما هي الزاوية التي يكون ظلها (Tan) يساوي 1؟", options: ["30°", "45°", "60°"], ans: "45°" },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const currentChallenge = challenges[challengeStep];
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setFeedback(null);
+        setReward(null);
+    };
 
-    const resetChallenges = () => { setChallengeStep(0); setFeedback(null); };
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
 
     const handleAnswer = async (choice) => {
-        if (choice === currentChallenge.ans) {
+        if (choice === problem.correct) {
             setFeedback({ type: 'success', text: 'أحسنت! حفظ هذه القيم سيوفر عليك الكثير من الوقت في الامتحانات.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-special-mastery');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'trig-special-answer', kind: problem.kind, angle: problem.angle, func: problem.func, answer: choice,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -56,11 +84,14 @@ function TrigSpecialContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     احفظ القيم التي لا غنى عنها لأي طالب متميز. الزوايا 30، 45، و60 سترافقك في كل مسار تعليمي قادم.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -88,6 +119,18 @@ function TrigSpecialContent({ phase, setPhase }) {
                             <span className="text-rose-400">√2/2</span>
                             <span className="text-rose-400">√3/2</span>
                         </div>
+                        <div className={`grid grid-cols-4 gap-2 text-xs font-bold text-center pt-2 mt-2 border-t ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                            <span className="text-sky-400">Cos</span>
+                            <span className="text-sky-400">√3/2</span>
+                            <span className="text-sky-400">√2/2</span>
+                            <span className="text-sky-400">1/2</span>
+                        </div>
+                        <div className={`grid grid-cols-4 gap-2 text-xs font-bold text-center pt-2 mt-2 border-t ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                            <span className="text-emerald-400">Tan</span>
+                            <span className="text-emerald-400">√3/3</span>
+                            <span className="text-emerald-400">1</span>
+                            <span className="text-emerald-400">√3</span>
+                        </div>
                     </div>
                 </motion.div>
             </AnimatePresence>
@@ -97,7 +140,7 @@ function TrigSpecialContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -107,22 +150,31 @@ function TrigSpecialContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
-            question={currentChallenge.q}
-            hint="راجع جدول القيم الشهيرة: 30°، 45°، 60°."
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
-            <div className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الإجابة">
-                {currentChallenge.options.map((opt, i) => (
-                    <button key={i} onClick={() => handleAnswer(opt)} className="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black text-xl transition-all active:scale-95">
-                        {opt}
-                    </button>
-                ))}
+            <div className="w-full flex flex-col items-center gap-4">
+                <div className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الإجابة">
+                    {problem.options.map((opt, i) => (
+                        <button key={i} onClick={() => handleAnswer(opt)} className="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black text-xl transition-all active:scale-95">
+                            {opt}
+                        </button>
+                    ))}
+                </div>
+
+                <LabTutorialNote
+                    from="الزوايا 30°، 45°، و60° هي الزوايا الشهيرة التي تتكرر في معظم التمارين والتطبيقات الفيزيائية."
+                    why={problem.kind === 'value-forward'
+                        ? 'قيم هذه الزوايا مشتقة من مثلثات هندسية بسيطة (نصف مثلث متساوي الأضلاع، ومثلث قائم متساوي الساقين)، ولذلك تأتي دائماً بصيغ جذرية جميلة يجب حفظها.'
+                        : 'بما أن كل زاوية شهيرة لها قيمة ثابتة مميزة لكل نسبة مثلثية، يمكننا الرجوع من القيمة المعطاة إلى الزاوية المطابقة لها في الجدول.'}
+                />
             </div>
         </LabChallenge>
     );
@@ -132,7 +184,7 @@ export default function TrigSpecialLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="trig-special"
+            labId={LAB_ID}
             phase={phase}
             title="نجوم المثلثات"
             badgeText="الزوايا الشهيرة"

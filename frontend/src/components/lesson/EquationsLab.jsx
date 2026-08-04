@@ -1,55 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Target, Zap as ZapIcon, RefreshCw, Binary, Scale } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'eq-solve';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function EquationsContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [userInput, setUserInput] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
+    const currentChallenge = rounds[round]; // { level, kind, x, a, b, c, q, hint }
+
     const learnPages = [
         { title: 'بروتوكول موازنة الموازين', detail: 'المعادلة هي ميزان رقمي دقيق. هدفنا الأساسي هو عزل المجهول x في طرف واحد عبر نقل الأرقام بحكمة.', math: 'x + a = b  →  x = b − a', icon: <Scale size={20} /> },
         { title: 'خوارزمية الانعكاس الإشاري', detail: 'عند نقل أي قيمة من كفة لأخرى يجب عكس عمليتها: الجمع يصبح طرحاً، والضرب يصبح قسمة.', math: 'x + 5 = 12  →  x = 12 − 5', icon: <RefreshCw size={20} /> },
-        { title: 'بروتوكول الاختزال النهائي', detail: 'في المرحلة الأخيرة نقسم الطرفين على معامل x للوصول إلى القيمة الجوهريّة للمجهول.', math: '2x = 10  →  x = 10 ÷ 2', icon: <Binary size={20} /> },
+        { title: 'بروتوكول الاختزال النهائي', detail: 'في المرحلة الأخيرة نقسم الطرفين على معامل x للوصول إلى القيمة الجوهريّة للمجهول. الجولة الثالثة تجمع الخطوتين معاً.', math: '2x + 4 = 14  →  x = (14 − 4) ÷ 2', icon: <Binary size={20} /> },
     ];
 
-    const challenges = [
-        { q: 'x + 6 = 15', a: '9', hint: 'انقل +6 للطرف الآخر لتصبح −6.' },
-        { q: 'x − 8 = 12', a: '20', hint: 'انقل −8 للطرف الآخر لتصبح +8.' },
-        { q: '5x = 40', a: '8', hint: 'اقسم 40 على المعامل 5.' },
-        { q: '2x + 4 = 14', a: '5', hint: 'أولاً انقل +4، ثم اقسم الناتج على 2.' },
-        { q: '3x − 5 = 10', a: '5', hint: 'أولاً انقل −5 لتصبح +5، ثم اقسم على 3.' },
-        { q: '12 − x = 7', a: '5', hint: 'فكر: 12 ناقص كم يساوي 7؟' },
-    ];
-
-    const currentChallenge = challenges[challengeStep];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(progress => {
+                if (progress) {
+                    const lvl = difficultyEngine.getLevel(progress);
+                    setBaseLevel(lvl);
+                    setRounds(buildRounds(lvl));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     const resetChallenges = () => {
-        setChallengeStep(0); setUserInput('');
+        setRounds(buildRounds(baseLevel));
+        setRound(0); setUserInput('');
         setError(false); setFeedback(null); setReward(null);
     };
 
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
+
     const handleAnswer = async () => {
-        if (userInput.trim() === currentChallenge.a) {
+        if (userInput.trim() === String(currentChallenge.x)) {
             setFeedback({ type: 'success', text: 'معالجة مثالية! تم استخراج قيمة x بنجاح ✓' });
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
             setUserInput('');
             setError(false);
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1500);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1500);
             } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('equations');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'eq-solve-linear',
+                        a: currentChallenge.a,
+                        b: currentChallenge.b,
+                        c: currentChallenge.c,
+                        x: currentChallenge.x,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -68,16 +97,18 @@ function EquationsContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm mb-4 font-medium`}>
                     تعلم استراتيجيات عزل x وكيفية التلاعب بموازين المعادلات للوصول للحقيقة الرقمية.
                 </p>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-50 text-violet-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button
                     onClick={() => setPhase('learn')}
-                    className={`w-full py-3 rounded-xl font-black transition-all text-sm border ${isDarkMode ? 'bg-white/5 text-white border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                        }`}
+                    className={`w-full py-3 rounded-xl font-black transition-all text-sm border ${isDarkMode ? 'bg-white/5 text-white border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}
                 >
                     بدء التدريب
                 </button>
             </div>
             <motion.button
-                onClick={() => { resetChallenges(); setPhase('practice'); }}
+                onClick={startPractice}
                 className="relative group rounded-[1rem] overflow-hidden shadow-2xl"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -120,7 +151,7 @@ function EquationsContent({ phase, setPhase }) {
                 {learnStep < learnPages.length - 1 ? (
                     <button onClick={() => setLearnStep(s => s + 1)} className="px-8 py-3 bg-violet-500 hover:bg-violet-600 text-white rounded-xl font-black">التالي</button>
                 ) : (
-                    <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">بدء الاختبار</button>
+                    <button onClick={startPractice} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black">بدء الاختبار</button>
                 )}
             </div>
         </div>
@@ -130,9 +161,9 @@ function EquationsContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep < 2 ? 1 : challengeStep < 4 ? 2 : 3}
+            current={round + 1}
+            total={3}
+            level={currentChallenge.level}
             question={currentChallenge.q}
             hint={currentChallenge.hint}
             feedback={feedback}
@@ -149,11 +180,16 @@ function EquationsContent({ phase, setPhase }) {
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل قيمة x"
                     autoFocus
-                    className={`w-24 md:w-36 rounded-xl p-3 text-center text-xl font-black outline-none transition-all border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-slate-950 text-violet-400 focus:border-violet-500 border-violet-500/50' : 'bg-white text-violet-700 border-violet-200 focus:border-violet-500'
-                        }`}
+                    className={`w-24 md:w-36 rounded-xl p-3 text-center text-xl font-black outline-none transition-all border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-slate-950 text-violet-400 focus:border-violet-500 border-violet-500/50' : 'bg-white text-violet-700 border-violet-200 focus:border-violet-500'}`}
                     placeholder="?"
                 />
             </div>
+
+            <LabTutorialNote
+                from={`المعادلة ${currentChallenge.q} تخبرنا أن طرفها الأيسر يساوي طرفها الأيمن تماماً.`}
+                why="لعزل x نطبّق العملية العكسية على الطرفين معاً — إن كان هناك رقم مضافاً أو مطروحاً ننقله بعكس إشارته، وإن كان معامل ضرب نقسم عليه، دون كسر توازن الميزان أبداً."
+            />
+
             <button
                 onClick={handleAnswer}
                 className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
@@ -169,7 +205,7 @@ export default function EquationsLab() {
 
     return (
         <LabShell
-            labId="equations"
+            labId={LAB_ID}
             phase={phase}
             title="هندسة المعادلات"
             badgeText="بروتوكول عزل المجاهيل"

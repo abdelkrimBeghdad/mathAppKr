@@ -1,30 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Route, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'vec-chasles';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function VecChaslesContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [inputStart, setInputStart] = useState('');
     const [inputEnd, setInputEnd] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
 
-    const challenges = [
-        { q: ['AB', 'BD'], ansStart: 'A', ansEnd: 'D', hint: "حرف B متكرر كـ 'نهاية' للأول و'بداية' للثاني." },
-        { q: ['FG', 'EF'], ansStart: 'E', ansEnd: 'G', hint: 'انتبه! أعد ترتيب الأشعة في ذهنك لتصبح النهاية هي البداية.' },
-        { q: ['MN', 'NP', 'PQ'], ansStart: 'M', ansEnd: 'Q', hint: 'علاقة شال تعمل كالدومينو المتسلسل!' },
-    ];
-
-    const currentChallenge = challenges[challengeStep];
+    const problem = rounds[round]; // { level, chain, vectors, ansStart, ansEnd, hint }
 
     const learnPages = [
         { title: 'الطريق المختصر', detail: 'إذا سافرت من A إلى B، ثم تابعت من B إلى C، فكأنك سافرت مباشرة من A إلى C.' },
@@ -40,25 +46,44 @@ function VecChaslesContent({ phase, setPhase }) {
         },
     ];
 
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
+
     const resetChallenges = () => {
-        setChallengeStep(0);
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
         setInputStart(''); setInputEnd('');
-        setError(false); setFeedback(null);
+        setError(false); setFeedback(null); setReward(null);
+    };
+
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
     };
 
     const handleAnswer = async () => {
-        if (inputStart.toUpperCase() === currentChallenge.ansStart && inputEnd.toUpperCase() === currentChallenge.ansEnd) {
+        if (inputStart.toUpperCase() === problem.ansStart && inputEnd.toUpperCase() === problem.ansEnd) {
             setFeedback({ type: 'success', text: 'صحيح! دمجت المسارات بعلاقة شال بنجاح.' });
             setError(false);
             setInputStart(''); setInputEnd('');
 
-            if (challengeStep < challenges.length - 1) {
+            if (round < 2) {
                 confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1000);
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1000);
             } else {
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('vec-chasles-mastery');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'vec-chasles-chain',
+                        vectors: problem.vectors,
+                        ansStart: problem.ansStart,
+                        ansEnd: problem.ansEnd,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -79,11 +104,14 @@ function VecChaslesContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم كيف تدمج مسارات متعددة في مسار واحد مباشر باستخدام علاقة شال الشهيرة في جمع الأشعة.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -111,7 +139,7 @@ function VecChaslesContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -121,22 +149,22 @@ function VecChaslesContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
-            hint={currentChallenge.hint}
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-sm font-bold ${theme.textSub}`}>أوجد المحصلة باستخدام علاقة شال</p>
-                <div className="flex items-center justify-center gap-3 font-mono font-black text-lg" dir="ltr">
-                    {currentChallenge.q.map((v, i) => (
+                <div className="flex items-center justify-center gap-3 font-mono font-black text-lg flex-wrap" dir="ltr">
+                    {problem.vectors.map((v, i) => (
                         <React.Fragment key={i}>
                             <span className={theme.textMain}>{v}</span>
-                            {i < currentChallenge.q.length - 1 && <span className="opacity-40">+</span>}
+                            {i < problem.vectors.length - 1 && <span className="opacity-40">+</span>}
                         </React.Fragment>
                     ))}
                     <span className="opacity-40">=</span>
@@ -150,6 +178,11 @@ function VecChaslesContent({ phase, setPhase }) {
                         className={`w-14 uppercase rounded-xl text-center p-2 outline-none border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="؟" />
                 </div>
 
+                <LabTutorialNote
+                    from={`لدينا الأشعة المتتالية: ${problem.vectors.join(' + ')}.`}
+                    why="عند جمع سلسلة من الأشعة، كل حرف يظهر مرتين (نهاية شعاع وبداية التالي) يُحذف تلقائياً من المحصلة النهائية، فيتبقى فقط أول حرف من الشعاع الأول وآخر حرف من الشعاع الأخير في السلسلة."
+                />
+
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد المحصلة
                 </button>
@@ -162,7 +195,7 @@ export default function VecChaslesLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="vec-chasles"
+            labId={LAB_ID}
             phase={phase}
             title="جمع الأشعة المتسلسلة"
             badgeText="علاقة شال"

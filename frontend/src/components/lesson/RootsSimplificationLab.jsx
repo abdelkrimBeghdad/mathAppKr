@@ -7,7 +7,7 @@ import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { rewardService } from '../../utils/rewardService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 
 // 3 جولات تصاعدية الصعوبة (مبتدئ ➜ متوسط ➜ متقدم) قبل منح المكافأة
 function buildRounds(baseLevel) {

@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigation, ArrowRight, CheckCircle2, MoveRight, AlignEndHorizontal, Ruler } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
+const LAB_ID = 'vec-concept';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
+
 function VectorSvg({ dx, dy, color, label }) {
-    const len = Math.sqrt(dx * dx + dy * dy) * 20;
+    const len = Math.sqrt(dx * dx + dy * dy) * 15;
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     return (
         <div className="flex flex-col items-center gap-2">
@@ -28,9 +38,13 @@ function VecConceptContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const problem = rounds[round]; // { level, kind, dx, dy, correctDx, correctDy, q, hint, options }
 
     const learnPages = [
         {
@@ -58,8 +72,8 @@ function VecConceptContent({ phase, setPhase }) {
             ),
         },
         {
-            title: 'تساوي شعاعين',
-            detail: 'نقول عن شعاعين أنهما متساويان إذا تطابقت خصائصهما الثلاثة! لا يهم إن كانا متباعدين في المكان، المهم أن لهما نفس الحركة.',
+            title: 'الجولات الثلاث',
+            detail: 'ستُختبر في 3 جولات تصاعدية الصعوبة، منها أسئلة عن تساوي شعاعين وأخرى عن الأشعة المتعاكسة.',
             visual: (
                 <div className="relative w-full h-32 bg-black/40 rounded-xl overflow-hidden flex flex-col items-center justify-center gap-4">
                     <div className="flex items-center w-32 relative">
@@ -81,43 +95,42 @@ function VecConceptContent({ phase, setPhase }) {
         },
     ];
 
-    const challenges = [
-        {
-            q: 'اختر الشعاع الذي يماثل (يساوي) الشعاع AB:',
-            hint: 'يجب أن يكون له نفس الطول، ويوازيه، ويشير إلى نفس الجهة.',
-            target: { dx: 3, dy: 1, label: 'AB', color: '#d946ef' },
-            options: [
-                { id: '1', dx: 3, dy: 1, label: 'CD', correct: true },
-                { id: '2', dx: 3, dy: -1, label: 'EF', correct: false },
-                { id: '3', dx: -3, dy: -1, label: 'GH', correct: false },
-            ],
-        },
-        {
-            q: 'الشعاعان المتعاكسان لهما نفس الطول ونفس المنحى، لكن اتجاههما...',
-            hint: 'الكلمة نفسها تشرح المعنى: متعاكسان.',
-            target: { dx: 0, dy: -2, label: 'MN', color: '#d946ef' },
-            options: [
-                { id: '1', dx: 0, dy: -2, label: 'نفسه', correct: false },
-                { id: '2', dx: 0, dy: 2, label: 'متعاكس', correct: true },
-                { id: '3', dx: 2, dy: 0, label: 'عمودي', correct: false },
-            ],
-        },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const currentChallenge = challenges[challengeStep];
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setFeedback(null);
+        setReward(null);
+    };
 
-    const resetChallenges = () => { setChallengeStep(0); setFeedback(null); };
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
 
     const handleAnswer = async (opt) => {
         if (opt.correct) {
-            setFeedback({ type: 'success', text: 'إجابة صحيحة! تطابقت الخصائص الثلاث.' });
+            setFeedback({ type: 'success', text: 'إجابة صحيحة! تطابقت الخصائص المطلوبة.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('vec-concept-mastery');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'vec-concept-match',
+                        kind: problem.kind,
+                        targetDx: problem.dx, targetDy: problem.dy,
+                        chosenDx: opt.dx, chosenDy: opt.dy,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -136,11 +149,14 @@ function VecConceptContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعرف على المعنى الحقيقي للشعاع! ليس مجرد خط وسهم، بل هو لغة تصف الحركة والانسحاب في الفضاء.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -166,7 +182,7 @@ function VecConceptContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -176,35 +192,38 @@ function VecConceptContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="choice"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
-            question={currentChallenge.q}
-            hint={currentChallenge.hint}
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="flex flex-col items-center pb-4 border-b border-white/10 w-full">
                     <span className={`text-xs font-bold uppercase mb-2 ${theme.textSub}`}>الشعاع المرجعي</span>
-                    <VectorSvg dx={currentChallenge.target.dx} dy={currentChallenge.target.dy} color={currentChallenge.target.color} label={currentChallenge.target.label} />
+                    <VectorSvg dx={problem.dx} dy={problem.dy} color="#d946ef" label="AB" />
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الشعاع المطابق">
-                    {currentChallenge.options.map(opt => (
+                    {problem.options.map(opt => (
                         <button key={opt.id} onClick={() => handleAnswer(opt)}
                             className={`p-3 rounded-xl border-2 transition-all active:scale-95 ${isDarkMode ? 'border-white/10 bg-black/40 hover:border-fuchsia-500/50' : 'border-slate-200 bg-white hover:border-fuchsia-400'}`}
                         >
-                            {opt.dx !== undefined ? (
-                                <VectorSvg dx={opt.dx} dy={opt.dy} color="#38bdf8" label={opt.label} />
-                            ) : (
-                                <span className="font-black text-xl px-6 py-2 block text-cyan-400">{opt.label}</span>
-                            )}
+                            <VectorSvg dx={opt.dx} dy={opt.dy} color="#38bdf8" label={opt.id} />
                         </button>
                     ))}
                 </div>
+
+                <LabTutorialNote
+                    from={`الشعاع المرجعي له مركبتان: dx = ${problem.dx}، dy = ${problem.dy}.`}
+                    why={problem.kind === 'equal'
+                        ? 'شعاعان متساويان يعنيان أن لهما نفس المركبتين (نفس dx ونفس dy) تماماً — أي نفس الطول ونفس الاتجاه ونفس المنحى.'
+                        : 'الشعاع المعاكس له نفس الطول ونفس المنحى، لكن مركبتيه معكوستا الإشارة (سالب dx وسالب dy)، أي يشير للجهة المضادة تماماً.'}
+                />
             </div>
         </LabChallenge>
     );
@@ -214,7 +233,7 @@ export default function VecConceptLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="vec-concept"
+            labId={LAB_ID}
             phase={phase}
             title="فلسفة الحركة"
             badgeText="مفهوم الشعاع والانسحاب"

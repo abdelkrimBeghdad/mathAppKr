@@ -4,7 +4,7 @@ import { Calculator, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabTutorialNote from './LabTutorialNote';

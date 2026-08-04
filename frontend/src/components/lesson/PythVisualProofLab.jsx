@@ -1,17 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Droplets, RotateCcw, Activity, Zap, Beaker } from 'lucide-react';
+import { Droplets, Activity, Zap, Beaker, Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
+import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'pyth-visual';
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function PythVisualProofContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [isProofActive, setIsProofActive] = useState(false);
     const [progress, setProgress] = useState(0);
+
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
+    const [userInput, setUserInput] = useState('');
+    const [error, setError] = useState(false);
+    const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const currentChallenge = rounds[round]; // { level, a, b, c, q, hint }
 
     useEffect(() => {
         let interval;
@@ -22,19 +42,54 @@ function PythVisualProofContent({ phase, setPhase }) {
     }, [isProofActive, progress]);
 
     useEffect(() => {
-        if (progress === 100 && !reward) {
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            rewardService.claimLabReward('pyth-visual-proof')
-                .then(data => { if (data.status === 'success') setReward(data); })
-                .catch(() => { });
-        }
-    }, [progress, reward]);
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
     const resetLab = () => {
         setPhase('intro');
         setIsProofActive(false);
         setProgress(0);
         setReward(null);
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setUserInput('');
+    };
+
+    const startPractice = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0);
+        setUserInput('');
+        setFeedback(null);
+        setReward(null);
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
+
+    const handleAnswer = async () => {
+        if (userInput.trim() === String(currentChallenge.c)) {
+            setFeedback({ type: 'success', text: 'صحيح! الوتر يحقّق مطابقة فيثاغورس ✓' });
+            setUserInput('');
+            setError(false);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1500);
+            } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
+                try {
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'pyth-visual-triple',
+                        a: currentChallenge.a, b: currentChallenge.b, c: currentChallenge.c,
+                    });
+                    if (data.status === 'success') setReward(data);
+                } catch (err) { console.error(err); }
+            }
+        } else {
+            setError(true);
+            setFeedback({ type: 'error', text: 'تحقق من حساب AB² + AC² قبل استخراج الجذر.' });
+            setTimeout(() => { setError(false); setFeedback(null); }, 1200);
+        }
     };
 
     // ── intro ─────────────────────────────────────────────────────────────────
@@ -47,17 +102,22 @@ function PythVisualProofContent({ phase, setPhase }) {
                 <p className="text-base font-medium mb-4 leading-relaxed">
                     لماذا <span className="text-rose-400 font-black italic">BC² = AB² + AC²</span>؟
                     <br />
-                    <span className={`text-sm opacity-60 ${theme.textSub}`}>بدلاً من حفظ المعادلات، شاهد كيف تتدفق المساحات لتثبت الحقيقة الرياضية.</span>
+                    <span className={`text-sm opacity-60 ${theme.textSub}`}>بدلاً من حفظ المعادلات، شاهد كيف تتدفق المساحات لتثبت الحقيقة الرياضية، ثم طبّقها بنفسك.</span>
                 </p>
-                <button onClick={() => setPhase('learn')} className="px-10 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95">
-                    دخول المختبر
-                </button>
+                <div className={`mb-4 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-50 text-rose-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
+                <div>
+                    <button onClick={() => setPhase('learn')} className="px-10 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95">
+                        دخول المختبر
+                    </button>
+                </div>
             </div>
         </div>
     );
 
-    // ── learn/simulation — العرض التفاعلي الرئيسي ─────────────────────────────
-    return (
+    // ── learn — المحاكاة البصرية (البرهان المائي) ─────────────────────────────
+    if (phase === 'learn') return (
         <div className="w-full flex flex-col items-center justify-center gap-4 px-2 relative">
             <div className="relative w-full max-w-[500px] flex items-center justify-center">
                 <svg viewBox="0 0 600 650" className="w-full h-full max-h-[400px] drop-shadow-2xl overflow-visible">
@@ -155,13 +215,55 @@ function PythVisualProofContent({ phase, setPhase }) {
                                 <span className="opacity-50">AB²</span> + <span className="opacity-50">AC²</span> = <span className="text-blue-500">BC²</span>
                             </span>
                         </div>
-                        <button onClick={resetLab} className="mt-4 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2 mx-auto">
-                            <RotateCcw size={16} /> إعادة التجربة
+                        <button onClick={startPractice} className="mt-4 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2 mx-auto">
+                            <Send size={16} /> طبّق البرهان بنفسك
                         </button>
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
+    );
+
+    // ── practice — 3 جولات تصاعدية تطبّق المطابقة رياضياً ─────────────────────
+    return (
+        <LabChallenge
+            type="text"
+            current={round + 1}
+            total={3}
+            level={currentChallenge.level}
+            question={currentChallenge.q}
+            hint={currentChallenge.hint}
+            feedback={feedback}
+            reward={reward}
+            onRefresh={() => { setRounds(buildRounds(baseLevel)); setRound(0); setUserInput(''); }}
+            onRestart={resetLab}
+        >
+            <div className="flex items-center gap-4 font-black font-mono" dir="ltr">
+                <span className={`opacity-30 ${theme.textSub}`}>BC =</span>
+                <input
+                    type="text"
+                    value={userInput}
+                    onChange={e => setUserInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAnswer()}
+                    aria-label="أدخل طول الوتر BC"
+                    autoFocus
+                    className={`w-24 md:w-36 rounded-xl p-3 text-center text-xl font-black outline-none transition-all border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-slate-950 text-rose-400 focus:border-rose-500 border-rose-500/50' : 'bg-white text-rose-700 border-rose-200 focus:border-rose-500'}`}
+                    placeholder="?"
+                />
+            </div>
+
+            <LabTutorialNote
+                from={`المثلث قائم الزاوية في A، مع AB = ${currentChallenge.a} وAC = ${currentChallenge.b}.`}
+                why="مطابقة فيثاغورس تنص على أن مربع الوتر (الضلع المقابل للزاوية القائمة) يساوي مجموع مربعي الضلعين الآخرين. لذلك نحسب AB² + AC² ثم نستخرج الجذر التربيعي للنتيجة لإيجاد BC."
+            />
+
+            <button
+                onClick={handleAnswer}
+                className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"
+            >
+                <Send size={18} /> تحقق من الإجابة
+            </button>
+        </LabChallenge>
     );
 }
 
@@ -169,7 +271,7 @@ export default function PythVisualProofLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="pyth-visual"
+            labId={LAB_ID}
             phase={phase}
             title="برهان فيثاغورس البصري"
             badgeText="مختبر البرهان المائي"

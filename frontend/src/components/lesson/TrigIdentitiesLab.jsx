@@ -1,48 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, ArrowRight, CheckCircle2, Layers } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
+import { labProgressService } from '../../utils/labProgressService';
+import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
+import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
+
+const LAB_ID = 'trig-identities';
+const TOLERANCE = 0.03;
+
+function buildRounds(baseLevel) {
+    const levels = [baseLevel, Math.min(3, baseLevel + 1), 3];
+    return levels.map(lvl => ({ level: lvl, ...difficultyEngine.generateChallenge(LAB_ID, lvl) }));
+}
 
 function TrigIdentitiesContent({ phase, setPhase }) {
     const { theme, isDarkMode } = useLabTheme();
 
     const [learnStep, setLearnStep] = useState(0);
-    const [challengeStep, setChallengeStep] = useState(0);
+    const [baseLevel, setBaseLevel] = useState(1);
+    const [rounds, setRounds] = useState(() => buildRounds(1));
+    const [round, setRound] = useState(0);
     const [input1, setInput1] = useState('');
     const [error, setError] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const [reward, setReward] = useState(null);
+
+    const problem = rounds[round]; // { level, kind, cosX, sinX, ans, q, hint }
 
     const learnPages = [
         { title: 'ترابط النسب المثلثية', detail: 'السينوس والكوسينوس ليسا مستقلين تماماً، بل يربطهما قانون صارم مستمد من فيثاغورس.', math: 'cos²(x) + sin²(x) = 1' },
         { title: 'سر الطنجانط', detail: 'الطنجانط هو ببساطة ناتج قسمة الجيب على جيب التمام. إذا كنت تملك الاثنين، تملك الطنجانط آلياً!', math: 'tan(x) = sin(x) / cos(x)' },
     ];
 
-    const challenges = [
-        { q: "إذا كان cos(x) = 0.6 و sin(x) = 0.8، فكم يكون tan(x)؟", ans: 1.33 },
-        { q: "احسب النتيجة: cos²(25°) + sin²(25°) =", ans: 1 },
-    ];
+    useEffect(() => {
+        labProgressService.getOne(LAB_ID)
+            .then(p => { if (p) { const lvl = difficultyEngine.getLevel(p); setBaseLevel(lvl); setRounds(buildRounds(lvl)); } })
+            .catch(() => { });
+    }, []);
 
-    const currentChallenge = challenges[challengeStep];
+    const resetChallenges = () => {
+        setRounds(buildRounds(baseLevel));
+        setRound(0); setInput1('');
+        setError(false); setFeedback(null); setReward(null);
+    };
 
-    const resetChallenges = () => { setChallengeStep(0); setInput1(''); setError(false); setFeedback(null); };
+    const startPractice = () => {
+        resetChallenges();
+        setPhase('practice');
+        labProgressService.update(LAB_ID, 'practice').catch(() => { });
+    };
 
     const handleAnswer = async () => {
         const val = parseFloat(input1);
-        if (val === currentChallenge.ans || (challengeStep === 0 && Math.abs(val - 1.33) < 0.01)) {
+        if (!isNaN(val) && Math.abs(val - problem.ans) <= TOLERANCE) {
             setFeedback({ type: 'success', text: 'أحسنت! هذه العلاقات تسهل عليك حل أصعب المسائل الجبرية.' });
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
             setInput1('');
 
-            if (challengeStep < challenges.length - 1) {
-                setTimeout(() => { setChallengeStep(s => s + 1); setFeedback(null); }, 1400);
+            if (round < 2) {
+                setTimeout(() => { setRound(r => r + 1); setFeedback(null); }, 1400);
             } else {
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                await labProgressService.update(LAB_ID, 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-identities-mastery');
+                    const data = await rewardService.claimLabReward(LAB_ID, {
+                        type: 'trig-identity-answer', kind: problem.kind,
+                        cosX: problem.cosX, sinX: problem.sinX, ans: problem.ans, submitted: val,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }
@@ -63,11 +92,14 @@ function TrigIdentitiesContent({ phase, setPhase }) {
                 <p className={`${theme.textSub} text-sm font-medium mb-3`}>
                     تعلم الروابط السحرية بين النسب المثلثية الثلاث وكيف يمكنك استنتاج أي نسبة إذا كنت تملك الأخرى دون الحاجة للمثلث.
                 </p>
+                <div className={`mb-3 text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
+                    ستبدأ من مستوى: {['', 'مبتدئ', 'متوسط', 'متقدم'][baseLevel]}
+                </div>
                 <button onClick={() => setPhase('learn')} className="w-full px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black transition-all">
                     فتح الدليل التفاعلي
                 </button>
             </div>
-            <button onClick={() => { resetChallenges(); setPhase('practice'); }} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
+            <button onClick={startPractice} className={`text-sm font-bold opacity-70 hover:opacity-100 transition-opacity ${theme.textMain}`}>
                 تخطي الشرح والبدء بالتحدي
             </button>
         </div>
@@ -93,7 +125,7 @@ function TrigIdentitiesContent({ phase, setPhase }) {
                 >السابق</button>
                 {learnStep < learnPages.length - 1
                     ? <button onClick={() => setLearnStep(l => l + 1)} className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-black flex items-center gap-2">التالي <ArrowRight size={18} /></button>
-                    : <button onClick={() => { resetChallenges(); setPhase('practice'); }} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
+                    : <button onClick={startPractice} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex items-center gap-2">التدريب <CheckCircle2 size={18} /></button>
                 }
             </div>
         </div>
@@ -103,15 +135,15 @@ function TrigIdentitiesContent({ phase, setPhase }) {
     return (
         <LabChallenge
             type="text"
-            current={challengeStep + 1}
-            total={challenges.length}
-            level={challengeStep + 1}
-            question={currentChallenge.q}
-            hint="راجع العلاقتين: cos²(x)+sin²(x)=1 و tan(x)=sin(x)/cos(x)."
+            current={round + 1}
+            total={3}
+            level={problem.level}
+            question={problem.q}
+            hint={problem.hint}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
-            onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <input
@@ -125,6 +157,18 @@ function TrigIdentitiesContent({ phase, setPhase }) {
                     placeholder="النتيجة"
                 />
             </div>
+
+            <LabTutorialNote
+                from={problem.kind === 'identity'
+                    ? 'المطابقة cos²(x) + sin²(x) = 1 صحيحة لأي زاوية x بلا استثناء.'
+                    : `لدينا نسبتان مثلثيتان معروفتان مبنيتان على مثلث قائم حقيقي.`}
+                why={problem.kind === 'tan-from-ratio'
+                    ? 'الطنجانط هو ببساطة ناتج قسمة الجيب على جيب التمام، لأن كليهما مشتقان من نفس أضلاع المثلث القائم (المقابل والمجاور والوتر)، والقسمة تُلغي الوتر المشترك.'
+                    : problem.kind === 'find-cos-from-sin'
+                        ? 'بما أن cos²(x) + sin²(x) = 1 دائماً، نعزل cos²(x) = 1 − sin²(x) ثم نستخرج الجذر التربيعي (موجب لأن الزاوية حادة).'
+                        : 'هذه المطابقة مستمدة مباشرة من نظرية فيثاغورس المطبقة على مثلث الوحدة، وتبقى صحيحة مهما تغيرت الزاوية.'}
+            />
+
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                 تحقق
             </button>
@@ -136,7 +180,7 @@ export default function TrigIdentitiesLab() {
     const [phase, setPhase] = useState('intro');
     return (
         <LabShell
-            labId="trig-identities"
+            labId={LAB_ID}
             phase={phase}
             title="الترابط المثلثي"
             badgeText="العلاقات الأساسية"

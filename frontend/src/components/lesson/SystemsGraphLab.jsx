@@ -8,7 +8,7 @@ import LabStepsPanel from './LabStepsPanel';
 import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
-import { difficultyEngine } from '../../utils/difficultyEngine';
+import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)

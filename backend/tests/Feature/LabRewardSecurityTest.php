@@ -1457,4 +1457,487 @@ class LabRewardSecurityTest extends TestCase
         ]);
         $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
     }
+
+    /**
+     * fact-common (التحليل بالعامل المشترك) is now enforced.
+     * إصلاح خلل حقيقي: labId كان غير متطابق بين الواجهة والخادم (fact-common-factor
+     * مقابل fact-common)، ما كان يمنع نجاح المطالبة بالمكافأة إطلاقاً.
+     */
+    public function test_valid_fact_common_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'fact-common', 'phase' => 'practice']);
+        // 6x + 18 = 6(x + 3) -> a=6, c=3
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'fact-common',
+            'verification' => ['type' => 'factor-common', 'a' => 6, 'c' => 3],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_trivial_fact_common_factor_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'fact-common', 'phase' => 'practice']);
+        // a=1 يعتبر عامل تافه (غير حقيقي) ويجب رفضه
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'fact-common',
+            'verification' => ['type' => 'factor-common', 'a' => 1, 'c' => 18],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_missing_fact_common_verification_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'fact-common', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'fact-common',
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * eq-solve (حل المعادلات) is now enforced.
+     * إصلاح خلل حقيقي: labId كان "equations" في LabShell/claimLabReward بينما MasteryWorld.jsx
+     * يوجّه "eq-solve" — عدم تطابق كامل يمنع نجاح المطالبة بالمكافأة. كما كانت الأسئلة
+     * ثابتة (6 فقط) دون أي مولّد أو تصاعد صعوبة حقيقي.
+     */
+    public function test_valid_eq_solve_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'eq-solve', 'phase' => 'practice']);
+        // 3x + 4 = 19 -> x = 5
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'eq-solve',
+            'verification' => ['type' => 'eq-solve-linear', 'a' => 3, 'b' => 4, 'c' => 19, 'x' => 5],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_eq_solve_x_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'eq-solve', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'eq-solve',
+            'verification' => ['type' => 'eq-solve-linear', 'a' => 3, 'b' => 4, 'c' => 19, 'x' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_zero_coefficient_eq_solve_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'eq-solve', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'eq-solve',
+            'verification' => ['type' => 'eq-solve-linear', 'a' => 0, 'b' => 4, 'c' => 4, 'x' => 0],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * pyth-visual (برهان فيثاغورس البصري) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('pyth-visual-proof') بينما labId الفعلي
+     * هو 'pyth-visual'. كما لم يكن المختبر يطلب أي إجابة رياضية فعلية من الطالب — كانت
+     * المكافأة تُمنح تلقائياً بعد انتهاء الرسوم المتحركة فقط دون أي تحقق.
+     */
+    public function test_valid_pyth_visual_triple_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'pyth-visual', 'phase' => 'practice']);
+        // 6-8-10 مضاعف لثلاثية 3-4-5
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'pyth-visual',
+            'verification' => ['type' => 'pyth-visual-triple', 'a' => 6, 'b' => 8, 'c' => 10],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_invalid_pyth_visual_triple_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'pyth-visual', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'pyth-visual',
+            'verification' => ['type' => 'pyth-visual-triple', 'a' => 6, 'b' => 8, 'c' => 99],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_negative_pyth_visual_values_are_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'pyth-visual', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'pyth-visual',
+            'verification' => ['type' => 'pyth-visual-triple', 'a' => -6, 'b' => 8, 'c' => 10],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * thales-verify (التحقق من التوازي) is now enforced.
+     * إصلاح خلل حقيقي وخطير: هذا المختبر لم يكن مدرجاً إطلاقاً في enforcedLabs رغم أن
+     * labId في الواجهة والخادم متطابقان — أي طالب كان بإمكانه استدعاء نقطة النهاية مباشرة
+     * والحصول على المكافأة بلا أي تحقق رياضي.
+     */
+    public function test_valid_thales_verify_parallel_case_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'thales-verify', 'phase' => 'practice']);
+        // 2/6 = 3/9 -> متوازيان فعلاً
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'thales-verify',
+            'verification' => ['type' => 'thales-verify-parallel', 'ad' => 2, 'ab' => 6, 'ae' => 3, 'ac' => 9, 'answer' => true],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_thales_verify_non_parallel_case_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'thales-verify', 'phase' => 'practice']);
+        // 2/5 != 3/8 -> غير متوازيين فعلاً
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'thales-verify',
+            'verification' => ['type' => 'thales-verify-parallel', 'ad' => 2, 'ab' => 5, 'ae' => 3, 'ac' => 8, 'answer' => false],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_thales_verify_judgment_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'thales-verify', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'thales-verify',
+            'verification' => ['type' => 'thales-verify-parallel', 'ad' => 2, 'ab' => 6, 'ae' => 3, 'ac' => 9, 'answer' => false],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * thales-length (حساب طول مجهول) is now enforced.
+     * نفس الخلل: labId لم يكن مدرجاً في enforcedLabs رغم تطابق الاسم بين الطبقات.
+     */
+    public function test_valid_thales_length_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'thales-length', 'phase' => 'practice']);
+        // AD=2, AB=6, AC=9 -> AE = (2*9)/6 = 3
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'thales-length',
+            'verification' => ['type' => 'thales-problem', 'kind' => 'length', 'a' => 2, 'b' => 6, 'c' => 9, 'ans' => 3],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_thales_length_answer_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'thales-length', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'thales-length',
+            'verification' => ['type' => 'thales-problem', 'kind' => 'length', 'a' => 2, 'b' => 6, 'c' => 9, 'ans' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * div-discover (اكتشاف القواسم) is now enforced.
+     * إصلاح خلل حقيقي وخطير: المكوّن لم يكن يستخدم LabShell أصلاً ولا enforcedLabs، وكان
+     * يستدعي claimLabReward('divisor-discovery') بينما labId الفعلي 'div-discover'، وكان
+     * target ثابتاً دائماً (36) بلا أي مولّد. كما احتوى الملف على متغيّر غير مستورد
+     * (RotateCcw) يسبب خطأ تشغيل فعلي في مرحلة "learn".
+     */
+    public function test_valid_div_discover_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'div-discover', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'div-discover',
+            'verification' => ['type' => 'div-discover', 'target' => 12, 'divisors' => [1, 2, 3, 4, 6, 12]],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_incomplete_div_discover_set_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'div-discover', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'div-discover',
+            'verification' => ['type' => 'div-discover', 'target' => 12, 'divisors' => [1, 2, 3, 4]],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_out_of_range_div_discover_target_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'div-discover', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'div-discover',
+            'verification' => ['type' => 'div-discover', 'target' => 99999, 'divisors' => [1, 99999]],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * roots-expression (تبسيط العبارات الجذرية) is now enforced.
+     * إصلاح خلل حقيقي: labId 'roots-expression' لم يكن مدرجاً إطلاقاً في enforcedLabs رغم
+     * تطابق الاسم بين الطبقات — تجاوز كامل للتحقق الرياضي. يُعاد استخدام نوع التحقق
+     * الموجود مسبقاً 'roots-combine' لأنه يطابق صيغة المسألة رياضياً (a√x ± b√x).
+     */
+    public function test_valid_roots_expression_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'roots-expression', 'phase' => 'practice']);
+        // 2√5 + 3√5 -> 5
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'roots-expression',
+            'verification' => ['type' => 'roots-combine', 'a' => 2, 'b' => 3, 'op' => 'add', 'result' => 5],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_roots_expression_result_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'roots-expression', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'roots-expression',
+            'verification' => ['type' => 'roots-combine', 'a' => 2, 'b' => 3, 'op' => 'add', 'result' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * vec-concept (مفهوم الشعاع) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('vec-concept-mastery') بينما labId
+     * الفعلي 'vec-concept' — عدم تطابق كان يمنع نجاح المطالبة بالمكافأة إطلاقاً.
+     */
+    public function test_valid_vec_concept_equal_case_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-concept', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-concept',
+            'verification' => ['type' => 'vec-concept-match', 'kind' => 'equal', 'targetDx' => 3, 'targetDy' => 1, 'chosenDx' => 3, 'chosenDy' => 1],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_vec_concept_opposite_case_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-concept', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-concept',
+            'verification' => ['type' => 'vec-concept-match', 'kind' => 'opposite', 'targetDx' => 0, 'targetDy' => -2, 'chosenDx' => 0, 'chosenDy' => 2],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_mismatched_vec_concept_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-concept', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-concept',
+            'verification' => ['type' => 'vec-concept-match', 'kind' => 'equal', 'targetDx' => 3, 'targetDy' => 1, 'chosenDx' => -3, 'chosenDy' => -1],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * vec-chasles (علاقة شال) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('vec-chasles-mastery') بينما labId
+     * الفعلي 'vec-chasles' — عدم تطابق كان يمنع نجاح المطالبة بالمكافأة إطلاقاً.
+     */
+    public function test_valid_vec_chasles_ordered_chain_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-chasles', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-chasles',
+            'verification' => ['type' => 'vec-chasles-chain', 'vectors' => ['AB', 'BD'], 'ansStart' => 'A', 'ansEnd' => 'D'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_vec_chasles_shuffled_chain_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-chasles', 'phase' => 'practice']);
+        // مرتّبة عكسياً: BD ثم AB — يجب أن يعيد الخادم بناء السلسلة بشكل صحيح رغم ذلك
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-chasles',
+            'verification' => ['type' => 'vec-chasles-chain', 'vectors' => ['BD', 'AB'], 'ansStart' => 'A', 'ansEnd' => 'D'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_vec_chasles_endpoints_are_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'vec-chasles', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'vec-chasles',
+            'verification' => ['type' => 'vec-chasles-chain', 'vectors' => ['AB', 'BD'], 'ansStart' => 'A', 'ansEnd' => 'Z'],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * trig-naming (تسمية الأضلاع) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('trig-naming-mastery') بينما labId
+     * الفعلي 'trig-naming' — عدم تطابق كان يمنع نجاح المطالبة بالمكافأة إطلاقاً.
+     */
+    public function test_valid_trig_naming_adjacent_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-naming', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-naming',
+            'verification' => ['type' => 'trig-naming-answer', 'kind' => 'adjacent', 'target' => 'A', 'answer' => 'AC'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_trig_naming_hypotenuse_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-naming', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-naming',
+            'verification' => ['type' => 'trig-naming-answer', 'kind' => 'hypotenuse', 'target' => 'A', 'answer' => 'الوتر'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_trig_naming_answer_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-naming', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-naming',
+            'verification' => ['type' => 'trig-naming-answer', 'kind' => 'opposite', 'target' => 'B', 'answer' => 'BC'],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * trig-identities (الترابط المثلثي) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('trig-identities-mastery') بينما labId
+     * الفعلي 'trig-identities' — عدم تطابق. الخادم الآن يعيد اشتقاق الإجابة من cosX/sinX
+     * مباشرة ولا يثق بحقل "ans" القادم من العميل.
+     */
+    public function test_valid_trig_identity_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-identities', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-identities',
+            'verification' => ['type' => 'trig-identity-answer', 'kind' => 'identity', 'submitted' => 1],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_trig_tan_from_ratio_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-identities', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-identities',
+            'verification' => ['type' => 'trig-identity-answer', 'kind' => 'tan-from-ratio', 'cosX' => 0.6, 'sinX' => 0.8, 'submitted' => 1.33],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_trig_identity_value_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-identities', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-identities',
+            'verification' => ['type' => 'trig-identity-answer', 'kind' => 'tan-from-ratio', 'cosX' => 0.6, 'sinX' => 0.8, 'submitted' => 99],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * trig-special (نجوم المثلثات) is now enforced.
+     * إصلاح خلل حقيقي: كان يُستدعى claimLabReward('trig-special-mastery') بينما labId
+     * الفعلي 'trig-special' — عدم تطابق. الخادم يعيد اشتقاق القيمة من جدول ثابت معروف.
+     */
+    public function test_valid_trig_special_value_forward_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-special', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-special',
+            'verification' => ['type' => 'trig-special-answer', 'kind' => 'value-forward', 'angle' => 30, 'func' => 'sin', 'answer' => '1/2'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_trig_special_angle_reverse_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-special', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-special',
+            'verification' => ['type' => 'trig-special-answer', 'kind' => 'angle-reverse', 'angle' => 45, 'func' => 'tan', 'answer' => '45°'],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_trig_special_value_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-special', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-special',
+            'verification' => ['type' => 'trig-special-answer', 'kind' => 'value-forward', 'angle' => 60, 'func' => 'cos', 'answer' => '√3/2'],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * rotation-mastery (مختبر الرادار) is now enforced.
+     * إصلاح خلل حقيقي وخطير: labId لم يكن مدرجاً إطلاقاً في enforcedLabs رغم تطابق الاسم —
+     * تجاوز كامل للتحقق. وسؤالان ثابتان فقط بلا مولّد.
+     */
+    public function test_valid_rotation_sign_only_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'rotation-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'rotation-mastery',
+            'verification' => ['type' => 'rotation-answer', 'kind' => 'sign-only', 'mag' => 90, 'ans' => 90],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_valid_rotation_reduce_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'rotation-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'rotation-mastery',
+            'verification' => ['type' => 'rotation-answer', 'kind' => 'reduce', 'mag' => 270, 'ans' => -90],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_rotation_reduce_answer_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'rotation-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'rotation-mastery',
+            'verification' => ['type' => 'rotation-answer', 'kind' => 'reduce', 'mag' => 270, 'ans' => 270],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    /**
+     * prob-mastery (مختبر الاحتمالات) is now enforced.
+     * إصلاح خلل حقيقي وخطير مماثل: لم يكن مدرجاً في enforcedLabs، وسؤال واحد ثابت (3/10=30%).
+     */
+    public function test_valid_prob_mastery_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'prob-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'prob-mastery',
+            'verification' => ['type' => 'prob-mastery-answer', 'red' => 3, 'blue' => 7, 'total' => 10, 'askBlue' => false, 'ans' => 30],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_inconsistent_prob_mastery_composition_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'prob-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'prob-mastery',
+            'verification' => ['type' => 'prob-mastery-answer', 'red' => 3, 'blue' => 7, 'total' => 999, 'askBlue' => false, 'ans' => 30],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_wrong_prob_mastery_percentage_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'prob-mastery', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'prob-mastery',
+            'verification' => ['type' => 'prob-mastery-answer', 'red' => 3, 'blue' => 7, 'total' => 10, 'askBlue' => false, 'ans' => 99],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
 }
