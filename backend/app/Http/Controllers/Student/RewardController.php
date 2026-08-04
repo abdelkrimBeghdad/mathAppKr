@@ -111,6 +111,7 @@ class RewardController extends Controller
             'trig-special',
             'rotation-mastery',
             'prob-mastery',
+            'powers-rules', 'scientific-not', 'frac-simplify', 'trig-length', 'trig-angle', 'stat-freq', 'stat-mean',
         ];
 
         if (in_array($labId, $enforcedLabs)) {
@@ -1822,6 +1823,152 @@ class RewardController extends Controller
                         'message' => 'The submitted probability percentage is incorrect.'
                     ], 403);
                 }
+            } elseif ($type === 'powers-exponent') {
+                // تحقق رياضي لمختبر الأسس: نتيجة الضرب/القسمة/قوة القوة على الأسس فقط
+                $base = $verification['base'] ?? null;
+                $op = $verification['op'] ?? null;
+                $e1 = $verification['e1'] ?? null;
+                $e2 = $verification['e2'] ?? null;
+                $ans = $verification['ans'] ?? null;
+
+                if (!in_array($op, ['mul', 'div', 'pow'], true) || $e1 === null || $e2 === null || $ans === null || !is_numeric($base)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $e1 = (int) $e1; $e2 = (int) $e2; $ans = (int) $ans;
+                $expected = $op === 'mul' ? $e1 + $e2 : ($op === 'div' ? $e1 - $e2 : $e1 * $e2);
+
+                if ($ans !== $expected) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['op' => $op, 'e1' => $e1, 'e2' => $e2, 'submitted' => $ans, 'expected' => $expected]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted exponent is incorrect.'], 403);
+                }
+            } elseif ($type === 'scientific-notation-answer') {
+                // تحقق رياضي لمختبر الصيغة العلمية: mantissa × 10^exp يجب أن يطابق العدد الأصلي q
+                $q = $verification['q'] ?? null;
+                $mantissa = $verification['mantissa'] ?? null;
+                $exp = $verification['exp'] ?? null;
+
+                if ($q === null || !is_numeric($mantissa) || !is_numeric($exp)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $mantissa = (float) $mantissa; $exp = (int) $exp; $original = (float) $q;
+                if ($mantissa < 1 || $mantissa >= 10) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['mantissa' => $mantissa]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Mantissa must be between 1 and 10.'], 403);
+                }
+                $reconstructed = $mantissa * (10 ** $exp);
+                if (abs($reconstructed - $original) > max(0.05, abs($original) * 0.02)) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['q' => $q, 'mantissa' => $mantissa, 'exp' => $exp, 'reconstructed' => $reconstructed]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The scientific notation does not reconstruct the original number.'], 403);
+                }
+            } elseif ($type === 'fraction-simplify') {
+                // تحقق رياضي لمختبر تبسيط الكسور: القيمة المبسطة يجب أن تساوي num/gcd, den/gcd فعلياً
+                $num = $verification['num'] ?? null;
+                $den = $verification['den'] ?? null;
+                $simplifiedNum = $verification['simplifiedNum'] ?? null;
+                $simplifiedDen = $verification['simplifiedDen'] ?? null;
+
+                if (!is_numeric($num) || !is_numeric($den) || !is_numeric($simplifiedNum) || !is_numeric($simplifiedDen) || (int) $den === 0) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $num = (int) $num; $den = (int) $den;
+                $g = $this->gcdCalc(abs($num), abs($den));
+                $expectedNum = $g === 0 ? $num : intdiv($num, $g);
+                $expectedDen = $g === 0 ? $den : intdiv($den, $g);
+
+                if ((int) $simplifiedNum !== $expectedNum || (int) $simplifiedDen !== $expectedDen) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['num' => $num, 'den' => $den, 'submitted' => [$simplifiedNum, $simplifiedDen], 'expected' => [$expectedNum, $expectedDen]]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted fraction is not fully reduced or is incorrect.'], 403);
+                }
+            } elseif ($type === 'trig-length-answer') {
+                // تحقق رياضي لمختبر أطوال المثلثات: x = وتر × sin/cos(الزاوية)
+                $angle = $verification['angle'] ?? null;
+                $hyp = $verification['hyp'] ?? null;
+                $ratio = $verification['ratio'] ?? null;
+                $ans = $verification['ans'] ?? null;
+
+                if (!is_numeric($angle) || !is_numeric($hyp) || !in_array($ratio, ['Sin', 'Cos'], true) || !is_numeric($ans)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $angleRad = ((float) $angle) * M_PI / 180;
+                $expected = ((float) $hyp) * ($ratio === 'Sin' ? sin($angleRad) : cos($angleRad));
+
+                if (abs((float) $ans - $expected) > 0.15) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['angle' => $angle, 'hyp' => $hyp, 'ratio' => $ratio, 'submitted' => $ans, 'expected' => $expected]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted side length is incorrect.'], 403);
+                }
+            } elseif ($type === 'trig-angle-answer') {
+                // تحقق رياضي لمختبر إيجاد الزاوية: يعيد الخادم حساب sin/cos/tan للزاوية المُرسلة
+                $ratioName = $verification['ratioName'] ?? null;
+                $ratioValue = $verification['ratioValue'] ?? null;
+                $ans = $verification['ans'] ?? null;
+
+                if (!in_array($ratioName, ['sin', 'cos', 'tan'], true) || !is_numeric($ratioValue) || !is_numeric($ans)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $angleRad = ((float) $ans) * M_PI / 180;
+                $recomputed = $ratioName === 'sin' ? sin($angleRad) : ($ratioName === 'cos' ? cos($angleRad) : tan($angleRad));
+
+                if (abs($recomputed - (float) $ratioValue) > 0.02) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['ratioName' => $ratioName, 'ratioValue' => $ratioValue, 'submitted' => $ans, 'recomputed' => $recomputed]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted angle does not match the given ratio.'], 403);
+                }
+            } elseif ($type === 'stat-mean-answer') {
+                // تحقق رياضي لمختبر الوسط الحسابي: يعيد الخادم حساب المتوسط من البيانات الخام
+                $data = $verification['data'] ?? null;
+                $ans = $verification['ans'] ?? null;
+
+                if (!is_array($data) || count($data) === 0 || !is_numeric($ans)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+                foreach ($data as $v) {
+                    if (!is_numeric($v)) {
+                        $this->logSecurityIncident($user, 'non_numeric_answers', $labId, $request);
+                        return response()->json(['error' => 'Cheat detected', 'message' => 'Data values must be numeric.'], 403);
+                    }
+                }
+                $expected = array_sum($data) / count($data);
+                if (abs((float) $ans - $expected) > 0.15) {
+                    $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['data' => $data, 'submitted' => $ans, 'expected' => $expected]);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted mean is incorrect.'], 403);
+                }
+            } elseif ($type === 'stat-freq-answer') {
+                // تحقق رياضي لمختبر التكرار: يعيد الخادم عدّ كل قيمة في البيانات الخام
+                $data = $verification['data'] ?? null;
+                $counts = $verification['counts'] ?? null;
+
+                if (!is_array($data) || count($data) === 0 || !is_array($counts)) {
+                    $this->logSecurityIncident($user, 'invalid_verification_structure', $labId, $request);
+                    return response()->json(['error' => 'Cheat detected', 'message' => 'Invalid verification payload structure.'], 403);
+                }
+
+                $expectedCounts = [];
+                foreach ($data as $v) {
+                    if (!is_numeric($v)) {
+                        $this->logSecurityIncident($user, 'non_numeric_answers', $labId, $request);
+                        return response()->json(['error' => 'Cheat detected', 'message' => 'Data values must be numeric.'], 403);
+                    }
+                    $key = (string) (int) $v;
+                    $expectedCounts[$key] = ($expectedCounts[$key] ?? 0) + 1;
+                }
+
+                foreach ($expectedCounts as $key => $expectedCount) {
+                    $submitted = $counts[$key] ?? null;
+                    if ((int) $submitted !== $expectedCount) {
+                        $this->logSecurityIncident($user, 'invalid_math_solution', $labId, $request, ['data' => $data, 'submitted' => $counts, 'expected' => $expectedCounts]);
+                        return response()->json(['error' => 'Cheat detected', 'message' => 'The submitted frequency table is incorrect.'], 403);
+                    }
+                }
             } else {
                 $this->logSecurityIncident($user, 'unknown_verification_type', $labId, $request);
                 return response()->json([
@@ -1885,5 +2032,16 @@ class RewardController extends Controller
             'ip_address' => $request->ip(),
         ]);
         Log::warning("AntiCheat: Lab cheating detected from User {$user->id} on lab {$labId} - Type: {$type}");
+    }
+
+    /** Greatest common divisor — used by the fraction-simplify verification. */
+    private function gcdCalc($a, $b)
+    {
+        $a = abs((int) $a);
+        $b = abs((int) $b);
+        while ($b !== 0) {
+            [$a, $b] = [$b, $a % $b];
+        }
+        return $a;
     }
 }

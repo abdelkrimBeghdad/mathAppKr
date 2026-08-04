@@ -66,7 +66,9 @@ function StatMeanContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('stat-mean', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('stat-mean');
+                    const data = await rewardService.claimLabReward('stat-mean', {
+                        type: 'stat-mean-answer', data: currentChallenge.data, ans: parsed,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

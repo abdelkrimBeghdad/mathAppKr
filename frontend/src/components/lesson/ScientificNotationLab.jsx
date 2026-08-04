@@ -59,7 +59,10 @@ function ScientificNotationContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('scientific-not', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('scientific-not');
+                    const data = await rewardService.claimLabReward('scientific-not', {
+                        type: 'scientific-notation-answer', q: currentChallenge.q,
+                        mantissa: currentChallenge.a, exp: currentChallenge.n,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

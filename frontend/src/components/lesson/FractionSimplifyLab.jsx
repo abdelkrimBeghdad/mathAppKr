@@ -82,7 +82,10 @@ function FractionSimplifyContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('frac-simplify', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('frac-simplify');
+                    const data = await rewardService.claimLabReward('frac-simplify', {
+                        type: 'fraction-simplify', num: currentChallenge.num, den: currentChallenge.den,
+                        simplifiedNum: n, simplifiedDen: d,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

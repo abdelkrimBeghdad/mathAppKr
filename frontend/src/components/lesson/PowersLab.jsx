@@ -59,7 +59,10 @@ function PowersContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('powers-rules', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('powers-rules');
+                    const data = await rewardService.claimLabReward('powers-rules', {
+                        type: 'powers-exponent', base: currentChallenge.base, op: currentChallenge.op,
+                        e1: currentChallenge.e1, e2: currentChallenge.e2, ans: parseInt(input, 10),
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

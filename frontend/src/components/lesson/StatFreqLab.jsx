@@ -64,7 +64,11 @@ function StatFreqContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('stat-freq', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('stat-freq');
+                    const submittedCounts = {};
+                    uniqueValues.forEach(val => { submittedCounts[val] = parseInt(userCounts[val], 10) || 0; });
+                    const data = await rewardService.claimLabReward('stat-freq', {
+                        type: 'stat-freq-answer', data: challenge.data, counts: submittedCounts,
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

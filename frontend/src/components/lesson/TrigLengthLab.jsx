@@ -70,7 +70,10 @@ function TrigLengthContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-length', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-length');
+                    const data = await rewardService.claimLabReward('trig-length', {
+                        type: 'trig-length-answer', angle: currentChallenge.angle, hyp: currentChallenge.hyp,
+                        ratio: currentChallenge.correctRatio, ans: parseFloat(input1),
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

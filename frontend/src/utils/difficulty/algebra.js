@@ -164,6 +164,7 @@ export const GENERATORS = {
                 const e1 = randInt(1, maxExp);
                 const e2 = allowNegativeExp && Math.random() > 0.7 ? -randInt(1, maxExp) : randInt(1, maxExp);
                 return {
+                    base, op, e1, e2,
                     q: `${base}${toSup(e1)} × ${base}${toSup(e2)} = ${base}^?`,
                     a: String(e1 + e2),
                     hint: `عند الضرب نجمع الأسس: ${e1} + (${e2}) = ?`,
@@ -173,6 +174,7 @@ export const GENERATORS = {
                 const e2 = randInt(1, maxExp);
                 const e1 = e2 + randInt(1, maxExp); // ensures e1 > e2, positive result
                 return {
+                    base, op, e1, e2,
                     q: `${base}${toSup(e1)} ÷ ${base}${toSup(e2)} = ${base}^?`,
                     a: String(e1 - e2),
                     hint: `عند القسمة نطرح الأسس: ${e1} − ${e2} = ?`,
@@ -182,6 +184,7 @@ export const GENERATORS = {
             const e1 = randInt(2, Math.max(2, Math.floor(maxExp / 2)));
             const e2 = randInt(2, Math.max(2, Math.floor(maxExp / 2)));
             return {
+                base, op, e1, e2,
                 q: `(${base}${toSup(e1)})${toSup(e2)} = ${base}^?`,
                 a: String(e1 * e2),
                 hint: `قوة القوة هي جداء الأسين: ${e1} × ${e2} = ?`,

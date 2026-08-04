@@ -1940,4 +1940,153 @@ class LabRewardSecurityTest extends TestCase
         ]);
         $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
     }
+
+    /**
+     * The following 7 labs were found by an automated catalog-vs-enforcedLabs audit:
+     * powers-rules, scientific-not, frac-simplify, trig-length, trig-angle, stat-freq,
+     * stat-mean — labId matched correctly everywhere, but none were in enforcedLabs
+     * AND none of them sent any verification payload at all (claimLabReward called with
+     * no second argument), meaning the reward could be claimed via a direct API call
+     * with zero math required. Both the frontend payload and the backend branch were
+     * added together for each.
+     */
+    public function test_valid_powers_exponent_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'powers-rules', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'powers-rules',
+            'verification' => ['type' => 'powers-exponent', 'base' => 2, 'op' => 'mul', 'e1' => 3, 'e2' => 4, 'ans' => 7],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_powers_exponent_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'powers-rules', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'powers-rules',
+            'verification' => ['type' => 'powers-exponent', 'base' => 2, 'op' => 'mul', 'e1' => 3, 'e2' => 4, 'ans' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_scientific_notation_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'scientific-not', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'scientific-not',
+            'verification' => ['type' => 'scientific-notation-answer', 'q' => '4500', 'mantissa' => 4.5, 'exp' => 3],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_scientific_notation_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'scientific-not', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'scientific-not',
+            'verification' => ['type' => 'scientific-notation-answer', 'q' => '4500', 'mantissa' => 9.9, 'exp' => 3],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_fraction_simplify_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'frac-simplify', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'frac-simplify',
+            'verification' => ['type' => 'fraction-simplify', 'num' => 12, 'den' => 18, 'simplifiedNum' => 2, 'simplifiedDen' => 3],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_unreduced_fraction_simplify_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'frac-simplify', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'frac-simplify',
+            'verification' => ['type' => 'fraction-simplify', 'num' => 12, 'den' => 18, 'simplifiedNum' => 4, 'simplifiedDen' => 6],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_trig_length_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-length', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-length',
+            'verification' => ['type' => 'trig-length-answer', 'angle' => 30, 'hyp' => 10, 'ratio' => 'Sin', 'ans' => 5],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_trig_length_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-length', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-length',
+            'verification' => ['type' => 'trig-length-answer', 'angle' => 30, 'hyp' => 10, 'ratio' => 'Sin', 'ans' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_trig_angle_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-angle', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-angle',
+            'verification' => ['type' => 'trig-angle-answer', 'ratioName' => 'sin', 'ratioValue' => 0.5, 'ans' => 30],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_trig_angle_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'trig-angle', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'trig-angle',
+            'verification' => ['type' => 'trig-angle-answer', 'ratioName' => 'sin', 'ratioValue' => 0.5, 'ans' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_stat_mean_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'stat-mean', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'stat-mean',
+            'verification' => ['type' => 'stat-mean-answer', 'data' => [2, 4, 6], 'ans' => 4],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_stat_mean_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'stat-mean', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'stat-mean',
+            'verification' => ['type' => 'stat-mean-answer', 'data' => [2, 4, 6], 'ans' => 999],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
+
+    public function test_valid_stat_freq_awards_reward()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'stat-freq', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'stat-freq',
+            'verification' => ['type' => 'stat-freq-answer', 'data' => [1, 1, 2, 3], 'counts' => ['1' => 2, '2' => 1, '3' => 1]],
+        ]);
+        $response->assertStatus(200)->assertJsonPath('status', 'success');
+    }
+
+    public function test_wrong_stat_freq_is_rejected()
+    {
+        \App\Models\LabProgress::create(['user_id' => $this->user->id, 'lab_id' => 'stat-freq', 'phase' => 'practice']);
+        $response = $this->actingAs($this->user)->postJson('/api/rewards/lab/claim', [
+            'lab_id' => 'stat-freq',
+            'verification' => ['type' => 'stat-freq-answer', 'data' => [1, 1, 2, 3], 'counts' => ['1' => 1, '2' => 1, '3' => 1]],
+        ]);
+        $response->assertStatus(403)->assertJsonPath('error', 'Cheat detected');
+    }
 }

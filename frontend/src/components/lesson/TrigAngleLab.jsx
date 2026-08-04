@@ -59,7 +59,10 @@ function TrigAngleContent({ phase, setPhase }) {
             } else {
                 await labProgressService.update('trig-angle', 'completed', 100).catch(() => { });
                 try {
-                    const data = await rewardService.claimLabReward('trig-angle');
+                    const data = await rewardService.claimLabReward('trig-angle', {
+                        type: 'trig-angle-answer', ratioName: currentChallenge.ratioName,
+                        ratioValue: currentChallenge.ratioValue, ans: parseInt(input1, 10),
+                    });
                     if (data.status === 'success') setReward(data);
                 } catch (err) { console.error(err); }
             }

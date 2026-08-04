@@ -106,8 +106,8 @@ export const GENERATORS = {
             const validRatios = Object.entries(ratioFns).filter(([, r]) => r.value !== null);
             const [name, ratio] = pick(validRatios);
             return {
+                ans: angle, ratioName: name, ratioValue: ratio.value,
                 q: `إذا كان ${ratio.fn} = ${ratio.value}، فما هو قيس الزاوية α بالدرجات؟`,
-                ans: angle,
                 hint: `استخدم القيم المثلثية الخاصة للزوايا الشهيرة (30°، 45°، 60°، 90°).`,
             };
         },
@@ -122,11 +122,11 @@ export const GENERATORS = {
             const ans = round2(hyp * trigVal);
             const side = ratio === 'Sin' ? 'مقابل' : 'مجاور';
             return {
+                angle, hyp, ans,
                 q: `احسب طول ال${side} x إذا كان الوتر ${hyp}cm والزاوية ${angle}° (علماً أن ${ratio.toLowerCase()} ${angle} = ${round2(trigVal)})`,
                 given: `وتر = ${hyp}`,
                 needed: `${side} = x`,
                 correctRatio: ratio,
-                ans,
             };
         },
 
