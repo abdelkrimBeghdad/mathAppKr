@@ -4,7 +4,6 @@ import { RotateCcw, CheckCircle2, Plus, Microscope } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -209,11 +208,16 @@ function RootsAdditionContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputA(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'جذران بنفس الرقم الأساسي', description: 'الجذر متطابق في كلا الحدين — أشبه بوحدة قياس مشتركة (مثل جمع تفاحات مع تفاحات).' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اجمع المعاملين الخارجيين فقط، وأبقِ الجذر كما هو دون تغيير.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={`opacity-40 ${theme.textMain}`}>=</span>
                 <input
-                    type="number" value={inputA}
+                    type="number" data-tour-id="lab-answer-input" value={inputA}
                     onChange={e => setInputA(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل المعامل الناتج"
@@ -224,11 +228,6 @@ function RootsAdditionContent({ phase, setPhase }) {
                 />
                 <span className="text-rose-500">√{practicePair.x}</span>
             </div>
-
-            <LabTutorialNote
-                from={`المعاملان الخارجيان هما ${practicePair.a} و${practicePair.b}، والجذر المشترك بينهما هو √${practicePair.x}.`}
-                why={`بما أن الجذر (√${practicePair.x}) متطابق في الحدّين، فهو أشبه بوحدة قياس مشتركة (مثل جمع تفاحات مع تفاحات)؛ نجمع الأعداد الخارجية فقط ونُبقي الجذر كما هو دون أي تغيير.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة

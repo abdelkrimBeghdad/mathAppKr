@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -161,9 +160,14 @@ function VecSameEndContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setIsTransformed(false); setInputX(''); setInputY(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'vec-sameend-svg', title: 'شعاعان بنفس نقطة النهاية', description: 'اضغط "تحويل" لنقل BC لنفس نقطة انطلاق AC — لا يغيّر هذا قيمة BC نفسها.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'اجمع كل مركبة على حدة تماماً كأي شعاعين حرّين، بغض النظر عن نقطة الانطلاق.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="relative w-64 h-40 mx-auto bg-black/20 rounded-2xl border border-white/10 flex items-center justify-center">
+                <div data-tour-id="vec-sameend-svg" className="relative w-64 h-40 mx-auto bg-black/20 rounded-2xl border border-white/10 flex items-center justify-center">
                     <svg viewBox={`${viewOffset} ${viewOffset} ${viewSize} ${viewSize}`} className="w-full h-full">
                         <g transform="scale(1, -1)">
                             <line x1={a.x} y1={a.y} x2={c.x} y2={c.y} stroke="#38bdf8" strokeWidth="0.1" markerEnd="url(#arrow-b)" />
@@ -187,7 +191,7 @@ function VecSameEndContent({ phase, setPhase }) {
                     </button>
                 ) : (
                     <>
-                        <div className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
+                        <div data-tour-id="lab-answer-input" className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
                             <span className={theme.textMain}>AC + BC = (</span>
                             <input type="number" value={inputX} onChange={e => setInputX(e.target.value)} aria-label="المركبة الأفقية" autoFocus
                                 className={`w-16 rounded-xl text-center p-2 outline-none border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400' : 'bg-white border-rose-200 text-rose-700'}`} placeholder="x" />
@@ -196,10 +200,6 @@ function VecSameEndContent({ phase, setPhase }) {
                                 className={`w-16 rounded-xl text-center p-2 outline-none border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400' : 'bg-white border-rose-200 text-rose-700'}`} placeholder="y" />
                             <span className={theme.textMain}>)</span>
                         </div>
-                        <LabTutorialNote
-                            from={`AC = C − A = (${ac.x}, ${ac.y})، وBC = C − B = (${bc.x}, ${bc.y}).`}
-                            why={`رغم أن الشعاعين ينتهيان عند نفس النقطة C، فإن جمعهما لا يختلف عن جمع أي شعاعين حرّين: نجمع كل مركبة على حدة: (${ac.x}+${bc.x}, ${ac.y}+${bc.y}) = (${sum.x}, ${sum.y}).`}
-                        />
                         <button onClick={handleCheck} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                             <CheckCircle2 size={18} /> تأكيد المجموع
                         </button>

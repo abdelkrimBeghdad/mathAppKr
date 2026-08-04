@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -200,13 +199,18 @@ function VecMidpointContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'نقطة المنتصف', description: 'المنتصف هو المتوسط الحسابي لإحداثيات النقطتين.' },
+                { target: 'lab-answer-input', title: 'الخطوتان', description: 'اجمع كل محور على حدة أولاً (Xₐ+Xᵦ وYₐ+Yᵦ)، ثم اقسم كل مجموع على 2.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
                     {step === 0 ? 'الخطوة 1: اجمع إحداثيات x معاً، وإحداثيات y معاً' : 'الخطوة 2: اقسم المجاميع على 2'}
                 </p>
 
-                <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black" dir="ltr">
                     <span className="text-emerald-400 text-xl">M (</span>
                     {step === 0 ? (
                         <div className="flex items-center gap-3">
@@ -227,15 +231,6 @@ function VecMidpointContent({ phase, setPhase }) {
                     )}
                     <span className="text-emerald-400 text-xl">)</span>
                 </div>
-
-                <LabTutorialNote
-                    from={step === 0
-                        ? `النقطتان: A(${currentChallenge.ax}, ${currentChallenge.ay}) وB(${currentChallenge.bx}, ${currentChallenge.by}).`
-                        : `مجموع الإحداثيات الذي وجدته: (${currentChallenge.sumX}, ${currentChallenge.sumY}).`}
-                    why={step === 0
-                        ? `المنتصف هو المتوسط الحسابي، لذا نبدأ بجمع كل محور على حدة: Xₐ+Xᵦ وYₐ+Yᵦ.`
-                        : `نقسم كل مجموع على 2 للحصول على نقطة المنتصف الفعلية: (${currentChallenge.sumX}/2, ${currentChallenge.sumY}/2) = (${currentChallenge.mx}, ${currentChallenge.my}).`}
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

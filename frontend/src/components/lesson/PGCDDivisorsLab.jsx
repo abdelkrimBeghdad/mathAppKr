@@ -8,7 +8,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function getDivisors(n) {
@@ -228,12 +227,16 @@ function PGCDDivisorsContent({ phase, setPhase }) {
             onRefresh={() => { setStep(1); setFoundDivisorsA([]); setFoundDivisorsB([]); setFoundCommon([]); setPgcdInput(''); setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={stepsForPanel.length ? <LabStepsPanel title="سجل الاكتشاف" steps={stepsForPanel} /> : undefined}
+            tourSteps={[
+                { target: 'lab-answer-input', title: 'اكتشاف القواسم', description: 'اكتب قواسم كل عدد واحداً تلو الآخر، ثم حدد القواسم المشتركة بينهما، وأخيراً أكبرها (PGCD).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             {step < 4 ? (
                 <>
                     <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                         <input
-                            type="number" value={inputVal}
+                            type="number" data-tour-id="lab-answer-input" value={inputVal}
                             onChange={e => setInputVal(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleAddDivisor()}
                             aria-label="أدخل قاسماً"
@@ -246,21 +249,13 @@ function PGCDDivisorsContent({ phase, setPhase }) {
                     <button onClick={handleAddDivisor} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <Send size={18} /> إضافة القاسم
                     </button>
-                    <LabTutorialNote
-                        from={step === 1 ? `العدد المطلوب إيجاد قواسمه هو ${numbers.a}.`
-                            : step === 2 ? `العدد المطلوب إيجاد قواسمه هو ${numbers.b}.`
-                                : `لديك الآن قائمتا قواسم ${numbers.a} و${numbers.b} كاملتين.`}
-                        why={step < 3
-                            ? `القاسم هو أي عدد يقسم العدد الأصلي بدون باقٍ. جرّب الأعداد بالترتيب من 1 حتى العدد نفسه، وتحقق من كل واحد.`
-                            : `القاسم المشترك هو أي رقم موجود في القائمتين معاً. ابحث عن الأرقام المتكررة بين المجموعتين.`}
-                    />
                 </>
             ) : (
                 <>
                     <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                         <span className={theme.textMain}>PGCD =</span>
                         <input
-                            type="number" value={pgcdInput}
+                            type="number" data-tour-id="lab-answer-input" value={pgcdInput}
                             onChange={e => setPgcdInput(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && checkPGCD()}
                             aria-label="أدخل القاسم المشترك الأكبر"
@@ -273,10 +268,6 @@ function PGCDDivisorsContent({ phase, setPhase }) {
                     <button onClick={checkPGCD} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <CheckCircle2 size={18} /> تأكيد PGCD
                     </button>
-                    <LabTutorialNote
-                        from={`القواسم المشتركة التي جمعتها هي: {${foundCommon.join('، ')}}.`}
-                        why={`القاسم المشترك الأكبر (PGCD) هو ببساطة أكبر رقم في قائمة القواسم المشتركة — لا حاجة لأي حساب إضافي، فقط اختر الأكبر.`}
-                    />
                 </>
             )}
         </LabChallenge>

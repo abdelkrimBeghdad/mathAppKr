@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'trig-special';
@@ -159,9 +158,13 @@ function TrigSpecialContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'الزوايا الشهيرة', description: 'الزوايا 30°، 45°، و60° لها قيم ثابتة يجب حفظها — تتكرر كثيراً في التمارين.' },
+                { target: 'trig-special-options', title: 'الخيارات', description: 'اختر الإجابة الصحيحة من جدول القيم الشهيرة.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الإجابة">
+                <div data-tour-id="trig-special-options" className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الإجابة">
                     {problem.options.map((opt, i) => (
                         <button key={i} onClick={() => handleAnswer(opt)} className="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black text-xl transition-all active:scale-95">
                             {opt}
@@ -169,12 +172,6 @@ function TrigSpecialContent({ phase, setPhase }) {
                     ))}
                 </div>
 
-                <LabTutorialNote
-                    from="الزوايا 30°، 45°، و60° هي الزوايا الشهيرة التي تتكرر في معظم التمارين والتطبيقات الفيزيائية."
-                    why={problem.kind === 'value-forward'
-                        ? 'قيم هذه الزوايا مشتقة من مثلثات هندسية بسيطة (نصف مثلث متساوي الأضلاع، ومثلث قائم متساوي الساقين)، ولذلك تأتي دائماً بصيغ جذرية جميلة يجب حفظها.'
-                        : 'بما أن كل زاوية شهيرة لها قيمة ثابتة مميزة لكل نسبة مثلثية، يمكننا الرجوع من القيمة المعطاة إلى الزاوية المطابقة لها في الجدول.'}
-                />
             </div>
         </LabChallenge>
     );

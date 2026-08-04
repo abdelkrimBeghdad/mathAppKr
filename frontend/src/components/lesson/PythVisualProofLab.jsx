@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'pyth-visual';
@@ -233,6 +232,11 @@ function PythVisualProofContent({ phase, setPhase }) {
             level={currentChallenge.level}
             question={currentChallenge.q}
             hint={currentChallenge.hint}
+            tourSteps={[
+                { target: 'lab-question', title: 'المثلث القائم الزاوية', description: 'الزاوية القائمة دائماً في A، وطولا الضلعين AB وAC معطيان — مهمتك إيجاد الوتر BC.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'استخدم مطابقة فيثاغورس: BC² = AB² + AC²، ثم استخرج الجذر التربيعي للنتيجة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لرؤية الحساب كاملاً كتلميح.' },
+            ]}
             feedback={feedback}
             reward={reward}
             onRefresh={() => { setRounds(buildRounds(baseLevel)); setRound(0); setUserInput(''); }}
@@ -242,6 +246,7 @@ function PythVisualProofContent({ phase, setPhase }) {
                 <span className={`opacity-30 ${theme.textSub}`}>BC =</span>
                 <input
                     type="text"
+                    data-tour-id="lab-answer-input"
                     value={userInput}
                     onChange={e => setUserInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
@@ -251,11 +256,6 @@ function PythVisualProofContent({ phase, setPhase }) {
                     placeholder="?"
                 />
             </div>
-
-            <LabTutorialNote
-                from={`المثلث قائم الزاوية في A، مع AB = ${currentChallenge.a} وAC = ${currentChallenge.b}.`}
-                why="مطابقة فيثاغورس تنص على أن مربع الوتر (الضلع المقابل للزاوية القائمة) يساوي مجموع مربعي الضلعين الآخرين. لذلك نحسب AB² + AC² ثم نستخرج الجذر التربيعي للنتيجة لإيجاد BC."
-            />
 
             <button
                 onClick={handleAnswer}

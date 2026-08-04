@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -185,8 +184,13 @@ function StatMeanContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'stat-mean-data', title: 'مجموعة الأرقام', description: 'هذه هي البيانات التي تحتاج حساب وسطها الحسابي.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اجمع كل الأرقام معاً، ثم اقسم الناتج على عددها.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
-            <div className="flex gap-2 justify-center flex-wrap mb-2">
+            <div data-tour-id="stat-mean-data" className="flex gap-2 justify-center flex-wrap mb-2">
                 {currentChallenge.data.map((v, i) => (
                     <span key={i} className={`w-12 h-12 flex items-center justify-center rounded-xl font-bold border ${isDarkMode ? 'bg-black/40 text-white border-white/10' : 'bg-blue-50 text-blue-700 border-blue-100'
                         }`}>{v}</span>
@@ -197,6 +201,7 @@ function StatMeanContent({ phase, setPhase }) {
                 <span className={`opacity-40 ${theme.textSub}`}>=</span>
                 <input
                     type="number"
+                    data-tour-id="lab-answer-input"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
@@ -210,10 +215,6 @@ function StatMeanContent({ phase, setPhase }) {
                 />
             </div>
 
-            <LabTutorialNote
-                from={`لديك ${currentChallenge.data.length} أرقام: ${currentChallenge.data.join('، ')}.`}
-                why={`الوسط الحسابي = مجموع كل الأرقام ÷ عددها. اجمعها أولاً، ثم اقسم الناتج على ${currentChallenge.data.length}.`}
-            />
 
             <button
                 onClick={handleAnswer}

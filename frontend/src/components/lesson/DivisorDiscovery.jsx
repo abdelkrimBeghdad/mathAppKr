@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Send, Lightbulb, Trophy, AlertCircle, RotateCcw, BookOpen, HelpCircle, ArrowRight, Target, Binary, Sigma, Search, Cpu } from 'lucide-react';
+import { Check, Send, Lightbulb, Trophy, AlertCircle, RotateCcw, BookOpen, HelpCircle, ArrowRight, Target, Binary, Sigma, Search, Cpu, Compass } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { rewardService } from '../../utils/rewardService';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
-import LabTutorialNote from './LabTutorialNote';
+import TutorialTour from './TutorialTour';
 import MasteryRewardCard from './MasteryRewardCard';
 import { useLabTheme } from './LabThemeContext';
 
@@ -34,6 +34,7 @@ function DivisorDiscoveryContent({ phase, setPhase }) {
     const [showStopChallenge, setShowStopChallenge] = useState(false);
     const [divisors, setDivisors] = useState([]);
     const [showHint, setShowHint] = useState(false);
+    const [showTour, setShowTour] = useState(false);
     const [reward, setReward] = useState(null);
 
     const challenge = rounds[round]; // { level, target, divisors, q, hint }
@@ -188,8 +189,19 @@ function DivisorDiscoveryContent({ phase, setPhase }) {
     // ── practice ─────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col items-center w-full max-w-5xl px-2">
-            <div className={`mb-4 inline-flex items-center gap-2 px-5 py-1.5 rounded-full font-black text-xs uppercase tracking-widest border ${isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                <Cpu size={14} /> الجولة {round + 1}/3 — مستوى {['', 'مبتدئ', 'متوسط', 'متقدم'][challenge.level]}
+            <div className="flex items-center gap-2 mb-4">
+                <div className={`inline-flex items-center gap-2 px-5 py-1.5 rounded-full font-black text-xs uppercase tracking-widest border ${isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                    <Cpu size={14} /> الجولة {round + 1}/3 — مستوى {['', 'مبتدئ', 'متوسط', 'متقدم'][challenge.level]}
+                </div>
+                {!isFinished && (
+                    <button
+                        onClick={() => setShowTour(true)}
+                        className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full border transition-all ${isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'}`}
+                        aria-label="ابدأ جولة تعريفية على الشاشة"
+                    >
+                        <Compass size={11} /> جولة تعريفية
+                    </button>
+                )}
             </div>
             <h2 className={`text-xl font-black tracking-tighter leading-none px-4 mb-6 ${theme.textMain}`}>
                 {isFinished ? 'تم استخراج القواسم بنجاح!' : `أوجد قواسم العدد (${target})`}
@@ -209,18 +221,18 @@ function DivisorDiscoveryContent({ phase, setPhase }) {
 
                     {!showStopChallenge ? (
                         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className={`w-full max-w-2xl p-5 rounded-[1.5rem] border-2 border-white/5 mb-4 backdrop-blur-3xl ${theme.card}`}>
-                            <div className="text-center mb-4">
+                            <div data-tour-id="div-current-attempt" className="text-center mb-4">
                                 <div className="text-amber-500 font-black mb-2 text-sm uppercase tracking-widest">المحاولة الحالية:</div>
                                 <div className={`text-base font-black font-mono ${theme.textMain}`} dir="ltr">{target} = {currentAttempt.factor} × ?</div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 justify-center" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex flex-wrap items-center gap-3 justify-center" dir="ltr">
                                 <input type="number" value={factorA} onChange={(e) => setFactorA(e.target.value)} placeholder="?" aria-label="العامل الأول" className={`w-20 md:w-24 rounded-xl p-3 text-center font-black outline-none border-2 ${isDarkMode ? 'bg-slate-950 border-amber-500/50 text-amber-400' : 'bg-white border-amber-200 text-amber-700'}`} />
                                 <Sigma className="opacity-30" size={18} />
                                 <input type="number" value={factorB} onChange={(e) => setFactorB(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCheck()} placeholder="?" aria-label="العامل الثاني" className={`w-20 md:w-24 rounded-xl p-3 text-center font-black outline-none border-2 ${isDarkMode ? 'bg-slate-950 border-amber-500/50 text-amber-400' : 'bg-white border-amber-200 text-amber-700'}`} />
                                 <button onClick={handleCheck} aria-label="تحقق" className="p-3 bg-amber-500 hover:bg-amber-600 rounded-xl text-white transition-all"><Send size={18} className="rotate-180" /></button>
                             </div>
 
-                            <button onClick={() => setShowHint(!showHint)} className="flex items-center gap-2 text-amber-500/60 font-black text-xs mx-auto mt-4 hover:text-amber-500 transition-colors uppercase">
+                            <button data-tour-id="lab-hint-button" onClick={() => setShowHint(!showHint)} className="flex items-center gap-2 text-amber-500/60 font-black text-xs mx-auto mt-4 hover:text-amber-500 transition-colors uppercase">
                                 <HelpCircle size={14} /> تلميح استكشافي
                             </button>
                             <AnimatePresence>
@@ -231,10 +243,6 @@ function DivisorDiscoveryContent({ phase, setPhase }) {
                                 )}
                             </AnimatePresence>
 
-                            <LabTutorialNote
-                                from={`نبحث عن جميع الأزواج (a, b) بحيث a × b = ${target}.`}
-                                why="نبدأ من 1 ونتصاعد بالتسلسل لأن كل عدد إما أن يكون قاسماً أو لا؛ عندما يبدأ العدد الحالي بالتطابق مع عدد وجدناه مسبقاً في الطرف الآخر، نكون قد جمعنا كل القواسم الممكنة ولا داعي للمتابعة."
-                            />
                         </motion.div>
                     ) : (
                         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={`w-full max-w-2xl p-8 rounded-[1.5rem] border-2 border-rose-500/40 text-center backdrop-blur-3xl ${theme.card}`}>
@@ -280,6 +288,16 @@ function DivisorDiscoveryContent({ phase, setPhase }) {
                     )}
                 </div>
             )}
+
+            <TutorialTour
+                isOpen={showTour}
+                onClose={() => setShowTour(false)}
+                steps={[
+                    { target: 'div-current-attempt', title: 'المحاولة الحالية', description: 'نجرّب الأعداد بالتسلسل بدءاً من 1، ونبحث عن مكمّل كل عدد بالضرب.' },
+                    { target: 'lab-answer-input', title: 'حقلا الإدخال', description: 'اكتب العددين اللذين حاصل ضربهما يساوي العدد المستهدف.' },
+                    { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لرؤية ناتج القسمة كتلميح.' },
+                ]}
+            />
         </div>
     );
 }

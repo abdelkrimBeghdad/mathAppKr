@@ -4,7 +4,6 @@ import { CheckCircle2, Divide, ArrowRight, Layers } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -165,11 +164,16 @@ function RootsDivisionContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'قسمة جذرين', description: 'قسمة جذرين تساوي جذر ناتج القسمة: √a ÷ √b = √(a÷b).' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'في الخطوة الأولى وحّد العددين تحت جذر واحد، ثم استخرج الجذر النهائي في الخطوة الثانية.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 {step === 1 && <span className="text-rose-500">√</span>}
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل الناتج"
@@ -179,15 +183,6 @@ function RootsDivisionContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={step === 0
-                    ? `العدد الأول تحت الجذر هو ${practicePair.a}، والثاني هو ${practicePair.b}.`
-                    : `القيمة الموحدة التي وجدتها تحت الجذر هي ${practicePair.quot}.`}
-                why={step === 0
-                    ? `قسمة جذرين تساوي جذر ناتج القسمة: √a ÷ √b = √(a÷b). اقسم العددين أولاً لتوحيدهما تحت جذر واحد.`
-                    : `بما أن ${practicePair.quot} مربع تام (تم تصميم المسألة لضمان ذلك)، فإن جذره عدد صحيح — وهو الناتج النهائي للعملية.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> {step === 0 ? 'تأكيد التوحيد' : 'استخراج الناتج'}

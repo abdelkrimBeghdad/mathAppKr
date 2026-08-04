@@ -31,8 +31,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, RefreshCw, Trophy, Coins, Zap, Award, GraduationCap, X } from 'lucide-react';
+import { HelpCircle, RefreshCw, Trophy, Coins, Zap, Award, GraduationCap, X, Compass } from 'lucide-react';
 import { useLabTheme } from './LabThemeContext';
+import TutorialTour from './TutorialTour';
 
 // ─── مؤشر المستوى ─────────────────────────────────────────────────────────────
 const LEVEL_LABELS = { 1: 'مبتدئ', 2: 'متوسط', 3: 'متقدم' };
@@ -118,11 +119,13 @@ export default function LabChallenge({
     onRefresh,          // استدعاء عند الضغط على "سؤال جديد"
     onRestart,          // استدعاء عند الضغط على "تحدي جديد" في شاشة المكافأة
     sidePanel,          // عنصر اختياري — <LabStepsPanel> لمختبرات الخوارزميات متعددة الخطوات فقط
+    tourSteps,          // اختياري — [{ target, title, description }] يفعّل زر "جولة تعريفية" (Coach Marks)
     children,           // المحتوى التفاعلي (input / visual / choices)
 }) {
     const { theme, isDarkMode, currentAccent } = useLabTheme();
     const [showHint, setShowHint] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
+    const [showTour, setShowTour] = useState(false);
 
     // Anti-Brute Force mechanism
     const [consecutiveErrors, setConsecutiveErrors] = useState(0);
@@ -172,9 +175,21 @@ export default function LabChallenge({
                     <span className={`text-xs font-black ${theme.textSub}`}>
                         سؤال {current} من {total}
                     </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${LEVEL_COLORS[level]}`}>
-                        {LEVEL_LABELS[level]}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {tourSteps && tourSteps.length > 0 && (
+                            <button
+                                data-tour-id="lab-tour-trigger"
+                                onClick={() => setShowTour(true)}
+                                className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border transition-all ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100'}`}
+                                aria-label="ابدأ جولة تعريفية على الشاشة"
+                            >
+                                <Compass size={11} /> جولة تعريفية
+                            </button>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${LEVEL_COLORS[level]}`}>
+                            {LEVEL_LABELS[level]}
+                        </span>
+                    </div>
                 </div>
 
                 {/* الشريط */}
@@ -202,13 +217,13 @@ export default function LabChallenge({
 
                     {/* نص السؤال — يظهر فقط إذا مرّرناه */}
                     {question && (
-                        <p className={`text-sm md:text-base font-black text-center mb-5 leading-relaxed ${theme.textMain}`}>
+                        <p data-tour-id="lab-question" className={`text-sm md:text-base font-black text-center mb-5 leading-relaxed ${theme.textMain}`}>
                             {question}
                         </p>
                     )}
 
                     {/* المحتوى التفاعلي — يأتي من المختبر */}
-                    <div className={`w-full flex flex-col items-center gap-4 ${type === 'visual' ? 'min-h-[160px] justify-center' : ''} relative`}>
+                    <div data-tour-id="lab-content" className={`w-full flex flex-col items-center gap-4 ${type === 'visual' ? 'min-h-[160px] justify-center' : ''} relative`}>
                         {children}
 
                         {/* Cooldown Overlay */}
@@ -264,6 +279,7 @@ export default function LabChallenge({
                 {hint ? (
                     <div className="flex flex-col items-start gap-1">
                         <button
+                            data-tour-id="lab-hint-button"
                             onClick={() => setShowHint(s => !s)}
                             className={`flex items-center gap-1.5 text-xs font-black transition-all ${showHint
                                     ? 'text-amber-400'
@@ -376,6 +392,14 @@ export default function LabChallenge({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {tourSteps && tourSteps.length > 0 && (
+                <TutorialTour
+                    isOpen={showTour}
+                    onClose={() => setShowTour(false)}
+                    steps={tourSteps}
+                />
+            )}
         </div>
     );
 }

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'eq-solve';
@@ -30,6 +29,12 @@ function EquationsContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     const currentChallenge = rounds[round]; // { level, kind, x, a, b, c, q, hint }
+
+    const tourSteps = [
+        { target: 'lab-question', title: 'المعادلة المطلوب حلّها', description: 'هذا هو "الميزان" الذي عليك موازنته — طرفاه متساويان دائماً، ومهمتك عزل x وحده في أحد الطرفين.' },
+        { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اكتب هنا القيمة الرقمية لـ x بعد أن تعزلها بنقل الأرقام مع عكس إشارتها.' },
+        { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لرؤية تلميح سريع يذكّرك بالخطوة التالية دون كشف الحل كاملاً.' },
+    ];
 
     const learnPages = [
         { title: 'بروتوكول موازنة الموازين', detail: 'المعادلة هي ميزان رقمي دقيق. هدفنا الأساسي هو عزل المجهول x في طرف واحد عبر نقل الأرقام بحكمة.', math: 'x + a = b  →  x = b − a', icon: <Scale size={20} /> },
@@ -166,6 +171,7 @@ function EquationsContent({ phase, setPhase }) {
             level={currentChallenge.level}
             question={currentChallenge.q}
             hint={currentChallenge.hint}
+            tourSteps={tourSteps}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
@@ -175,6 +181,7 @@ function EquationsContent({ phase, setPhase }) {
                 <span className={`opacity-30 ${theme.textSub}`}>x =</span>
                 <input
                     type="text"
+                    data-tour-id="lab-answer-input"
                     value={userInput}
                     onChange={e => setUserInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
@@ -184,11 +191,6 @@ function EquationsContent({ phase, setPhase }) {
                     placeholder="?"
                 />
             </div>
-
-            <LabTutorialNote
-                from={`المعادلة ${currentChallenge.q} تخبرنا أن طرفها الأيسر يساوي طرفها الأيمن تماماً.`}
-                why="لعزل x نطبّق العملية العكسية على الطرفين معاً — إن كان هناك رقم مضافاً أو مطروحاً ننقله بعكس إشارته، وإن كان معامل ضرب نقسم عليه، دون كسر توازن الميزان أبداً."
-            />
 
             <button
                 onClick={handleAnswer}

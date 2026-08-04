@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function VectorGrid({ dx, dy, startX, startY }) {
@@ -182,10 +181,15 @@ function VecReadContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputX(''); setInputY(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'vec-read-grid', title: 'الشعاع على الشبكة', description: 'لاحظ نقطة البداية (الخضراء) ورأس السهم.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'مركبات الشعاع = إحداثيات النهاية − إحداثيات البداية، لكل محور على حدة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-3">
-                <VectorGrid dx={currentChallenge.dx} dy={currentChallenge.dy} startX={currentChallenge.startX} startY={currentChallenge.startY} />
-                <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
+                <div data-tour-id="vec-read-grid"><VectorGrid dx={currentChallenge.dx} dy={currentChallenge.dy} startX={currentChallenge.startX} startY={currentChallenge.startY} /></div>
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black" dir="ltr">
                     <span className="text-fuchsia-400 text-xl">V (</span>
                     <div className="flex flex-col gap-2">
                         <input type="number" value={inputX} onChange={e => setInputX(e.target.value)} aria-label="المركبة x" autoFocus
@@ -195,10 +199,6 @@ function VecReadContent({ phase, setPhase }) {
                     </div>
                     <span className="text-fuchsia-400 text-xl">)</span>
                 </div>
-                <LabTutorialNote
-                    from={`نقطة البداية (الخضراء) عند (${currentChallenge.startX}, ${currentChallenge.startY})، ورأس السهم عند (${currentChallenge.startX + currentChallenge.dx}, ${currentChallenge.startY + currentChallenge.dy}).`}
-                    why={`مركبات الشعاع = إحداثيات النهاية − إحداثيات البداية، لكل محور على حدة: x = ${currentChallenge.startX + currentChallenge.dx} − ${currentChallenge.startX} = ${currentChallenge.dx}، وy = ${currentChallenge.startY + currentChallenge.dy} − ${currentChallenge.startY} = ${currentChallenge.dy}.`}
-                />
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد المركبات
                 </button>

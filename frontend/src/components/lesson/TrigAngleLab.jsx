@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -148,11 +147,16 @@ function TrigAngleContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'الاتجاه المعاكس', description: 'أُعطيت نسبة مثلثية جاهزة (sin أو cos أو tan)، ومطلوب منك إيجاد الزاوية التي تنتجها.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'أدخل قيس الزاوية بالدرجات — تذكر جدول القيم الخاصة (30°، 45°، 60°، 90°).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-xl" dir="ltr">
                 <span className={theme.textMain}>α =</span>
                 <input
-                    type="number" value={input1}
+                    type="number" data-tour-id="lab-answer-input" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل قيس الزاوية"
@@ -163,10 +167,6 @@ function TrigAngleContent({ phase, setPhase }) {
                 />
                 <span className={theme.textMain}>°</span>
             </div>
-            <LabTutorialNote
-                from={`السؤال أعطاك قيمة نسبة مثلثية جاهزة (مثل sin أو cos أو tan) بدل طول الأضلاع.`}
-                why={`هذه المرة نعمل بالاتجاه المعاكس: بدل حساب النسبة من الأضلاع، نبحث عن الزاوية التي تُنتج هذه النسبة تحديداً. تذكر جدول القيم الخاصة للزوايا 30°، 45°، 60°، 90°.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-black transition-all">
                 تحقق من الزاوية
             </button>

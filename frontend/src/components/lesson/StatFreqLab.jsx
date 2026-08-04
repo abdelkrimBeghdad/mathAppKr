@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة (مبتدئ ➜ متوسط ➜ متقدم) بدل سؤال واحد ثابت
@@ -159,13 +158,13 @@ function StatFreqContent({ phase, setPhase }) {
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className={`flex flex-wrap justify-center gap-2 p-4 rounded-2xl border ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                <div data-tour-id="stat-freq-data" className={`flex flex-wrap justify-center gap-2 p-4 rounded-2xl border ${isDarkMode ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
                     {challenge.data.map((v, i) => (
                         <span key={i} className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 font-bold">{v}</span>
                     ))}
                 </div>
 
-                <div className="w-full overflow-x-auto">
+                <div data-tour-id="stat-freq-table" className="w-full overflow-x-auto">
                     <table className="w-full text-center border-collapse">
                         <thead>
                             <tr className={`${theme.textMain} border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
@@ -194,10 +193,6 @@ function StatFreqContent({ phase, setPhase }) {
                     </table>
                 </div>
 
-                <LabTutorialNote
-                    from={`القائمة أعلاه تحتوي ${challenge.data.length} رقماً، وفيها ${uniqueValues.length} قيمة مختلفة فقط (${uniqueValues.join('، ')}).`}
-                    why={`التكرار يعني: كم مرة ظهرت كل قيمة مختلفة داخل القائمة؟ عُدّ ظهور كل رقم على حدة واكتب العدد في الخانة المقابلة له.`}
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all">
                     تأكيد الجدول

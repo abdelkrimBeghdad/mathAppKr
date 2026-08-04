@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -215,13 +214,18 @@ function VecCalcContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setInput3(''); setInput4(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'إحداثيات الشعاع', description: 'قانون حساب مركبتي الشعاع: AB = (Xᵦ − Xₐ, Yᵦ − Yₐ).' },
+                { target: 'lab-answer-input', title: 'حقول الإجابة', description: 'طبّق القانون أولاً بالتعويض، ثم أجرِ العمليات الحسابية للحصول على الناتج النهائي.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
                     {step === 0 ? 'الخطوة 1: طبق القانون (النهاية ناقص البداية)' : 'الخطوة 2: أجرِ العمليات الحسابية'}
                 </p>
 
-                <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black" dir="ltr">
                     <span className="text-emerald-400 text-xl">AB (</span>
                     {step === 0 ? (
                         <div className="flex flex-col gap-3">
@@ -250,13 +254,6 @@ function VecCalcContent({ phase, setPhase }) {
                     )}
                     <span className="text-emerald-400 text-xl">)</span>
                 </div>
-
-                {step === 1 && (
-                    <LabTutorialNote
-                        from={`طبّقت القانون: AB = (${currentChallenge.bx} − ${currentChallenge.ax}, ${currentChallenge.by} − ${currentChallenge.ay}).`}
-                        why={`الآن فقط عملية حسابية بسيطة${currentChallenge.ax < 0 || currentChallenge.ay < 0 ? '، احذر: طرح رقم سالب يتحول إلى جمع!' : '.'}`}
-                    />
-                )}
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

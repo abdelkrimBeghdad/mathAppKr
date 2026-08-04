@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -142,10 +141,16 @@ function PowersContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'عملية على الأسس', description: 'قارن الأسس لنفس الأساس — الضرب يجمع الأسس، القسمة تطرحها، وقوة القوة تضربها.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'أدخل قيمة الأس الناتج فقط (رقم واحد).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع حسب نوع العملية.' },
+            ]}
         >
             <div className="flex items-center gap-3" dir="ltr">
                 <input
                     type="text"
+                    data-tour-id="lab-answer-input"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
@@ -158,10 +163,6 @@ function PowersContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
-            <LabTutorialNote
-                from={`السؤال يقارن بين أُسَّين لنفس الأساس.`}
-                why={currentChallenge.hint}
-            />
             <button
                 onClick={handleAnswer}
                 className="mt-4 w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function gcd(x, y) {
@@ -172,18 +171,18 @@ function CoprimeContent({ phase, setPhase }) {
                 reward={reward}
                 onRefresh={() => setFeedback(null)}
                 onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+                tourSteps={[
+                    { target: 'coprime-numbers', title: 'العددان المعطيان', description: 'ابحث عن القاسم المشترك الأكبر (PGCD) بينهما.' },
+                    { target: 'coprime-buttons', title: 'إجابتك', description: 'إن كان PGCD يساوي 1 بالضبط فهما أوليان فيما بينهما، وإلا فلا.' },
+                ]}
             >
                 <div className="w-full flex flex-col items-center gap-4">
-                    <div className={`text-3xl font-black font-mono flex items-center justify-center gap-3 ${theme.textMain}`} dir="ltr">
+                    <div data-tour-id="coprime-numbers" className={`text-3xl font-black font-mono flex items-center justify-center gap-3 ${theme.textMain}`} dir="ltr">
                         <span className="text-sky-400">{current.a}</span>
                         <Search className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} size={20} />
                         <span className="text-amber-400">{current.b}</span>
                     </div>
-                    <LabTutorialNote
-                        from={`العددان المعطيان هما ${current.a} و${current.b}.`}
-                        why={`إذا كان القاسم المشترك الأكبر بينهما (PGCD) يساوي 1 بالضبط، فهما أوليان فيما بينهما. أي قاسم مشترك آخر أكبر من 1 يعني أنهما ليسا كذلك.`}
-                    />
-                    <div className="flex flex-wrap gap-3 justify-center w-full" role="group" aria-label="اختر هل العددان أوليان فيما بينهما">
+                    <div data-tour-id="coprime-buttons" className="flex flex-wrap gap-3 justify-center w-full" role="group" aria-label="اختر هل العددان أوليان فيما بينهما">
                         <button onClick={() => handleChallengeAnswer(true)} className="flex-1 min-w-[130px] py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
                             <Check size={18} /> نعم (أوليان)
                         </button>

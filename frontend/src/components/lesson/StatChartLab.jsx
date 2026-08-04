@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildRounds(baseLevel) {
@@ -167,10 +166,15 @@ function StatChartContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'قطاع دائري', description: 'الدائرة الكاملة تساوي 360°، ونسبة الزاوية من الدائرة تساوي نسبة التكرار من الإجمالي.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'احسب: (التكرار ÷ الإجمالي) × 360°.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-xl" dir="ltr">
                 <input
-                    type="number" value={input1}
+                    type="number" data-tour-id="lab-answer-input" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل الزاوية"
@@ -181,10 +185,6 @@ function StatChartContent({ phase, setPhase }) {
                 />
                 <span className={theme.textMain}>°</span>
             </div>
-            <LabTutorialNote
-                from={`التكرار الكلي هو ${challenge.total}، وتكرار القيمة المطلوبة هو ${challenge.value}.`}
-                why={`الدائرة الكاملة تساوي 360°، فنسبة الزاوية من الدائرة تساوي نسبة التكرار من الإجمالي: (${challenge.value}/${challenge.total}) × 360°.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all">
                 تحقق من الزاوية
             </button>

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'thales-length';
@@ -163,6 +162,11 @@ function ThalesLengthContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'thales-length-ratio', title: 'النسبة المتناسبة', description: 'بما أن المستقيمان متوازيان، النسبتان AD/AB وAE/AC متساويتان تماماً.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اضرب الطرفين (AD × AC) ثم اقسم الناتج على الوسط المعلوم (AB) لتحصل على AE.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -178,7 +182,7 @@ function ThalesLengthContent({ phase, setPhase }) {
                 </svg>
 
                 {/* النسبة */}
-                <div className={`p-4 rounded-xl border font-mono text-sm flex justify-center gap-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+                <div data-tour-id="thales-length-ratio" className={`p-4 rounded-xl border font-mono text-sm flex justify-center gap-4 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>
                         <div className="pb-1 px-2 border-b-2 border-current">{problem.ad}</div>
                         <div className="pt-1 px-2">{problem.ab}</div>
@@ -195,6 +199,7 @@ function ThalesLengthContent({ phase, setPhase }) {
                     <span className={`uppercase ${theme.textMain}`}>AE =</span>
                     <input
                         type="number"
+                        data-tour-id="lab-answer-input"
                         step="0.1"
                         value={inputVal}
                         onChange={e => setInputVal(e.target.value)}
@@ -206,11 +211,6 @@ function ThalesLengthContent({ phase, setPhase }) {
                         autoFocus
                     />
                 </div>
-
-                <LabTutorialNote
-                    from={`لدينا AD = ${problem.ad}، AB = ${problem.ab}، AC = ${problem.ac}، والمستقيمان (DE) و(BC) متوازيان.`}
-                    why="بما أن التوازي يعطينا AD/AB = AE/AC، نطبّق قاعدة الرابع المتناسب: نضرب الطرفين (AD وAC) ثم نقسم الناتج على الوسط المعلوم (AB) لنحصل على AE."
-                />
 
                 <button
                     onClick={handleCheck}

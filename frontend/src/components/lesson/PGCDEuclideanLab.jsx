@@ -8,7 +8,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // خوارزمية إقليدس — تولّد كل خطوات القسمة المتتالية حتى الوصول لباقٍ صفري
@@ -206,11 +205,15 @@ function PGCDEuclideanContent({ phase, setPhase }) {
             onRefresh={() => { setCurrentStep(0); setCompletedRows([]); setUserAnswer(''); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={<LabStepsPanel title="سجل القسمة الإقليدية" steps={stepsForPanel} />}
+            tourSteps={[
+                { target: 'lab-answer-input', title: 'خوارزمية إقليدس', description: 'في كل خطوة نقسم العدد الأكبر على الأصغر ونستخرج الباقي — نستبدل الزوج (a,b) بالزوج (b, الباقي).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع حول القسمة الحالية.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>r =</span>
                 <input
-                    type="number" value={userAnswer}
+                    type="number" data-tour-id="lab-answer-input" value={userAnswer}
                     onChange={e => setUserAnswer(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                     aria-label="أدخل باقي القسمة"
@@ -220,11 +223,6 @@ function PGCDEuclideanContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={current ? `القسمة السابقة انتهت بمقسوم عليه ${current.a} ومقسوم ${current.b} (أو هذان هما العددان الأصليان في أول خطوة).` : ''}
-                why={current ? `في كل خطوة نستبدل الزوج (a, b) بالزوج (b, الباقي r)، وهذا يصغّر المسألة تدريجياً حتى يصبح الباقي صفراً — عندها b الحالي هو القاسم المشترك الأكبر.` : ''}
-            />
 
             <button onClick={handleSubmit} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تأكيد الباقي

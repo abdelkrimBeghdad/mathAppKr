@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -175,11 +174,17 @@ function PythProblemsContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'مسألة تطبيقية', description: 'ارسم المسألة ذهنياً كمثلث قائم الزاوية، وحدد أي الأطوال هو الوتر.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'طبّق c² = a² + b² لإيجاد الطول المجهول (سواء كان وتراً أو ضلعاً قائماً).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <span className={`text-sm font-bold ${theme.textSub}`}>اكتب الجواب النهائي (رقم فقط):</span>
                 <input
                     type="number"
+                    data-tour-id="lab-answer-input"
                     value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
@@ -189,10 +194,6 @@ function PythProblemsContent({ phase, setPhase }) {
                         }`}
                     placeholder="?"
                     autoFocus
-                />
-                <LabTutorialNote
-                    from={`الأطوال المعروفة في المسألة هي ${problem.a}m و${problem.b === problem.ans ? problem.hyp : problem.b}m (الضلعان القائمان أو أحدهما مع الوتر).`}
-                    why={`ارسم المسألة كمثلث قائم الزاوية: حدد أي الأطوال هو الوتر (أطول ضلع، مقابل الزاوية القائمة)، ثم طبّق: c² = a² + b² لإيجاد الطول المجهول.`}
                 />
                 <button
                     onClick={handleCheck}

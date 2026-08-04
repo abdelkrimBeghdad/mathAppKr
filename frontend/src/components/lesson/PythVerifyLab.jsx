@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -155,6 +154,10 @@ function PythVerifyContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'pyth-verify-comparison', title: 'المقارنة المطلوبة', description: 'قارن مربع أطول ضلع مع مجموع مربعي الضلعين الآخرين — تساوي الطرفين يعني أن المثلث قائم.' },
+                { target: 'pyth-verify-buttons', title: 'إجابتك', description: 'اضغط "نعم" إن تساوى الطرفان، أو "لا" إن اختلفا ولو بمقدار بسيط.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <svg width="150" height="105" viewBox="0 0 200 140">
@@ -168,17 +171,12 @@ function PythVerifyContent({ phase, setPhase }) {
                     <text x="110" y="65" fontSize="13" fill="#fbbf24" fontWeight="bold">AC={problem.c}</text>
                 </svg>
 
-                <div className={`w-full p-3 rounded-xl border font-mono text-sm text-center ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+                <div data-tour-id="pyth-verify-comparison" className={`w-full p-3 rounded-xl border font-mono text-sm text-center ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>AC² = {problem.c * problem.c}</div>
                     <div>AB² + BC² = {problem.a * problem.a} + {problem.b * problem.b} = {problem.a * problem.a + problem.b * problem.b}</div>
                 </div>
 
-                <LabTutorialNote
-                    from={`قارنّا مربع أطول ضلع (${problem.c}² = ${problem.c * problem.c}) مع مجموع مربعي الضلعين الآخرين (${problem.a * problem.a + problem.b * problem.b}).`}
-                    why={`هذا اختبار ذو اتجاهين: العلاقة تصح فقط في المثلث القائم. تساوي الطرفين يعني قائم، وأي فرق بينهما مهما صَغُر يعني أنه ليس قائماً.`}
-                />
-
-                <div className="flex gap-3 w-full" role="group" aria-label="هل المثلث قائم">
+                <div data-tour-id="pyth-verify-buttons" className="flex gap-3 w-full" role="group" aria-label="هل المثلث قائم">
                     <button
                         onClick={() => handleAnswer(true)}
                         className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white ${error ? 'opacity-60' : ''}`}

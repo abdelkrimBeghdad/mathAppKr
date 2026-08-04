@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'vec-concept';
@@ -201,14 +200,18 @@ function VecConceptContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'vec-concept-reference', title: 'الشعاع المرجعي', description: 'راقب اتجاهه وطويلته جيداً — هذا هو المعيار الذي ستقارن به بقية الأشعة.' },
+                { target: 'vec-concept-options', title: 'الخيارات', description: 'اختر الشعاع الذي يطابق العلاقة المطلوبة (تساوٍ أو تعاكس) مع الشعاع المرجعي.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="flex flex-col items-center pb-4 border-b border-white/10 w-full">
+                <div data-tour-id="vec-concept-reference" className="flex flex-col items-center pb-4 border-b border-white/10 w-full">
                     <span className={`text-xs font-bold uppercase mb-2 ${theme.textSub}`}>الشعاع المرجعي</span>
                     <VectorSvg dx={problem.dx} dy={problem.dy} color="#d946ef" label="AB" />
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الشعاع المطابق">
+                <div data-tour-id="vec-concept-options" className="flex flex-wrap justify-center gap-4" role="group" aria-label="اختر الشعاع المطابق">
                     {problem.options.map(opt => (
                         <button key={opt.id} onClick={() => handleAnswer(opt)}
                             className={`p-3 rounded-xl border-2 transition-all active:scale-95 ${isDarkMode ? 'border-white/10 bg-black/40 hover:border-fuchsia-500/50' : 'border-slate-200 bg-white hover:border-fuchsia-400'}`}
@@ -218,12 +221,6 @@ function VecConceptContent({ phase, setPhase }) {
                     ))}
                 </div>
 
-                <LabTutorialNote
-                    from={`الشعاع المرجعي له مركبتان: dx = ${problem.dx}، dy = ${problem.dy}.`}
-                    why={problem.kind === 'equal'
-                        ? 'شعاعان متساويان يعنيان أن لهما نفس المركبتين (نفس dx ونفس dy) تماماً — أي نفس الطول ونفس الاتجاه ونفس المنحى.'
-                        : 'الشعاع المعاكس له نفس الطول ونفس المنحى، لكن مركبتيه معكوستا الإشارة (سالب dx وسالب dy)، أي يشير للجهة المضادة تماماً.'}
-                />
             </div>
         </LabChallenge>
     );

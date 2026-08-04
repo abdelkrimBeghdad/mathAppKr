@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'trig-identities';
@@ -144,10 +143,15 @@ function TrigIdentitiesContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'الترابط المثلثي', description: 'المطابقة الأساسية cos²(x) + sin²(x) = 1 صحيحة دائماً لأي زاوية، ومنها نشتق باقي العلاقات.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'أدخل النتيجة العددية — يمكنك استخدام كسور عشرية إن لزم.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع حسب نوع السؤال.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <input
-                    type="number" step="0.01" value={input1}
+                    type="number" data-tour-id="lab-answer-input" step="0.01" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل النتيجة"
@@ -157,17 +161,6 @@ function TrigIdentitiesContent({ phase, setPhase }) {
                     placeholder="النتيجة"
                 />
             </div>
-
-            <LabTutorialNote
-                from={problem.kind === 'identity'
-                    ? 'المطابقة cos²(x) + sin²(x) = 1 صحيحة لأي زاوية x بلا استثناء.'
-                    : `لدينا نسبتان مثلثيتان معروفتان مبنيتان على مثلث قائم حقيقي.`}
-                why={problem.kind === 'tan-from-ratio'
-                    ? 'الطنجانط هو ببساطة ناتج قسمة الجيب على جيب التمام، لأن كليهما مشتقان من نفس أضلاع المثلث القائم (المقابل والمجاور والوتر)، والقسمة تُلغي الوتر المشترك.'
-                    : problem.kind === 'find-cos-from-sin'
-                        ? 'بما أن cos²(x) + sin²(x) = 1 دائماً، نعزل cos²(x) = 1 − sin²(x) ثم نستخرج الجذر التربيعي (موجب لأن الزاوية حادة).'
-                        : 'هذه المطابقة مستمدة مباشرة من نظرية فيثاغورس المطبقة على مثلث الوحدة، وتبقى صحيحة مهما تغيرت الزاوية.'}
-            />
 
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                 تحقق

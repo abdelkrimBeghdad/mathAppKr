@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -195,10 +194,15 @@ function DivisorPropertiesContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetTrackFully(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'خاصية القسمة', description: 'طالما n يقسم كلاً من a وb، فهو يقسم مجموعهما (أو باقيهما) حتماً — خاصية أساسية في نظرية الأعداد.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'احسب الناتج مباشرة بقسمة المجموع أو الباقي على n.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
                     aria-label="أدخل ناتج القسمة"
@@ -207,14 +211,6 @@ function DivisorPropertiesContent({ phase, setPhase }) {
                         }`}
                     placeholder="?"
                     autoFocus
-                />
-                <LabTutorialNote
-                    from={track === 'sum'
-                        ? `العدد n=${problem.n} يقسم a=${problem.a} وb=${problem.b} كلاهما بلا باقٍ.`
-                        : `باقي قسمة ${problem.a} على ${problem.b} هو ${problem.remainder}.`}
-                    why={track === 'sum'
-                        ? `طالما n يقسم a وb، فهو يقسم مجموعهما حتماً — هذه خاصية أساسية في نظرية الأعداد. النتيجة هي ببساطة (a+b) مقسومة على n.`
-                        : `نفس المبدأ ينطبق على الباقي: بما أن n يقسم كلاً من a وb، فهو يقسم الباقي الناتج عن قسمة أحدهما على الآخر أيضاً.`}
                 />
                 <button
                     onClick={handleVerify}

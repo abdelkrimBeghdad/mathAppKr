@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -160,9 +159,14 @@ function VecRandomAddContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setIsTranslated(false); setInputX(''); setInputY(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'vec-add-svg', title: 'الشعاعان', description: 'اضغط "سحب الشعاع الوردي" لتحريكه ليصبح متتالياً مع الأزرق (علاقة شال).' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'اجمع كل مركبة على حدة (x مع x، وy مع y).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="relative w-64 h-32 mx-auto bg-black/20 rounded-2xl border border-white/10 flex items-center justify-center">
+                <div data-tour-id="vec-add-svg" className="relative w-64 h-32 mx-auto bg-black/20 rounded-2xl border border-white/10 flex items-center justify-center">
                     <svg viewBox={`${viewOffset} ${viewOffset} ${viewSize} ${viewSize}`} className="w-full h-full">
                         <g transform="scale(1, -1)">
                             <line x1="0" y1="0" x2={u.x} y2={u.y} stroke="#38bdf8" strokeWidth="0.15" markerEnd="url(#arrow-b)" />
@@ -186,7 +190,7 @@ function VecRandomAddContent({ phase, setPhase }) {
                     </button>
                 ) : (
                     <>
-                        <div className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
+                        <div data-tour-id="lab-answer-input" className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
                             <span className={theme.textMain}>u + v = (</span>
                             <input type="number" value={inputX} onChange={e => setInputX(e.target.value)} aria-label="المركبة الأفقية" autoFocus
                                 className={`w-16 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="x" />
@@ -195,10 +199,6 @@ function VecRandomAddContent({ phase, setPhase }) {
                                 className={`w-16 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="y" />
                             <span className={theme.textMain}>)</span>
                         </div>
-                        <LabTutorialNote
-                            from={`الشعاعان u = (${u.x}, ${u.y}) و v = (${v.x}, ${v.y}).`}
-                            why={`بعد الانسحاب، أصبح الشعاعان متتاليين (علاقة شال)؛ نجمع كل مركبة على حدة: (${u.x}+${v.x}, ${u.y}+${v.y}) = (${sum.x}, ${sum.y}).`}
-                        />
                         <button onClick={handleCheck} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                             <CheckCircle2 size={18} /> تأكيد المجموع
                         </button>

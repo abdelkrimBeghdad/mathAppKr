@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -185,13 +184,18 @@ function VecDistanceContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'المسافة بين نقطتين', description: 'نستخدم نظرية فيثاغورس على مركبتي الشعاع الواصل بين النقطتين.' },
+                { target: 'lab-answer-input', title: 'الخطوات الثلاث', description: 'احسب dx وdy أولاً، ثم مجموع مربعيهما، وأخيراً جذر المجموع للحصول على المسافة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-widest ${theme.textSub}`}>
                     {step === 0 ? 'الخطوة 1: احسب dx و dy' : step === 1 ? 'الخطوة 2: اجمع مربعي dx و dy' : 'الخطوة 3: احسب الجذر التربيعي'}
                 </p>
 
-                <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black" dir="ltr">
                     {step === 0 && (
                         <>
                             <span className={theme.textMain}>dx =</span>
@@ -218,18 +222,6 @@ function VecDistanceContent({ phase, setPhase }) {
                     )}
                 </div>
 
-                <LabTutorialNote
-                    from={step === 0
-                        ? `النقطتان: A(${currentChallenge.ax}, ${currentChallenge.ay}) وB(${currentChallenge.bx}, ${currentChallenge.by}).`
-                        : step === 1
-                            ? `وجدت المركبتين: dx = ${dx}، dy = ${dy}.`
-                            : `مجموع المربعات الذي وجدته هو ${sumSq}.`}
-                    why={step === 0
-                        ? `أول خطوة دائماً: احسب مركبات الشعاع (النهاية ناقص البداية) قبل أي شيء آخر.`
-                        : step === 1
-                            ? `نظرية فيثاغورس: نربّع كل مركبة على حدة ثم نجمع الناتجين: ${dx}² + ${dy}² = ${dx * dx} + ${dy * dy} = ${sumSq}.`
-                            : `المسافة هي الجذر التربيعي لهذا المجموع (لأنه مصمم ليكون مربعاً تاماً دائماً): √${sumSq} = ${ans}.`}
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد

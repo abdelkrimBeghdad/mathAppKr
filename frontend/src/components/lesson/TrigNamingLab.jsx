@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'trig-naming';
@@ -29,6 +28,12 @@ function TrigNamingContent({ phase, setPhase }) {
     const [reward, setReward] = useState(null);
 
     const problem = rounds[round]; // { level, kind, target, correct, options, q, hint }
+
+    const tourSteps = [
+        { target: 'trig-naming-diagram', title: 'المثلث القائم', description: 'الزاوية القائمة دائماً عند النقطة C. الزاوية المميّزة بلون مختلف هي الزاوية المطلوبة في السؤال.' },
+        { target: 'trig-naming-options', title: 'خيارات الإجابة', description: 'اضغط على اسم الضلع الصحيح: المجاور، المقابل، أو الوتر — حسب الزاوية المحددة.' },
+        { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتذكير سريع بالفرق بين المجاور والمقابل.' },
+    ];
 
     const learnPages = [
         { title: 'بنية المثلث القائم', detail: 'قبل البدء بالحسابات، يجب أن نعرف أسماء الأضلاع الثلاثة بدقة. الوتر هو دائماً الضلع الأطول والمقابل للزاوية القائمة.' },
@@ -140,13 +145,14 @@ function TrigNamingContent({ phase, setPhase }) {
             level={problem.level}
             question={problem.q}
             hint={problem.hint}
+            tourSteps={tourSteps}
             feedback={feedback}
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="relative w-40 h-28">
+                <div data-tour-id="trig-naming-diagram" className="relative w-40 h-28">
                     <svg viewBox="-1 -1 6 6" className="w-full h-full overflow-visible">
                         <g transform="scale(1, -1) translate(0, -5)">
                             <path d="M 0 0 L 4 0 L 0 4 Z" fill="none" stroke={isDarkMode ? 'white' : '#334155'} strokeWidth="0.1" />
@@ -159,7 +165,7 @@ function TrigNamingContent({ phase, setPhase }) {
                         </g>
                     </svg>
                 </div>
-                <div className="flex flex-wrap justify-center gap-3" role="group" aria-label="اختر الإجابة">
+                <div data-tour-id="trig-naming-options" className="flex flex-wrap justify-center gap-3" role="group" aria-label="اختر الإجابة">
                     {problem.options.map((opt, i) => (
                         <button key={i} onClick={() => handleAnswer(opt)}
                             className={`px-4 py-2 rounded-xl border-2 font-bold transition-all active:scale-95 ${isDarkMode ? 'border-white/10 bg-black/40 hover:border-amber-500/50 text-white' : 'border-slate-200 bg-white hover:border-amber-400 text-slate-700'
@@ -169,11 +175,6 @@ function TrigNamingContent({ phase, setPhase }) {
                         </button>
                     ))}
                 </div>
-
-                <LabTutorialNote
-                    from="الزاوية القائمة في هذا المثلث دائماً عند النقطة C، والوتر هو الضلع الأطول AB المقابل لها."
-                    why="لتحديد المجاور أو المقابل لأي زاوية غير قائمة، ننظر هل الضلع يلمس الزاوية المختارة (فيكون مجاوراً) أم يقع في الجهة المقابلة لها تماماً بلا تلامس (فيكون مقابلاً). تبديل الزاوية المختارة يبدّل أدوار الضلعين."
-                />
             </div>
         </LabChallenge>
     );

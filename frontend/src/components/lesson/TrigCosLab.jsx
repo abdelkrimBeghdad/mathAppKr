@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -140,16 +139,21 @@ function TrigCosContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'trig-fraction', title: 'المجاور والوتر', description: 'المجاور هو الضلع الملاصق للزاوية، والوتر هو أطول ضلع.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'Cos(α) دائماً = المجاور ÷ الوتر — تعريف ثابت لا يتغير.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-4 font-mono font-black" dir="ltr">
                 <span className={theme.textMain}>Cos(α) =</span>
-                <div className="flex flex-col items-center">
+                <div data-tour-id="trig-fraction" className="flex flex-col items-center">
                     <div className="border-b-2 border-white/30 pb-1 text-emerald-400">{currentChallenge.adj}</div>
                     <div className="pt-1 text-rose-400">{currentChallenge.hyp}</div>
                 </div>
                 <span className={`mx-1 ${theme.textMain}`}>=</span>
                 <input
-                    type="number" step="0.1" value={input1}
+                    type="number" data-tour-id="lab-answer-input" step="0.1" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل قيمة Cos"
@@ -158,10 +162,6 @@ function TrigCosContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
-            <LabTutorialNote
-                from={`الضلع المجاور = ${currentChallenge.adj}cm (الضلع الملاصق للزاوية)، والوتر = ${currentChallenge.hyp}cm.`}
-                why={`Cos(α) دائماً = المجاور ÷ الوتر. هذا تعريف ثابت لا يتغير، لذا نقسم بهذا الترتيب بالذات.`}
-            />
             <button onClick={handleAnswer} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -141,11 +140,16 @@ function TrigTanContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'الظل — استثناء بين النسب', description: 'Tan لا يستخدم الوتر إطلاقاً — يقارن الضلعين القائمين ببعضهما مباشرة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'Tan(α) = المقابل ÷ المجاور.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
                 <span className={theme.textMain}>Tan(α) =</span>
                 <input
-                    type="number" step="0.1" value={input1}
+                    type="number" data-tour-id="lab-answer-input" step="0.1" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل قيمة الظل"
@@ -155,10 +159,6 @@ function TrigTanContent({ phase, setPhase }) {
                     placeholder="النتيجة"
                 />
             </div>
-            <LabTutorialNote
-                from={`الضلع المقابل = ${currentChallenge.opp}cm، والضلع المجاور = ${currentChallenge.adj}cm (بدون استخدام الوتر هنا).`}
-                why={`Tan(α) هو الاستثناء بين النسب الثلاث: لا يستخدم الوتر إطلاقاً، بل يقارن الضلعين القائمين ببعضهما مباشرة: مقابل ÷ مجاور.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

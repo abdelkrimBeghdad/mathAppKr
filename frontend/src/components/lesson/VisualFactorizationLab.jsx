@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'fact-common';
@@ -36,6 +35,11 @@ function VisualFactorizationContent({ phase, setPhase }) {
 
     const problem = rounds[round]; // { level, a, c, q, hint }
     const term2 = problem.a * problem.c;
+
+    const tourSteps = [
+        { target: 'lab-content', title: 'العبارة الجبرية', description: 'اضغط على أي حدّ لتفكيكه إلى عاملين — هذه أول خطوة قبل استخراج العامل المشترك.' },
+        { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'إن ارتبكت في أي خطوة، اضغط هنا لتلميح سريع.' },
+    ];
 
     useEffect(() => {
         labProgressService.getOne(LAB_ID)
@@ -202,6 +206,7 @@ function VisualFactorizationContent({ phase, setPhase }) {
             total={3}
             level={problem.level}
             hint="اضغط أولاً على كل حد لتفكيكه، ثم اختر العامل المكرر في الحدين."
+            tourSteps={tourSteps}
             feedback={feedback}
             reward={reward}
             onRefresh={() => { resetStep(); }}
@@ -287,11 +292,6 @@ function VisualFactorizationContent({ phase, setPhase }) {
                                 />
                                 <span className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}>)</span>
                             </div>
-
-                            <LabTutorialNote
-                                from={`العبارة الأصلية هي ${problem.a}x ${term2 >= 0 ? '+' : '-'} ${Math.abs(term2)}، وقد لاحظنا أن ${problem.a} يتكرر في كلا الحدين.`}
-                                why={`بما أن ${problem.a} عامل مشترك للحدين، يمكننا سحبه للخارج وكتابة الباقي بين قوسين: ${problem.a}(x + ${problem.c}). هذا يعيد كتابة الجمع كضرب دون تغيير قيمة العبارة.`}
-                            />
 
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد

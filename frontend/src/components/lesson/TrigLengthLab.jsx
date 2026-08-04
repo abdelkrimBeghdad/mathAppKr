@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -162,10 +161,15 @@ function TrigLengthContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'trig-length-ratio-buttons', title: 'اختيار النسبة', description: 'اختر النسبة (Sin/Cos/Tan) التي تربط الضلع المطلوب بالضلع المعطى، حسب موقعهما من الزاوية.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اضرب الضلع المعطى في قيمة النسبة المختارة عند هذه الزاوية لتحصل على الطول المجهول.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             {step === 0 ? (
                 <div className="flex flex-col w-full gap-3">
-                    <div className="flex gap-2 w-full" role="group" aria-label="اختر النسبة المناسبة">
+                    <div data-tour-id="trig-length-ratio-buttons" className="flex gap-2 w-full" role="group" aria-label="اختر النسبة المناسبة">
                         {['Sin', 'Cos', 'Tan'].map(r => (
                             <button
                                 key={r}
@@ -177,17 +181,13 @@ function TrigLengthContent({ phase, setPhase }) {
                             </button>
                         ))}
                     </div>
-                    <LabTutorialNote
-                        from={`المعطى: ${currentChallenge.given}. المطلوب: ${currentChallenge.needed}.`}
-                        why={`اختر النسبة (Sin أو Cos أو Tan) التي تربط الضلع المطلوب إيجاده بالضلع المعطى (الوتر هنا)، بحسب موقع الضلعين من الزاوية.`}
-                    />
                 </div>
             ) : (
                 <>
                     <div className="flex items-center gap-3 font-mono font-black" dir="ltr">
                         <span className={theme.textMain}>x =</span>
                         <input
-                            type="number" step="0.1" value={input1}
+                            type="number" data-tour-id="lab-answer-input" step="0.1" value={input1}
                             onChange={e => setInput1(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                             aria-label="أدخل الطول"
@@ -197,10 +197,6 @@ function TrigLengthContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
-                    <LabTutorialNote
-                        from={`اخترت نسبة ${currentChallenge.correctRatio} — وهي الصحيحة لهذا السؤال.`}
-                        why={`بعد اختيار النسبة الصحيحة، نضرب الضلع المعطى (${currentChallenge.given}) في قيمة تلك النسبة عند هذه الزاوية لنحصل على الضلع المجهول مباشرة.`}
-                    />
                     <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                         <CheckCircle2 size={18} /> تحقق من الطول
                     </button>

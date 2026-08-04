@@ -3,7 +3,6 @@ import { Cpu, ArrowRight, Zap as ZapIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { rewardService } from '../../utils/rewardService';
@@ -148,9 +147,14 @@ function RootsExpressionContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'العبارة الجذرية', description: 'كلا الجذرين ينتهيان بنفس الرقم الأساسي تحت الجذر — هذا ما يسمح بجمعهما أو طرحهما.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'فكك كل جذر لمربع تام × الجذر الأساسي، ثم اجمع أو اطرح المعاملات فقط (a√x ± b√x).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <input
-                type="text" value={inputVal}
+                type="text" data-tour-id="lab-answer-input" value={inputVal}
                 onChange={e => setInputVal(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCheck()}
                 aria-label="أدخل خطوة التبسيط"
@@ -159,11 +163,6 @@ function RootsExpressionContent({ phase, setPhase }) {
                 className={`w-full max-w-xs rounded-xl text-center p-3 font-mono font-black text-lg outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400 focus:border-rose-400' : 'bg-white border-rose-200 text-rose-700 focus:border-rose-500'
                     }`}
                 placeholder="a√x ± b√x"
-            />
-
-            <LabTutorialNote
-                from={`العبارة ${problem.q} تحتوي جذرين قابلين للتفكيك، وكلاهما ينتهيان بنفس الجذر الأساسي (${problem.x}).`}
-                why="نفكك كل جذر إلى مربع تام مضروب في نفس العدد الأساسي لنحصل على جذور متشابهة، ثم نتعامل معها كحدود جبرية عادية بجمع أو طرح معاملاتها فقط دون المساس بالجذر نفسه."
             />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">

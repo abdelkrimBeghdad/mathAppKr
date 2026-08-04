@@ -3,7 +3,6 @@ import { CheckCircle2, Target, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { rewardService } from '../../utils/rewardService';
@@ -180,8 +179,13 @@ function RootsSimplificationContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInputA(''); setInputB(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'تفكيك العدد', description: 'العدد تحت الجذر ليس مربعاً تاماً بحد ذاته، لكنه حاصل ضرب مربع تام في عدد آخر.' },
+                { target: 'lab-answer-input', title: 'حقلا الإدخال', description: 'اكتب المربع التام والباقي أولاً، ثم استخرج جذر المربع التام في الخطوة التالية.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
-            <div className="flex flex-wrap items-center justify-center gap-3 font-mono font-black text-lg" dir="ltr">
+            <div data-tour-id="lab-answer-input" className="flex flex-wrap items-center justify-center gap-3 font-mono font-black text-lg" dir="ltr">
                 {step === 0 ? (
                     <>
                         <span className="text-rose-500">√(</span>
@@ -202,15 +206,6 @@ function RootsSimplificationContent({ phase, setPhase }) {
                     </>
                 )}
             </div>
-
-            <LabTutorialNote
-                from={step === 0
-                    ? `العدد ${practicePair.n} تحت الجذر ليس مربعاً تاماً بحد ذاته، لكنه حاصل ضرب مربع تام (${practicePair.square}) في عدد آخر (${practicePair.remainder}).`
-                    : `المربع التام الذي وجدته هو ${practicePair.square}.`}
-                why={step === 0
-                    ? `نبحث دائماً عن أكبر مربع تام يقسم العدد بدون باقٍ، لأن هذا يعطينا أبسط صورة ممكنة للجذر بخطوة واحدة فقط.`
-                    : `جذر أي مربع تام هو عدد صحيح؛ يخرج هذا العدد من تحت الجذر بينما يبقى الباقي (${practicePair.remainder}) تحت الجذر لأنه ليس مربعاً تاماً.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> {step === 0 ? 'تأكيد التفكيك' : 'تأكيد التحرير'}

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildRounds(baseLevel) {
@@ -157,13 +156,18 @@ function StatCumulativeContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setUserValues(new Array(challenge.freqs.length).fill('')); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'stat-cum-freqs', title: 'التكرارات الأصلية', description: 'هذه هي سلسلة التكرارات — سنجمعها تراكمياً من اليسار لليمين.' },
+                { target: 'lab-answer-input', title: 'حقول الإجابة', description: 'أول خانة = التكرار الأول نفسه، وكل خانة تالية = مجموع كل الخانات السابقة معها.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className={`flex justify-center gap-3 p-3 rounded-xl border font-mono text-sm ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+                <div data-tour-id="stat-cum-freqs" className={`flex justify-center gap-3 p-3 rounded-xl border font-mono text-sm ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     {challenge.freqs.map((f, i) => <span key={i}>{f}</span>)}
                 </div>
 
-                <div className="flex items-center gap-2" dir="ltr">
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-2" dir="ltr">
                     {userValues.map((v, i) => (
                         <React.Fragment key={i}>
                             <input
@@ -185,11 +189,6 @@ function StatCumulativeContent({ phase, setPhase }) {
                         </React.Fragment>
                     ))}
                 </div>
-
-                <LabTutorialNote
-                    from={`السلسلة المعطاة: ${challenge.freqs.join('، ')}.`}
-                    why={`التكرار المجمع يعني: كم مجموع القيم حتى هذه النقطة؟ أول خانة = التكرار الأول نفسه، وكل خانة تالية = مجموع كل الخانات السابقة معها.`}
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                     تحقق من التراكم

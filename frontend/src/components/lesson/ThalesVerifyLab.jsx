@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'thales-verify';
@@ -176,11 +175,16 @@ function ThalesVerifyContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'thales-triangle-svg', title: 'مثلث طاليس', description: 'المستقيم DE داخل المثلث الكبير ABC. نريد معرفة هل هو موازٍ للضلع BC.' },
+                { target: 'thales-ratios-box', title: 'النسبتان المطلوب مقارنتهما', description: 'إن تساوت النسبتان AD/AB وAE/AC تماماً، فالمستقيمان متوازيان.' },
+                { target: 'thales-verify-buttons', title: 'إجابتك', description: 'اضغط "نعم" إن كانت النسبتان متساويتين، أو "لا" إن اختلفتا ولو بمقدار بسيط.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
                 {/* رسم مثلث طاليس */}
-                <svg width="150" height="112" viewBox="0 0 200 150">
+                <svg data-tour-id="thales-triangle-svg" width="150" height="112" viewBox="0 0 200 150">
                     <path d="M100 20 L20 140 L180 140 Z" fill="none" stroke={isDarkMode ? '#64748b' : '#94a3b8'} strokeWidth="2" />
                     <line x1="60" y1="80" x2="140" y2="80" stroke={isDarkMode ? '#3b82f6' : '#2563eb'} strokeWidth="3" />
                     <text x="95" y="15" fontSize="12" fontWeight="bold" fill={isDarkMode ? '#fff' : '#1e293b'}>A</text>
@@ -191,13 +195,13 @@ function ThalesVerifyContent({ phase, setPhase }) {
                 </svg>
 
                 {/* عرض النسبتين */}
-                <div className={`w-full p-3 rounded-xl border font-mono text-sm text-center ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+                <div data-tour-id="thales-ratios-box" className={`w-full p-3 rounded-xl border font-mono text-sm text-center ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>AD/AB = {problem.ad}/{problem.ab} = {(problem.ad / problem.ab).toFixed(2)}</div>
                     <div>AE/AC = {problem.ae}/{problem.ac} = {(problem.ae / problem.ac).toFixed(2)}</div>
                 </div>
 
                 {/* أزرار نعم/لا */}
-                <div className="flex gap-3 w-full" role="group" aria-label="هل المستقيمان متوازيان">
+                <div data-tour-id="thales-verify-buttons" className="flex gap-3 w-full" role="group" aria-label="هل المستقيمان متوازيان">
                     <button
                         onClick={() => handleAnswer(true)}
                         disabled={answered}
@@ -213,11 +217,6 @@ function ThalesVerifyContent({ phase, setPhase }) {
                         <X size={18} /> لا، غير متوازيين
                     </button>
                 </div>
-
-                <LabTutorialNote
-                    from={`لدينا AD = ${problem.ad}، AB = ${problem.ab}، AE = ${problem.ae}، AC = ${problem.ac}.`}
-                    why="حسب الخاصية العكسية لنظرية طاليس، المستقيمان (DE) و(BC) متوازيان إذا وفقط إذا كانت النسبتان AD/AB وAE/AC متساويتين تماماً. أي فرق ولو بسيط بينهما يعني أنهما غير متوازيين."
-                />
             </div>
         </LabChallenge>
     );

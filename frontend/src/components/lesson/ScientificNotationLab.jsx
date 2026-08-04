@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -156,11 +155,17 @@ function ScientificNotationContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'العدد المطلوب تحويله', description: 'حوّل هذا العدد إلى الصيغة العلمية a × 10ⁿ.' },
+                { target: 'sci-mantissa-input', title: 'المعامل a', description: 'رقم واحد فقط قبل الفاصلة، بين 1 و10 (مثلاً 4.5 وليس 45 أو 0.45).' },
+                { target: 'sci-exp-input', title: 'الأس n', description: 'عدد المرات التي تحرّكت فيها الفاصلة العشرية — موجب لعدد كبير، سالب لعدد صغير.' },
+            ]}
         >
             <div className="flex flex-col items-center gap-4 w-full">
                 <div className="flex items-center gap-2" dir="ltr">
                     <input
                         type="text"
+                        data-tour-id="sci-mantissa-input"
                         value={userInput.a}
                         onChange={e => setUserInput({ ...userInput, a: e.target.value })}
                         aria-label="أدخل المعامل a"
@@ -172,6 +177,7 @@ function ScientificNotationContent({ phase, setPhase }) {
                     <span className={`text-lg font-black opacity-50 ${theme.textMain}`}>× 10</span>
                     <input
                         type="text"
+                        data-tour-id="sci-exp-input"
                         value={userInput.n}
                         onChange={e => setUserInput({ ...userInput, n: e.target.value })}
                         onKeyDown={e => e.key === 'Enter' && handleAnswer()}
@@ -181,10 +187,6 @@ function ScientificNotationContent({ phase, setPhase }) {
                         placeholder="n"
                     />
                 </div>
-                <LabTutorialNote
-                    from={`العدد المطلوب كتابته: ${currentChallenge.q}.`}
-                    why={`الصيغة العلمية دائماً a × 10ⁿ حيث a رقم واحد قبل الفاصلة بين 1 و10. ${currentChallenge.hint}`}
-                />
                 <button
                     onClick={handleAnswer}
                     className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'rotation-mastery';
@@ -164,10 +163,15 @@ function RotationMasteryContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'rotation-radar', title: 'رادار الدوران', description: 'يعرض بصرياً اتجاه الزاوية التي تكتبها — راقبه للتأكد من صحة الإشارة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'الدوران عكس عقارب الساعة موجب (+)، ومع عقارب الساعة سالب (−).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 {/* رادار الدوران التفاعلي */}
-                <div className="relative w-32 h-32 flex items-center justify-center border-4 border-dashed border-white/5 rounded-full">
+                <div data-tour-id="rotation-radar" className="relative w-32 h-32 flex items-center justify-center border-4 border-dashed border-white/5 rounded-full">
                     <div className="absolute w-3 h-3 bg-rose-500 rounded-full" />
                     <motion.div
                         animate={{ rotate: isNaN(parseInt(userAngle)) ? 0 : parseInt(userAngle) }}
@@ -179,7 +183,7 @@ function RotationMasteryContent({ phase, setPhase }) {
 
                 <div className="flex items-center gap-3 font-mono font-black text-xl" dir="ltr">
                     <input
-                        type="number" value={userAngle}
+                        type="number" data-tour-id="lab-answer-input" value={userAngle}
                         onChange={e => setUserAngle(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                         aria-label="أدخل الزاوية الجبرية"
@@ -190,14 +194,6 @@ function RotationMasteryContent({ phase, setPhase }) {
                     />
                 </div>
 
-                <LabTutorialNote
-                    from={problem.kind === 'sign-only'
-                        ? `الشكل يدور بمقدار ${problem.mag}°.`
-                        : `الزاوية المعطاة هي ${problem.mag}°، وهي خارج المجال المعتاد [-180°, 180°].`}
-                    why={problem.kind === 'sign-only'
-                        ? 'بالاصطلاح الرياضي، الدوران عكس عقارب الساعة يُعتبر موجباً (+)، بينما الدوران مع عقارب الساعة يُعتبر سالباً (−). لذلك تُكتب القيمة الجبرية بالإشارة المناسبة لاتجاه الدوران.'
-                        : 'أي زاوية أكبر من 180° لها زاوية مكافئة أصغر داخل المجال [-180°, 180°] نحصل عليها بطرح 360° كاملة، لأن الدوران الكامل لا يغيّر موضع الشكل النهائي.'}
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-black transition-all">
                     تأكيد الزاوية

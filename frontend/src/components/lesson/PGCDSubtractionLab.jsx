@@ -8,7 +8,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // خوارزمية إقليدس بالطرح المتتالي — تنتهي عندما يتساوى العددان (الفرق = صفر)
@@ -203,11 +202,15 @@ function PGCDSubtractionContent({ phase, setPhase }) {
             onRefresh={() => { setCurrentStep(0); setCompletedRows([]); setUserAnswer(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
             sidePanel={<LabStepsPanel title="سجل عمليات الطرح" steps={stepsForPanel} />}
+            tourSteps={[
+                { target: 'lab-answer-input', title: 'خوارزمية الطرح المتكرر', description: 'في كل خطوة نطرح الأصغر من الأكبر ونستبدل الزوج بـ(الأصغر، الفارق) حتى يتساوى العددان.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>الفارق =</span>
                 <input
-                    type="number" value={userAnswer}
+                    type="number" data-tour-id="lab-answer-input" value={userAnswer}
                     onChange={e => setUserAnswer(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                     aria-label="أدخل الفارق"
@@ -217,11 +220,6 @@ function PGCDSubtractionContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={current ? `العددان الحاليان هما ${current.a} و${current.b} (إما العددان الأصليان، أو ناتجا الخطوة السابقة).` : ''}
-                why={current ? `في كل خطوة نستبدل الزوج الحالي بالزوج (الأصغر، الفارق)، وهذا يُصغّر المسألة تدريجياً حتى يتساوى العددان (الفارق = صفر) — عندها العدد المتبقي هو القاسم المشترك الأكبر.` : ''}
-            />
 
             <button onClick={handleSubmit} className="mt-4 w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تأكيد الفارق

@@ -4,7 +4,6 @@ import { CheckCircle2, Sigma, Zap as ZapIcon, Binary, ArrowRight } from 'lucide-
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -158,11 +157,16 @@ function RootsMultiplicationContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'ضرب جذرين', description: 'ضرب جذرين تربيعيين يساوي جذر حاصل ضرب العددين تحتهما.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اضرب العددين تحت الجذرين، والجذر يُطبَّق مرة واحدة فقط على الناتج.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className="text-rose-500">√</span>
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل الناتج تحت الجذر"
@@ -172,11 +176,6 @@ function RootsMultiplicationContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={`العددان تحت الجذرين هما ${practicePair.a} و${practicePair.b}.`}
-                why={`ضرب جذرين تربيعيين يساوي جذر حاصل ضرب العددين: √${practicePair.a} × √${practicePair.b} = √(${practicePair.a} × ${practicePair.b}). اضرب العددين فقط، والجذر يُطبَّق مرة واحدة على الناتج.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <ZapIcon size={18} /> تفعيل الاندماج

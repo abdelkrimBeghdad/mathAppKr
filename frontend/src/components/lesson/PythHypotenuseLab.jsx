@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -157,9 +156,14 @@ function PythHypotenuseContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'pyth-triangle-svg', title: 'المثلث القائم', description: 'الزاوية القائمة في B هنا، والضلعان AB وBC معروفان — مطلوب إيجاد الوتر AC.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'استخدم مطابقة فيثاغورس: AC² = AB² + BC²، ثم استخرج الجذر التربيعي.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <svg width="150" height="105" viewBox="0 0 200 140">
+                <svg data-tour-id="pyth-triangle-svg" width="150" height="105" viewBox="0 0 200 140">
                     <path d="M40 120 L40 30 L160 120 Z" fill="none" stroke={isDarkMode ? '#f43f5e' : '#e11d48'} strokeWidth="3" strokeLinejoin="round" />
                     <path d="M40 105 L55 105 L55 120" fill="none" stroke={isDarkMode ? '#f43f5e' : '#e11d48'} strokeWidth="2" />
                     <text x="25" y="25" fontSize="14" fontWeight="bold" fill={isDarkMode ? '#fff' : '#1e293b'}>A</text>
@@ -173,7 +177,7 @@ function PythHypotenuseContent({ phase, setPhase }) {
                 <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                     <span className={theme.textMain}>AC =</span>
                     <input
-                        type="number" value={inputVal} onChange={e => setInputVal(e.target.value)}
+                        type="number" data-tour-id="lab-answer-input" value={inputVal} onChange={e => setInputVal(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleCheck()}
                         aria-label="أدخل طول الوتر" autoFocus
                         className={`w-24 rounded-xl text-center p-3 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-rose-500/50 text-rose-400 focus:border-rose-400' : 'bg-white border-rose-200 text-rose-700 focus:border-rose-500'
@@ -181,11 +185,6 @@ function PythHypotenuseContent({ phase, setPhase }) {
                         placeholder="?"
                     />
                 </div>
-
-                <LabTutorialNote
-                    from={`الضلعان القائمان معروفان: AB = ${problem.a}cm و BC = ${problem.b}cm.`}
-                    why={`الوتر AC هو دائماً الضلع المقابل للزاوية القائمة، وطوله = √(${problem.a}² + ${problem.b}²) = √(${problem.a * problem.a} + ${problem.b * problem.b}) = √${problem.a * problem.a + problem.b * problem.b}.`}
-                />
 
                 <button onClick={handleCheck} className="px-8 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تحقق من الإجابة

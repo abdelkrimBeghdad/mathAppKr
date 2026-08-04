@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/trig.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function buildChallenges(level) {
@@ -140,16 +139,21 @@ function TrigSinContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'trig-fraction', title: 'المقابل والوتر', description: 'المقابل هو الضلع البعيد عن الزاوية، والوتر هو أطول ضلع (مقابل الزاوية القائمة).' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'Sin(α) دائماً = المقابل ÷ الوتر — قسمة بهذا الترتيب بالذات.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-4 font-mono font-black" dir="ltr">
                 <span className={theme.textMain}>Sin(α) =</span>
-                <div className="flex flex-col items-center">
+                <div data-tour-id="trig-fraction" className="flex flex-col items-center">
                     <div className="border-b-2 border-white/30 pb-1 text-amber-400">{currentChallenge.opp}</div>
                     <div className="pt-1 text-rose-400">{currentChallenge.hyp}</div>
                 </div>
                 <span className={`mx-1 ${theme.textMain}`}>=</span>
                 <input
-                    type="number" step="0.1" value={input1}
+                    type="number" data-tour-id="lab-answer-input" step="0.1" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل قيمة Sin"
@@ -158,10 +162,6 @@ function TrigSinContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
-            <LabTutorialNote
-                from={`الضلع المقابل = ${currentChallenge.opp}cm (الضلع البعيد عن الزاوية)، والوتر = ${currentChallenge.hyp}cm (أطول ضلع، مقابل الزاوية القائمة).`}
-                why={`Sin(α) دائماً = المقابل ÷ الوتر. هذا تعريف ثابت، لذا نقسم الرقمين المُعطيين بهذا الترتيب بالذات.`}
-            />
             <button onClick={handleAnswer} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تحقق من النتيجة
             </button>

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'vec-chasles';
@@ -157,10 +156,15 @@ function VecChaslesContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'vec-chasles-vectors', title: 'سلسلة الأشعة', description: 'كل حرف يظهر مرتين (نهاية شعاع وبداية التالي) يُحذف تلقائياً عند الجمع.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'اكتب أول حرف من الشعاع الأول، وآخر حرف من الشعاع الأخير في السلسلة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <p className={`text-sm font-bold ${theme.textSub}`}>أوجد المحصلة باستخدام علاقة شال</p>
-                <div className="flex items-center justify-center gap-3 font-mono font-black text-lg flex-wrap" dir="ltr">
+                <div data-tour-id="vec-chasles-vectors" className="flex items-center justify-center gap-3 font-mono font-black text-lg flex-wrap" dir="ltr">
                     {problem.vectors.map((v, i) => (
                         <React.Fragment key={i}>
                             <span className={theme.textMain}>{v}</span>
@@ -170,18 +174,13 @@ function VecChaslesContent({ phase, setPhase }) {
                     <span className="opacity-40">=</span>
                 </div>
 
-                <div className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
+                <div data-tour-id="lab-answer-input" className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
                     <span className="text-indigo-400">V =</span>
                     <input type="text" maxLength={1} value={inputStart} onChange={e => setInputStart(e.target.value)} aria-label="الحرف الأول" autoFocus
                         className={`w-14 uppercase rounded-xl text-center p-2 outline-none border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="؟" />
                     <input type="text" maxLength={1} value={inputEnd} onChange={e => setInputEnd(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAnswer()} aria-label="الحرف الأخير"
                         className={`w-14 uppercase rounded-xl text-center p-2 outline-none border-2 ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="؟" />
                 </div>
-
-                <LabTutorialNote
-                    from={`لدينا الأشعة المتتالية: ${problem.vectors.join(' + ')}.`}
-                    why="عند جمع سلسلة من الأشعة، كل حرف يظهر مرتين (نهاية شعاع وبداية التالي) يُحذف تلقائياً من المحصلة النهائية، فيتبقى فقط أول حرف من الشعاع الأول وآخر حرف من الشعاع الأخير في السلسلة."
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                     <CheckCircle2 size={18} /> تأكيد المحصلة

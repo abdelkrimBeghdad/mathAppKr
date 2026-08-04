@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/stats.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 const LAB_ID = 'prob-mastery';
@@ -154,10 +153,15 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); }}
+            tourSteps={[
+                { target: 'prob-bag', title: 'الكيس', description: 'يحتوي كرات حمراء وزرقاء — جرّب السحب العشوائي لترى المصادفة عملياً.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اقسم عدد الحالات المواتية على المجموع الكلي، ثم اضرب في 100 للحصول على نسبة مئوية.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 {/* محاكاة السحب البصرية */}
-                <div className="flex flex-col items-center gap-3">
+                <div data-tour-id="prob-bag" className="flex flex-col items-center gap-3">
                     <div className="grid grid-cols-5 gap-2 max-w-[180px]">
                         {Array.from({ length: problem.red }).map((_, i) => <div key={`r${i}`} className="w-5 h-5 rounded-full bg-rose-500" />)}
                         {Array.from({ length: problem.blue }).map((_, i) => <div key={`b${i}`} className="w-5 h-5 rounded-full bg-sky-500" />)}
@@ -183,7 +187,7 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
                 {/* الإدخال */}
                 <div className="flex items-center gap-3 font-mono font-black text-xl" dir="ltr">
                     <input
-                        type="number" value={userAns}
+                        type="number" data-tour-id="lab-answer-input" value={userAns}
                         onChange={e => setUserAns(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                         aria-label="أدخل النسبة المئوية"
@@ -194,11 +198,6 @@ function ProbabilityMasteryContent({ phase, setPhase }) {
                     />
                     <span className={theme.textMain}>%</span>
                 </div>
-
-                <LabTutorialNote
-                    from={`الكيس يحتوي على ${problem.red} كرات حمراء و${problem.blue} كرات زرقاء (المجموع = ${problem.total}).`}
-                    why="احتمال وقوع حدث بسيط يُحسب بقسمة عدد الحالات المواتية (اللون المطلوب) على العدد الإجمالي للكرات، ثم ضرب الناتج في 100 للحصول على نسبة مئوية."
-                />
 
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                     تحقق من الاحتمال

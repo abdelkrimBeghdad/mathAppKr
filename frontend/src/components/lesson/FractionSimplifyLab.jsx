@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function gcd(x, y) {
@@ -181,11 +180,16 @@ function FractionSimplifyContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetChallenges}
             onRestart={() => { setPhase('intro'); resetChallenges(); setReward(null); }}
+            tourSteps={[
+                { target: 'frac-original', title: 'الكسر الأصلي', description: 'ابحث عن القاسم المشترك الأكبر بين البسط والمقام أولاً.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'اقسم البسط والمقام على القاسم المشترك الأكبر، واكتب الناتجين هنا.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex flex-col items-center gap-4 w-full">
 
                 {/* الكسر الأصلي */}
-                <div className={`px-6 py-3 rounded-2xl border font-mono font-black text-xl text-center ${isDarkMode ? 'bg-black/30 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-100 text-cyan-700'}`} dir="ltr">
+                <div data-tour-id="frac-original" className={`px-6 py-3 rounded-2xl border font-mono font-black text-xl text-center ${isDarkMode ? 'bg-black/30 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-100 text-cyan-700'}`} dir="ltr">
                     {currentChallenge.num} / {currentChallenge.den}
                 </div>
 
@@ -193,6 +197,7 @@ function FractionSimplifyContent({ phase, setPhase }) {
                 <div className="flex items-center gap-3" dir="ltr">
                     <input
                         type="number"
+                        data-tour-id="lab-answer-input"
                         value={userNum}
                         onChange={e => setUserNum(e.target.value)}
                         aria-label="البسط المبسط"
@@ -214,10 +219,6 @@ function FractionSimplifyContent({ phase, setPhase }) {
                     />
                 </div>
 
-                <LabTutorialNote
-                    from={`الكسر ${currentChallenge.num}/${currentChallenge.den}: القاسم المشترك الأكبر بين ${currentChallenge.num} و${currentChallenge.den} هو ${gcd(currentChallenge.num, currentChallenge.den)}.`}
-                    why={`قسمة البسط والمقام على نفس العدد (القاسم المشترك الأكبر) لا تغيّر قيمة الكسر، لكنها تعطينا أصغر صورة ممكنة له.`}
-                />
 
                 <button
                     onClick={handleAnswer}

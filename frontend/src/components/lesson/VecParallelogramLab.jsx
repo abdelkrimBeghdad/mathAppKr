@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/vectors.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -164,8 +163,12 @@ function VecParallelogramContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setSelectedPoint(null); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'vec-parallelogram-svg', title: 'متوازي الأضلاع', description: 'الشعاعان الزرقاء والوردي ينطلقان من نفس النقطة A — النقطة الرابعة تكمل الشكل متوازي أضلاع.' },
+                { target: 'vec-parallelogram-buttons', title: 'اختيارك', description: 'محصلة الشعاعين C = B + D − A هي النقطة الصحيحة لإكمال الشكل.' },
+            ]}
         >
-            <div className="relative w-64 h-40 mx-auto bg-black/20 rounded-2xl border border-white/10">
+            <div data-tour-id="vec-parallelogram-svg" className="relative w-64 h-40 mx-auto bg-black/20 rounded-2xl border border-white/10">
                 <svg viewBox={`${viewOffset} ${viewOffset} ${viewSize} ${viewSize}`} className="w-full h-full" aria-hidden="true">
                     <g transform={`scale(1, -1)`}>
                         <line x1={currentChallenge.a.x} y1={currentChallenge.a.y} x2={currentChallenge.b.x} y2={currentChallenge.b.y} stroke="#38bdf8" strokeWidth="0.1" markerEnd="url(#arrow-b)" />
@@ -189,7 +192,7 @@ function VecParallelogramContent({ phase, setPhase }) {
             </div>
 
             {/* أزرار بديلة موثوقة لمستخدمي لوحة المفاتيح — نفس النقاط المرسومة أعلاه */}
-            <div className="flex gap-3 justify-center mt-3" role="group" aria-label="اختر النقطة الصحيحة">
+            <div data-tour-id="vec-parallelogram-buttons" className="flex gap-3 justify-center mt-3" role="group" aria-label="اختر النقطة الصحيحة">
                 {currentChallenge.options.map((opt, i) => (
                     <button
                         key={i}
@@ -205,10 +208,6 @@ function VecParallelogramContent({ phase, setPhase }) {
                 ))}
             </div>
 
-            <LabTutorialNote
-                from={`الشعاعان المعطيان: AB = (${currentChallenge.b.x}, ${currentChallenge.b.y}) و AD = (${currentChallenge.d.x}, ${currentChallenge.d.y}) (كلاهما ينطلق من A).`}
-                why={`محصلة الشعاعين تُحسب بجمع مركّباتهما: C = B + D − A = (${currentChallenge.b.x}+${currentChallenge.d.x}−${currentChallenge.a.x}, ${currentChallenge.b.y}+${currentChallenge.d.y}−${currentChallenge.a.y}) = (${currentChallenge.c.x}, ${currentChallenge.c.y}).`}
-            />
         </LabChallenge>
     );
 }
