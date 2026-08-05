@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -174,11 +173,16 @@ function GeoVolumeContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'حجم المجسم', description: 'القانون العام: الحجم = مساحة القاعدة × الارتفاع.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'احسب مساحة القاعدة أولاً إن لم تكن معطاة، ثم اضربها في الارتفاع.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>V =</span>
                 <input
-                    type="number" value={input1}
+                    type="number" data-tour-id="lab-answer-input" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل الحجم"
@@ -188,18 +192,6 @@ function GeoVolumeContent({ phase, setPhase }) {
                     placeholder="cm³"
                 />
             </div>
-            <LabTutorialNote
-                from={currentChallenge.type === 'cube'
-                    ? `ضلع المكعب هو ${currentChallenge.side}cm — وكل أضلاعه متساوية.`
-                    : currentChallenge.type === 'rect'
-                        ? `مساحة القاعدة معطاة مباشرة (${currentChallenge.baseArea}cm²)، والارتفاع (${currentChallenge.height}cm).`
-                        : `قاعدة الموشور مثلث (قاعدة=${currentChallenge.triBase}cm، ارتفاع=${currentChallenge.triHeight}cm)، وطول الموشور (${currentChallenge.prismLength}cm).`}
-                why={currentChallenge.type === 'cube'
-                    ? `المكعب حالة خاصة من "مساحة القاعدة × الارتفاع": بما أن كل الأبعاد متساوية، نضرب الضلع في نفسه 3 مرات.`
-                    : currentChallenge.type === 'rect'
-                        ? `القانون العام V = B × h ينطبق مباشرة هنا؛ لا حاجة لحساب مساحة القاعدة لأنها مُعطاة سلفاً.`
-                        : `أولاً نحسب مساحة قاعدة المثلث (قاعدة×ارتفاع÷2)، ثم نضربها في طول الموشور لنحصل على الحجم الكلي.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black transition-all">
                 تحقق من الحجم
             </button>

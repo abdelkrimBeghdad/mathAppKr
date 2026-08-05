@@ -19,15 +19,52 @@ export default function Calculator({ onClose }) {
         setDisplay('0');
     };
 
+    /**
+     * Evaluates a simple left-to-right arithmetic expression like
+     * "12 + 4 * 3" WITHOUT eval(). The equation string here is only ever
+     * built from this component's own button clicks (handleNumber /
+     * handleOperator) — there's no free-text input — so eval() was never
+     * exploitable by another party. Still, calling eval() on any
+     * app-assembled string is bad practice (defense in depth: if this
+     * component's string-building logic ever changed to include outside
+     * data, eval() would silently become a code-execution vector). This
+     * does the same job with a tiny manual parser instead.
+     */
+    const safeEvaluate = (expr) => {
+        const tokens = expr.trim().split(/\s+/);
+        if (tokens.length === 0 || tokens.some(t => t === '')) throw new Error('Empty expression');
+
+        // First pass: handle * and / (order of operations)
+        const pass1 = [tokens[0]];
+        for (let i = 1; i < tokens.length; i += 2) {
+            const op = tokens[i];
+            const rhs = parseFloat(tokens[i + 1]);
+            if (!['+', '-', '*', '/'].includes(op) || Number.isNaN(rhs)) throw new Error('Invalid token');
+            if (op === '*' || op === '/') {
+                const lhs = parseFloat(pass1.pop());
+                pass1.push(String(op === '*' ? lhs * rhs : lhs / rhs));
+            } else {
+                pass1.push(op, String(rhs));
+            }
+        }
+
+        // Second pass: handle remaining + and -, left to right
+        let result = parseFloat(pass1[0]);
+        for (let i = 1; i < pass1.length; i += 2) {
+            const op = pass1[i];
+            const rhs = parseFloat(pass1[i + 1]);
+            result = op === '+' ? result + rhs : result - rhs;
+        }
+        return result;
+    };
+
     const calculate = () => {
         try {
             const finalEquation = (equation + display)
                 .replace('×', '*')
                 .replace('÷', '/');
 
-            // Note: Avoid eval in production, but for a local calculator tool it's common.
-            // A more robust math library like mathjs would be better in a real app.
-            const result = eval(finalEquation);
+            const result = safeEvaluate(finalEquation);
             setDisplay(String(Number(result.toFixed(4))));
             setEquation('');
         } catch (e) {

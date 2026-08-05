@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -168,8 +167,12 @@ function GeoSectionContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => setFeedback(null)}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'مستوى القطع', description: 'تخيّل مستوى يقطع المجسم بالزاوية أو الموقع الموصوف في السؤال.' },
+                { target: 'geo-section-options', title: 'الخيارات', description: 'القطع الموازي للقاعدة غالباً يعيد شكل القاعدة نفسه؛ القطع بزاوية مختلفة قد ينتج شكلاً مختلفاً.' },
+            ]}
         >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full" role="group" aria-label="اختر الإجابة">
+            <div data-tour-id="geo-section-options" className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full" role="group" aria-label="اختر الإجابة">
                 {currentChallenge.options.map((opt, i) => (
                     <button key={i} onClick={() => handleAnswer(opt)}
                         className={`px-6 py-2 rounded-xl border-2 font-black text-lg transition-all active:scale-95 ${isDarkMode ? 'border-white/10 bg-black/40 hover:border-rose-500/50 text-white' : 'border-slate-200 bg-white hover:border-rose-400 text-slate-700'
@@ -179,10 +182,6 @@ function GeoSectionContent({ phase, setPhase }) {
                     </button>
                 ))}
             </div>
-            <LabTutorialNote
-                from={`السؤال يصف مستوى قطع يمر بمجسم معيّن بزاوية أو موقع محدد.`}
-                why={`شكل المقطع يعتمد على المجسم نفسه وعلى اتجاه المستوى: القطع الموازي للقاعدة غالبًا يُعيد شكل القاعدة نفسه، بينما القطع بزاوية مختلفة قد ينتج شكلاً مختلفاً تمامًا.`}
-            />
         </LabChallenge>
     );
 }

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -191,11 +190,17 @@ function ThalesProblemsContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'مسألة تطبيقية على طاليس', description: 'حدد المثلثين المتشابهين والنسب المتناظرة بينهما.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'طبّق نسبة التناسب لإيجاد الطول أو الظل المجهول.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <span className={`text-sm font-bold ${theme.textSub}`}>اكتب الجواب النهائي (رقم فقط):</span>
                 <input
                     type="number"
+                    data-tour-id="lab-answer-input"
                     step="0.1"
                     value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
@@ -207,7 +212,6 @@ function ThalesProblemsContent({ phase, setPhase }) {
                     placeholder="?"
                     autoFocus
                 />
-                <LabTutorialNote from={note.from} why={note.why} />
                 <button
                     onClick={handleCheck}
                     className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"

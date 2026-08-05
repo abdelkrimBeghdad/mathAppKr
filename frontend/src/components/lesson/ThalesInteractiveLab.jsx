@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -229,8 +228,13 @@ function ThalesInteractiveContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'طريقة الظل', description: 'أشعة الشمس متوازية دائماً، فالنسبة بين الطول والظل ثابتة للجميع في نفس اللحظة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'استخدم الضرب التبادلي: (طول العصا/ظلها) = (؟/ظل الجسم الكبير).' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
-            <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
+            <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>=</span>
                 <input
                     type="number"
@@ -244,10 +248,6 @@ function ThalesInteractiveContent({ phase, setPhase }) {
                     autoFocus
                 />
             </div>
-            <LabTutorialNote
-                from={`العصا معلومة: طولها ${currentChallenge.stickHeight}م وظلها ${currentChallenge.stickShadow}م، وظل الجسم الكبير معلوم أيضاً: ${currentChallenge.tallShadow}م.`}
-                why={`أشعة الشمس متوازية دائماً، لذا النسبة بين الطول والظل ثابتة للجميع في نفس اللحظة: (${currentChallenge.stickHeight}/${currentChallenge.stickShadow}) = (؟/${currentChallenge.tallShadow})، فنحل بضرب تبادلي.`}
-            />
             <button
                 onClick={handleAnswer}
                 className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all"

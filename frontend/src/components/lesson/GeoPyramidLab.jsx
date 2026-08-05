@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -164,11 +163,16 @@ function GeoPyramidContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInput1(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'حجم مجسم مدبب', description: 'أي هرم أو مخروط حجمه يساوي دائماً ثلث حجم المجسم المكافئ له (نفس القاعدة والارتفاع).' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'احسب: (مساحة القاعدة × الارتفاع) ÷ 3.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>V =</span>
                 <input
-                    type="number" value={input1}
+                    type="number" data-tour-id="lab-answer-input" value={input1}
                     onChange={e => setInput1(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل الحجم"
@@ -178,14 +182,6 @@ function GeoPyramidContent({ phase, setPhase }) {
                     placeholder="cm³"
                 />
             </div>
-            <LabTutorialNote
-                from={currentChallenge.type === 'cylinderCone'
-                    ? `حجم الأسطوانة المعطى هو ${currentChallenge.cylinderVol}cm³.`
-                    : `مساحة قاعدة الهرم هي ${currentChallenge.baseArea}cm²، وارتفاعه ${currentChallenge.height}cm.`}
-                why={currentChallenge.type === 'cylinderCone'
-                    ? `حجم المخروط دائماً يساوي ثلث حجم الأسطوانة التي لها نفس القاعدة ونفس الارتفاع — لذا نقسم على 3 مباشرة.`
-                    : `أي مجسم منتهٍ بقمة واحدة (هرم أو مخروط) حجمه يساوي ثلث حاصل ضرب مساحة القاعدة في الارتفاع، بخلاف الموشور أو الأسطوانة العادية.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black transition-all">
                 تحقق من الحجم
             </button>

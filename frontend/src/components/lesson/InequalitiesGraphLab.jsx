@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -193,6 +192,10 @@ function InequalitiesGraphContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setUserDir(null); setUserInc(null); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'تمثيل متراجحة', description: '> و≥ يشيران دائماً لليمين (قيم أكبر)؛ < و≤ يشيران لليسار (قيم أصغر).' },
+                { target: 'lab-answer-input', title: 'إجاباتك', description: 'حدد الاتجاه، ثم نوع العارضة: خط تحت الرمز (≤،≥) = مشمول، وبدونه = مستبعد.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -245,7 +248,7 @@ function InequalitiesGraphContent({ phase, setPhase }) {
                 </div>
 
                 {/* ── أزرار الاختيار ───────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                <div data-tour-id="lab-answer-input" className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                     <div className="space-y-2">
                         <span className={`font-black text-[10px] uppercase tracking-widest px-1 block ${theme.textSub}`}>اتجاه الرصد</span>
                         <div className="flex gap-2" role="group" aria-label="اختر اتجاه الحل">
@@ -285,11 +288,6 @@ function InequalitiesGraphContent({ phase, setPhase }) {
                         </div>
                     </div>
                 </div>
-
-                <LabTutorialNote
-                    from={`الرمز في السؤال هو "${practicePair.sym}"، والحد الحدّي هو ${practicePair.boundary}.`}
-                    why={`الرمزان > و≥ يشيران دائماً لجهة اليمين (قيم أكبر)، بينما < و≤ يشيران لجهة اليسار (قيم أصغر). أما نوع العارضة فيعتمد فقط على وجود خط تحت الرمز (≤،≥ = مشمول) أو غيابه (<،> = مستبعد).`}
-                />
 
                 <button
                     onClick={handleCheck}

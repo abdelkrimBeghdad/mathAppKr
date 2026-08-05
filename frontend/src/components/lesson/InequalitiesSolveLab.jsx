@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -274,10 +273,15 @@ function InequalitiesSolveContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInputVal(''); setInputSym(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'حل متراجحة', description: 'نتبع نفس خطوات حل المعادلة، مع احتراس واحد مهم عند القسمة على عدد سالب.' },
+                { target: 'lab-answer-input', title: 'خطوات الحل', description: 'انقل الثابت أولاً بعكس إشارته، ثم اقسم على معامل x — واعكس الرمز فقط إن كان المعامل سالباً.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-3">
                 {step === 0 && (
-                    <div className="flex items-center gap-3 font-mono font-black text-base md:text-lg" dir="ltr">
+                    <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-base md:text-lg" dir="ltr">
                         <span className={theme.textMain}>{practicePair.a}x {practicePair.sym} {practicePair.c} - ({practicePair.b}) = </span>
                         <input
                             type="number"
@@ -292,15 +296,9 @@ function InequalitiesSolveContent({ phase, setPhase }) {
                         />
                     </div>
                 )}
-                {step === 0 && (
-                    <LabTutorialNote
-                        from={`الثابت الحالي في نفس طرف x هو ${practicePair.b}.`}
-                        why={`لعزل الحد الذي يحتوي على x، ننقل الثابت للطرف الآخر مع عكس إشارته: ${practicePair.c} − (${practicePair.b}) = ${practicePair.targetVal}.`}
-                    />
-                )}
                 {step === 1 && (
                     <>
-                        <div className="flex items-center gap-3 font-mono font-black text-base md:text-lg" dir="ltr">
+                        <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-base md:text-lg" dir="ltr">
                             <span className={theme.textMain}>x</span>
                             <input
                                 type="text"
@@ -329,12 +327,6 @@ function InequalitiesSolveContent({ phase, setPhase }) {
                                 <AlertTriangle size={16} /> انتباه: القسمة على سالب تعني قلب الإشارة!
                             </motion.div>
                         )}
-                        <LabTutorialNote
-                            from={`الآن المعادلة: ${practicePair.a}x ${practicePair.sym} ${practicePair.targetVal}. معامل x هو ${practicePair.a}.`}
-                            why={practicePair.a < 0
-                                ? `نقسم كل طرف على ${practicePair.a} (سالب)، وهذا يفرض علينا عكس اتجاه رمز المتراجحة: ${practicePair.sym} تصبح ${practicePair.symFlip}.`
-                                : `نقسم كل طرف على ${practicePair.a} (موجب)، فيبقى اتجاه الرمز كما هو دون تغيير.`}
-                        />
                     </>
                 )}
                 {step === 2 && (

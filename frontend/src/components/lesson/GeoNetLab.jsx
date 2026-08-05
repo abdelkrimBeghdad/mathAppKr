@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -189,10 +188,15 @@ function GeoNetContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputVal(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'المساحة الكلية', description: 'تخيّل الشكل مفروداً (منشوراً) بمساوٍ — عدد وجوهه وأبعادها.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'اجمع مساحات كل الأوجه المتطابقة والمتقابلة لتحصل على المساحة الكلية.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAnswer()}
                     aria-label="أدخل المساحة الكلية"
@@ -201,14 +205,6 @@ function GeoNetContent({ phase, setPhase }) {
                         }`}
                     placeholder="?"
                     autoFocus
-                />
-                <LabTutorialNote
-                    from={currentChallenge.type === 'cube'
-                        ? `مساحة كل وجه من أوجه المكعب معطاة ويساوي ${currentChallenge.faceArea}cm².`
-                        : `الأبعاد الثلاثة لمتوازي المستطيلات: ${currentChallenge.l}cm × ${currentChallenge.w}cm × ${currentChallenge.h}cm.`}
-                    why={currentChallenge.type === 'cube'
-                        ? `عند نشر المكعب، تظهر 6 أوجه متطابقة تمامًا؛ لذا نضرب مساحة الوجه الواحد في 6 للحصول على المساحة الكلية.`
-                        : `عند نشر متوازي المستطيلات، تظهر 3 أزواج من الأوجه المتقابلة (كل زوج متطابق): طول×عرض، طول×ارتفاع، عرض×ارتفاع. نجمع الثلاثة ونضربها في 2.`}
                 />
                 <button onClick={handleAnswer} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all">
                     تحقق من المساحة الكلية

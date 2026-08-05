@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/geometry.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -179,9 +178,13 @@ function GeoSolidsContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => setFeedback(null)}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'geo-solid-3d', title: 'المجسم', description: 'راقب عدد الأوجه، شكل القاعدة، وعدد القمم — بصمة كل مجسم فريدة.' },
+                { target: 'geo-solids-options', title: 'الخيارات', description: 'اختر الوصف المطابق تماماً للمجسم المعروض.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className="h-28 flex items-center justify-center" style={{ perspective: '1000px' }}>
+                <div data-tour-id="geo-solid-3d" className="h-28 flex items-center justify-center" style={{ perspective: '1000px' }}>
                     {currentChallenge.solidType === 'cube' && (
                         <motion.div style={{ rotateY: rotation, rotateX: 20, transformStyle: 'preserve-3d' }} className="w-16 h-16 relative">
                             {[0, 90, 180, 270].map((rot, i) => (
@@ -210,7 +213,7 @@ function GeoSolidsContent({ phase, setPhase }) {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full" role="group" aria-label="اختر الإجابة">
+                <div data-tour-id="geo-solids-options" className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full" role="group" aria-label="اختر الإجابة">
                     {currentChallenge.options.map((opt, i) => (
                         <button key={i} onClick={() => handleAnswer(opt)}
                             className={`px-4 py-3 rounded-xl border-2 font-black transition-all active:scale-95 ${isDarkMode ? 'border-white/10 bg-black/40 hover:border-blue-500/50 text-white' : 'border-slate-200 bg-white hover:border-blue-400 text-slate-700'
@@ -221,10 +224,6 @@ function GeoSolidsContent({ phase, setPhase }) {
                     ))}
                 </div>
 
-                <LabTutorialNote
-                    from={`السؤال يصف مجسماً بخصائص معيّنة: عدد الأوجه، شكل القاعدة، أو طريقة تكوينه.`}
-                    why={`كل مجسم له بصمة هندسية فريدة: عدد الأوجه المسطحة، وجود قاعدة دائرية أو مضلعة، وعدد القمم — هذه العلامات تكفي وحدها لتمييزه عن باقي المجسمات.`}
-                />
             </div>
         </LabChallenge>
     );

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 function EquationsProductContent({ phase, setPhase }) {
@@ -154,8 +153,13 @@ function EquationsProductContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={generateProblems}
             onRestart={() => { setPhase('intro'); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'ضرب قوسين يساوي صفر', description: 'إذا كان حاصل ضرب عددين = صفر، فأحدهما على الأقل لا بد أن يكون صفراً.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'حل كل قوس على حدة كأنه معادلة مستقلة بسيطة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
-            <div className="flex flex-col md:flex-row justify-center items-center gap-4 w-full">
+            <div data-tour-id="lab-answer-input" className="flex flex-col md:flex-row justify-center items-center gap-4 w-full">
                 <div className="flex flex-col gap-2 items-center">
                     <span className={`text-[10px] font-black uppercase ${theme.textSub}`}>الجذر الأول</span>
                     <div className="flex items-center gap-2 font-mono font-black" dir="ltr">
@@ -176,10 +180,6 @@ function EquationsProductContent({ phase, setPhase }) {
                     </div>
                 </div>
             </div>
-            <LabTutorialNote
-                from={`المعادلة على شكل ضرب قوسين يساوي صفر: ${currentChallenge.q}`}
-                why={`إذا كان حاصل ضرب عددين يساوي صفراً، فأحدهما على الأقل لا بد أن يكون صفراً. لذا نحل كل قوس على حدة كأنه معادلة مستقلة بسيطة.`}
-            />
             <button onClick={handleAnswer} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <FastForward size={18} /> تأكيد الانشطار
             </button>
