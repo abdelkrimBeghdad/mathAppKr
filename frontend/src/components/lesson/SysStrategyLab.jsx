@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -184,23 +183,18 @@ function SysStrategyContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => setFeedback(null)}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'sys-strategy-system', title: 'الجملة المعطاة', description: 'راقب معاملات x وy في كلا المعادلتين لتحدد أسهل طريقة حل.' },
+                { target: 'sys-strategy-buttons', title: 'اختيارك', description: 'معامل يساوي 1 بالضبط → التعويض أسرع. معاملات متطابقة/متعاكسة → الجمع أسرع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
-                <div className={`w-full p-4 rounded-xl border flex flex-col items-center justify-center gap-2 font-mono text-base font-black ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+                <div data-tour-id="sys-strategy-system" className={`w-full p-4 rounded-xl border flex flex-col items-center justify-center gap-2 font-mono text-base font-black ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                     <div>1) {currentChallenge.sys[0]}</div>
                     <div>2) {currentChallenge.sys[1]}</div>
                 </div>
 
-                <LabTutorialNote
-                    from={currentChallenge.best === 'subst'
-                        ? `لاحظ معامل x في المعادلة الأولى.`
-                        : `لاحظ معاملات y في المعادلتين.`}
-                    why={currentChallenge.best === 'subst'
-                        ? `عندما يكون معامل مجهول ما يساوي 1 بالضبط، عزله فوري بلا أي قسمة أو كسور — هذا يجعل التعويض الخيار الأسرع.`
-                        : `عندما تتطابق أو تتعاكس معاملات نفس المجهول في المعادلتين، الجمع (أو الطرح) يُلغي هذا المجهول بخطوة واحدة فقط.`}
-                />
-
-                <div className="w-full flex flex-col md:flex-row gap-3" role="group" aria-label="اختر طريقة الحل الأسهل">
+                <div data-tour-id="sys-strategy-buttons" className="w-full flex flex-col md:flex-row gap-3" role="group" aria-label="اختر طريقة الحل الأسهل">
                     <button
                         onClick={() => handleAnswer('subst')}
                         className={`flex-1 p-5 rounded-xl border-2 border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-sm transition-all active:scale-95 flex flex-col items-center gap-2 ${error ? 'opacity-60' : ''}`}

@@ -4,7 +4,6 @@ import { CheckCircle2, Target, LassoSelect, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -196,9 +195,13 @@ function LinearGraphContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setPointPos({ x: 0, y: 0 }); setIsCompleted(false); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'linear-graph-svg', title: 'دالة خطية تمر بالأصل', description: 'f(x) = ax تمر دائماً بنقطة الأصل (0,0) — اختر أي x غير صفري وحرّك رأسياً حتى تحقق النسبة الصحيحة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col md:flex-row items-center justify-center gap-4">
-                <div className={`relative p-3 rounded-[1rem] border-2 overflow-visible shrink-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                <div data-tour-id="linear-graph-svg" className={`relative p-3 rounded-[1rem] border-2 overflow-visible shrink-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
                     <svg
                         width="320" height="320" viewBox="0 0 500 500" className="cursor-crosshair overflow-visible focus:outline-none"
                         onClick={handleGridClick}
@@ -232,10 +235,6 @@ function LinearGraphContent({ phase, setPhase }) {
                 </div>
 
                 <div className="flex flex-col gap-3 w-full max-w-xs">
-                    <LabTutorialNote
-                        from={`الدالة f(x) = ${a}x تمر بنقطة الأصل (0,0) دائماً.`}
-                        why={`أي نقطة (x, y) تقع على المستقيم يجب أن تحقق العلاقة y = ${a} × x. اختر أي x غير صفري وتحرك رأسياً حتى تحقق النسبة الصحيحة.`}
-                    />
                     {!isCompleted && (
                         <button onClick={handleCheck} disabled={pointPos.x === 0 && pointPos.y === 0} className="w-full py-3 bg-sky-600 hover:bg-sky-500 disabled:opacity-30 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all active:scale-95">
                             <CheckCircle2 size={18} /> تأكيد النقطة

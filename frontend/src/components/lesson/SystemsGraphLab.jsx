@@ -5,7 +5,6 @@ import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
 import LabStepsPanel from './LabStepsPanel';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -207,10 +206,15 @@ function SystemsGraphContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'sys-graph-svg', title: 'التمثيل البياني', description: 'كل معادلة تُرسم كمستقيم — نقطة التقاطع بينهما هي حل الجملة.' },
+                { target: 'lab-answer-input', title: 'خطوات الحل', description: 'حدد المعامل m والثابت b، ثم نقطتين على كل مستقيم لرسمه.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
             sidePanel={
                 <div className="w-full md:w-56 flex-shrink-0 flex flex-col gap-3">
                     <LabStepsPanel title="سجل المعادلتين" steps={stepsForPanel} />
-                    <div className={`relative w-full aspect-square rounded-[1rem] border-2 overflow-hidden ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <div data-tour-id="sys-graph-svg" className={`relative w-full aspect-square rounded-[1rem] border-2 overflow-hidden ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/10" />
                         <div className="absolute top-0 left-1/2 w-0.5 h-full bg-white/10" />
                         <svg className="absolute inset-0 w-full h-full p-3 overflow-visible" viewBox="-5.5 -5.5 11 11">
@@ -233,7 +237,7 @@ function SystemsGraphContent({ phase, setPhase }) {
                 </div>
             }
         >
-            <div className="flex items-center gap-3 font-mono font-black text-lg flex-wrap justify-center" dir="ltr">
+            <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-lg flex-wrap justify-center" dir="ltr">
                 {(step === 0 || step === 2) && (
                     <>
                         <span className={step === 0 ? 'text-orange-400' : 'text-indigo-400'}>y =</span>
@@ -270,16 +274,6 @@ function SystemsGraphContent({ phase, setPhase }) {
                     </>
                 )}
             </div>
-            <LabTutorialNote
-                from={step < 4
-                    ? `المعادلة الحالية: y = ${step < 2 ? problem.m1 : problem.m2}x ${(step < 2 ? problem.b1 : problem.b2) >= 0 ? '+' : ''}${step < 2 ? problem.b1 : problem.b2}.`
-                    : `المستقيمان مرسومان الآن، وتقاطعهما ظاهر في الشبكة الجانبية.`}
-                why={step === 0 || step === 2
-                    ? `المعامل m هو الرقم الملاصق لـ x، والثابت b هو الرقم المستقل عنه.`
-                    : step === 1 || step === 3
-                        ? `نعوّض قيمتين مختلفتين لـ x في نفس المعادلة لنحصل على نقطتين، وهما كافيتان لرسم مستقيم كامل.`
-                        : `نقطة التقاطع هي الإحداثيات المشتركة بين المستقيمين — وهي حل الجملة الوحيد.`}
-            />
             <button onClick={handleCheckStep} className="mt-4 w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تأكيد الخطوة
             </button>

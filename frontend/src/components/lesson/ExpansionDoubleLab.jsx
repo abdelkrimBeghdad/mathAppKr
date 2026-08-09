@@ -4,7 +4,6 @@ import { Layers, Rocket, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -177,6 +176,11 @@ function ExpansionDoubleContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(1); setInputs({ x: '', c: '' }); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'نشر حدّين', description: 'أربعة مسارات ضرب: الأولان×الأولان، الأولان×الآخران، الآخران×الأولان، الآخران×الآخران.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'الحد الأوسط = دمج الناتجين الوسطيين. الحد الأخير = ضرب الحدين الأخيرين.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="flex flex-wrap items-center justify-center gap-1 font-mono font-black text-lg" dir="ltr">
@@ -218,7 +222,7 @@ function ExpansionDoubleContent({ phase, setPhase }) {
                 <AnimatePresence>
                     {step === 7 && (
                         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
-                            <div className="flex flex-wrap items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex flex-wrap items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
                                 <div className="relative text-sky-400">x<span className="absolute -top-3 -right-3 text-xs">2</span></div>
                                 <span className={`opacity-40 ${theme.textMain}`}>+</span>
                                 <input type="number" value={inputs.x} onChange={e => setInputs({ ...inputs, x: e.target.value })} aria-label="الحد الأوسط" autoFocus
@@ -228,10 +232,6 @@ function ExpansionDoubleContent({ phase, setPhase }) {
                                 <input type="number" value={inputs.c} onChange={e => setInputs({ ...inputs, c: e.target.value })} onKeyDown={e => e.key === 'Enter' && checkMastery()} aria-label="الحد الأخير"
                                     className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/50 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'}`} placeholder="؟" />
                             </div>
-                            <LabTutorialNote
-                                from={`المسارات الأربعة كانت: x×x، x×${problem.d}، ${problem.b}×x، و${problem.b}×${problem.d}.`}
-                                why={`الحد الأوسط يتكوّن من دمج الناتجين الوسطيين (x×${problem.d} و${problem.b}×x) لأنهما يحملان نفس الدرجة (x¹): ${problem.d} + ${problem.b} = ${problem.b + problem.d}. أما الحد الأخير فهو ببساطة ${problem.b} × ${problem.d} = ${problem.b * problem.d}.`}
-                            />
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد العملية
                             </button>

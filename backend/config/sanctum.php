@@ -13,11 +13,21 @@ return [
     | authentication cookies. Typically, these should include your local
     | and production domains which access your API via a frontend SPA.
     |
+    | إصلاح خللين حقيقيين هنا (اكتُشفا بعد "Session store not set on request"):
+    | 1) القائمة لم تكن تشمل localhost:5173 / 127.0.0.1:5173 — منفذ Vite
+    |    الافتراضي لخادم تطوير الواجهة الأمامية React. أي طلب من هذا المنفذ
+    |    كان EnsureFrontendRequestsAreStateful يعتبره "ليس من الواجهة" فلا
+    |    يُشغّل StartSession إطلاقاً، فينهار Auth::login() فور محاولته
+    |    الوصول لجلسة غير موجودة.
+    | 2) sprintf('%s%s', ...) كانت تفتقد فاصلة بين القائمة الثابتة ومضيف
+    |    APP_URL الديناميكي، فيلتصق آخر عنصرين ببعضهما كسلسلة واحدة فاسدة
+    |    (مثلاً "::1localhost:8000") بدل أن يكونا عنصرين منفصلين صالحين.
+    |
     */
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
-        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
+        '%s,%s',
+        'localhost,localhost:3000,localhost:5173,127.0.0.1,127.0.0.1:8000,127.0.0.1:5173,::1',
         Sanctum::currentApplicationUrlWithPort(),
         // Sanctum::currentRequestHost(),
     ))),

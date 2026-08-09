@@ -7,7 +7,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -124,11 +123,16 @@ function LinearImageContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetSameMode}
             onRestart={() => { setPhase('intro'); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'دالة خطية', description: 'f(x) = ax — إما احسب الصورة، أو اعكس العملية لإيجاد الأصل.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'للصورة: اضرب. للأصل (العكس): اقسم.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>{mode === 'image' ? `f(${x})` : 'x'} =</span>
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل النتيجة"
@@ -138,15 +142,6 @@ function LinearImageContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={mode === 'image'
-                    ? `الدالة f(x) = ${a}x، والمدخل x = ${x}.`
-                    : `الدالة f(x) = ${a}x، والناتج المعطى f(x) = ${a * x}.`}
-                why={mode === 'image'
-                    ? `لحساب الصورة، نُعوّض قيمة x في الدالة مباشرة ونضرب: ${a} × ${x} = ${a * x}.`
-                    : `لحساب الأصل (العكس)، نعكس العملية بالقسمة بدل الضرب: ${a * x} ÷ ${a} = ${x}.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تفعيل المعالجة

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -193,6 +192,11 @@ function FactIdentity3Content({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(1); setInputB(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'فرق مربعين', description: 'فرق المربعين ينشطر دائماً إلى قوسين متناظرين: فرق الجذرين × مجموع الجذرين.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'أدخل جذر الحد الأخير — القوس الثاني يُكمَل تلقائياً بنفس القيمة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -255,7 +259,7 @@ function FactIdentity3Content({ phase, setPhase }) {
                         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                             className="flex flex-col items-center gap-3 w-full"
                         >
-                            <div className="flex flex-wrap items-center justify-center gap-3 font-mono font-black" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex flex-wrap items-center justify-center gap-3 font-mono font-black" dir="ltr">
                                 {/* القوس الأول — قابل للتعديل */}
                                 <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${isDarkMode ? 'bg-black/40 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
                                     <span className={`opacity-40 ${theme.textMain}`}>(</span>
@@ -286,10 +290,6 @@ function FactIdentity3Content({ phase, setPhase }) {
                                     <span className={`opacity-40 ${theme.textMain}`}>)</span>
                                 </div>
                             </div>
-                            <LabTutorialNote
-                                from={`الحد الثاني هو ${problem.b * problem.b} (وهو مربع تام: ${problem.b}²).`}
-                                why={`فرق المربعين ينشطر دائماً إلى قوسين متناظرين: أحدهما بفرق الجذرين والآخر بمجموعهما — (x−${problem.b})(x+${problem.b}). لهذا نحتاج فقط جذر الحد الأخير (${problem.b}) لإكمال كلا القوسين.`}
-                            />
                             <button
                                 onClick={checkMastery}
                                 className="px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"

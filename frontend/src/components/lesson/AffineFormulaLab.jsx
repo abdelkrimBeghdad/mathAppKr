@@ -7,7 +7,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -182,10 +181,15 @@ function AffineFormulaContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInputA(''); setInputB(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'المعادلة الخطية', description: 'أوجد الصيغة f(x) = ax + b من نقطتين معطاتين، على خطوتين: الميل ثم الثابت.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'الميل a = فرق الصادات ÷ فرق السينات. ثم عوّض بنقطة لحل b.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             {step === 0 ? (
                 <>
-                    <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
+                    <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                         <span className={theme.textMain}>a =</span>
                         <input
                             type="number" value={inputA}
@@ -198,10 +202,6 @@ function AffineFormulaContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
-                    <LabTutorialNote
-                        from={`النقطتان المعطاتان: (${p1.x}, ${p1.y}) و(${p2.x}, ${p2.y}).`}
-                        why={`الميل a يقيس معدل التغير بين نقطتين: نقسم فرق الصور (${p2.y} - ${p1.y}) على فرق السوابق (${p2.x} - ${p1.x}).`}
-                    />
                     <button onClick={handleCheckA} className="mt-4 w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black transition-all">
                         تأكيد الميل a
                     </button>
@@ -211,7 +211,7 @@ function AffineFormulaContent({ phase, setPhase }) {
                     <div className={`mb-2 px-4 py-1.5 rounded-full text-xs font-bold ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
                         تم كشف a = {a}
                     </div>
-                    <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
+                    <div data-tour-id="lab-answer-input" className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                         <span className={theme.textMain}>b =</span>
                         <input
                             type="number" value={inputB}
@@ -224,10 +224,6 @@ function AffineFormulaContent({ phase, setPhase }) {
                             placeholder="؟"
                         />
                     </div>
-                    <LabTutorialNote
-                        from={`عرفنا الآن a = ${a}، والنقطة الأولى هي (${p1.x}, ${p1.y}).`}
-                        why={`بعد معرفة الميل، نعوّض بإحدى النقاط الأصلية في المعادلة f(x)=ax+b ونحل من أجل b: ${p1.y} − ${a}×${p1.x} = ${b}.`}
-                    />
                     <button onClick={handleCheckB} className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black transition-all">
                         تأكيد الثابت b
                     </button>

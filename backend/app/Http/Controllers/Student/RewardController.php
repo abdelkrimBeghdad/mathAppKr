@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\SecurityIncident;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Exceptions\LabClaimRejected;
 use App\Services\LabVerifiers\AlgebraVerifier;
 use App\Services\LabVerifiers\GeometryVerifier;
 use App\Services\LabVerifiers\TrigVerifier;
@@ -63,117 +65,134 @@ class RewardController extends Controller
         $labId = $request->lab_id;
         $verification = $request->input('verification');
 
-        // 1. التحقق العام من وجود تقدم للمختبر - مطابقة تامة (exact match) فقط.
-        // ملاحظة أمنية: تمت إزالة منطق المطابقة الجزئية/البادئة (prefix matching) القديم
-        // لأنه كان يسمح لسجل تقدم واحد بمعرف قصير بمطابقة عشرات المختبرات المختلفة.
-        $progress = \App\Models\LabProgress::where('user_id', $user->id)
-            ->where('lab_id', $labId)
-            ->first();
+        // إصلاح خلل حقيقي (race condition): الفحص القديم كان يقرأ الصف، ثم
+        // — بفاصل زمني — يكتب عليه، بلا أي قفل. طلبان متزامنان لنفس المختبر
+        // كانا يستطيعان كلاهما قراءة reward_claimed_at كـ"فارغ" قبل أن يكتب
+        // أيّهما، فيمرّان معاً ويُمنح المستخدم المكافأة مرتين. الآن كل هذا
+        // القسم الحرج (القراءة + التحقق + الكتابة) محاط بمعاملة DB::transaction
+        // مع lockForUpdate على صف LabProgress، فيُجبَر أي طلب ثانٍ يصل بنفس
+        // اللحظة على الانتظار حتى تكتمل المعاملة الأولى بالكامل قبل أن يقرأ هو.
+        try {
+            return DB::transaction(function () use ($user, $labId, $verification, $request) {
+                // 1. التحقق العام من وجود تقدم للمختبر - مطابقة تامة (exact match) فقط.
+                // ملاحظة أمنية: تمت إزالة منطق المطابقة الجزئية/البادئة (prefix matching) القديم
+                // لأنه كان يسمح لسجل تقدم واحد بمعرف قصير بمطابقة عشرات المختبرات المختلفة.
+                $progress = \App\Models\LabProgress::where('user_id', $user->id)
+                    ->where('lab_id', $labId)
+                    ->lockForUpdate()
+                    ->first();
 
-        if (!$progress || !in_array($progress->phase, ['practice', 'completed'])) {
-            $this->logSecurityIncident($user, 'missing_lab_progress', $labId, $request);
-            return response()->json([
-                'error' => 'Cheat detected',
-                'message' => 'You must start and practice the lab before claiming the reward.'
-            ], 403);
-        }
+                if (!$progress || !in_array($progress->phase, ['practice', 'completed'])) {
+                    $this->logSecurityIncident($user, 'missing_lab_progress', $labId, $request);
+                    throw new LabClaimRejected(response()->json([
+                        'error' => 'Cheat detected',
+                        'message' => 'You must start and practice the lab before claiming the reward.'
+                    ], 403));
+                }
 
-        // 1.b. الحماية من الاستنزاف اللانهائي: مكافأة كل مختبر تُمنح مرة واحدة فقط
-        // لكل (user_id, lab_id). أي محاولة لاحقة تُرفض وتُسجَّل كحادثة أمنية.
-        if ($progress->reward_claimed_at) {
-            $this->logSecurityIncident($user, 'duplicate_claim', $labId, $request);
-            return response()->json([
-                'error' => 'Cheat detected',
-                'message' => 'Reward for this lab has already been claimed.'
-            ], 403);
-        }
+                // 1.b. الحماية من الاستنزاف اللانهائي: مكافأة كل مختبر تُمنح مرة واحدة فقط
+                // لكل (user_id, lab_id). أي محاولة لاحقة تُرفض وتُسجَّل كحادثة أمنية.
+                if ($progress->reward_claimed_at) {
+                    $this->logSecurityIncident($user, 'duplicate_claim', $labId, $request);
+                    throw new LabClaimRejected(response()->json([
+                        'error' => 'Cheat detected',
+                        'message' => 'Reward for this lab has already been claimed.'
+                    ], 403));
+                }
 
-        // 2. التحقق الرياضي المخصص للمختبرات المفروض عليها التحقق حالياً
-        $enforcedLabs = [
-            'sys-add', 'sys-subst', 'pgcd-euclidean',
-            'trig-sin', 'trig-cos', 'trig-tan',
-            'roots-simplification',
-            'pyth-hyp', 'pyth-leg', 'pyth-verify',
-            'roots-addition', 'roots-subtraction', 'roots-multiplication', 'roots-division',
-            'pgcd-divisors', 'pgcd-subtraction', 'exp-simple', 'exp-double',
-            'id1', 'id2', 'id3',
-            'lin-formula', 'lin-image', 'aff-formula', 'aff-image', 'lin-graph', 'aff-graph',
-            'vec-para', 'vec-rand', 'vec-read', 'vec-calc', 'vec-midpoint', 'vec-distance', 'vec-same-end',
-            'thales-shadow', 'thales-prob', 'ineq-solve', 'ineq-graph',
-            'fact-id1', 'fact-id2', 'fact-id3', 'div-props', 'eq-product', 'pyth-prob',
-            'stat-cumulative', 'stat-chart', 'coprime', 'sys-graph', 'sys-strategy', 'geo-volume', 'geo-solids', 'geo-net', 'geo-section', 'geo-pyramid',
-            'fact-common',
-            'eq-solve',
-            'pyth-visual',
-            'thales-verify',
-            'thales-length',
-            'div-discover',
-            'roots-expression',
-            'vec-concept',
-            'vec-chasles',
-            'trig-naming',
-            'trig-identities',
-            'trig-special',
-            'rotation-mastery',
-            'prob-mastery',
-            'powers-rules', 'scientific-not', 'frac-simplify', 'trig-length', 'trig-angle', 'stat-freq', 'stat-mean',
-        ];
+                // 2. التحقق الرياضي المخصص للمختبرات المفروض عليها التحقق حالياً
+                $enforcedLabs = [
+                    'sys-add', 'sys-subst', 'pgcd-euclidean',
+                    'trig-sin', 'trig-cos', 'trig-tan',
+                    'roots-simplification',
+                    'pyth-hyp', 'pyth-leg', 'pyth-verify',
+                    'roots-addition', 'roots-subtraction', 'roots-multiplication', 'roots-division',
+                    'pgcd-divisors', 'pgcd-subtraction', 'exp-simple', 'exp-double',
+                    'id1', 'id2', 'id3',
+                    'lin-formula', 'lin-image', 'aff-formula', 'aff-image', 'lin-graph', 'aff-graph',
+                    'vec-para', 'vec-rand', 'vec-read', 'vec-calc', 'vec-midpoint', 'vec-distance', 'vec-same-end',
+                    'thales-shadow', 'thales-prob', 'ineq-solve', 'ineq-graph',
+                    'fact-id1', 'fact-id2', 'fact-id3', 'div-props', 'eq-product', 'pyth-prob',
+                    'stat-cumulative', 'stat-chart', 'coprime', 'sys-graph', 'sys-strategy', 'geo-volume', 'geo-solids', 'geo-net', 'geo-section', 'geo-pyramid',
+                    'fact-common',
+                    'eq-solve',
+                    'pyth-visual',
+                    'thales-verify',
+                    'thales-length',
+                    'div-discover',
+                    'roots-expression',
+                    'vec-concept',
+                    'vec-chasles',
+                    'trig-naming',
+                    'trig-identities',
+                    'trig-special',
+                    'rotation-mastery',
+                    'prob-mastery',
+                    'powers-rules', 'scientific-not', 'frac-simplify', 'trig-length', 'trig-angle', 'stat-freq', 'stat-mean',
+                ];
 
-        if (in_array($labId, $enforcedLabs)) {
-            if (!$verification || !is_array($verification)) {
-                $this->logSecurityIncident($user, 'missing_verification', $labId, $request);
+                if (in_array($labId, $enforcedLabs)) {
+                    if (!$verification || !is_array($verification)) {
+                        $this->logSecurityIncident($user, 'missing_verification', $labId, $request);
+                        throw new LabClaimRejected(response()->json([
+                            'error' => 'Cheat detected',
+                            'message' => 'Missing verification payload for enforced security lab.'
+                        ], 403));
+                    }
+
+                    $type = $verification['type'] ?? '';
+
+                    $verifierResult = $this->dispatchLabVerification($type, $verification, $user, $labId, $request);
+                    if ($verifierResult !== null) {
+                        throw new LabClaimRejected($verifierResult);
+                    }
+                }
+
+                // Base reward for any lab completion
+                $coins = 100;
+                $xp = 200;
+
+                $user->increment('coins', $coins);
+                $user->increment('xp', $xp);
+
+                // منع أي مطالبة لاحقة بنفس المختبر
+                $progress->reward_claimed_at = now();
+                $progress->save();
+
+                // Logic for awarding a special badge if they complete many labs
+                $completionCount = \App\Models\UserProgress::where('user_id', $user->id)
+                    ->where('is_completed', true)
+                    ->count();
+
+                $badgeAwarded = null;
+                if ($completionCount >= 5) {
+                    $badge = \App\Models\Badge::where('slug', 'algebra-explorer')->first();
+                    if ($badge && !$user->badges->contains($badge->id)) {
+                        $user->badges()->attach($badge->id);
+                        $badgeAwarded = $badge;
+                    }
+                }
+
                 return response()->json([
-                    'error' => 'Cheat detected',
-                    'message' => 'Missing verification payload for enforced security lab.'
-                ], 403);
-            }
-
-            $type = $verification['type'] ?? '';
-
-            $verifierResult = $this->dispatchLabVerification($type, $verification, $user, $labId, $request);
-            if ($verifierResult !== null) {
-                return $verifierResult;
-            }
+                    'status' => 'success',
+                    'message' => 'أحسنت! لقد أتممت المختبر بنجاح وحصلت على مكافأة',
+                    'reward' => [
+                        'coins' => $coins,
+                        'xp' => $xp
+                    ],
+                    'badge' => $badgeAwarded ? [
+                        'name' => $badgeAwarded->name,
+                        'icon' => $badgeAwarded->icon,
+                        'description' => $badgeAwarded->description
+                    ] : null
+                ]);
+            });
+        } catch (LabClaimRejected $e) {
+            // رُفضت المطالبة قبل أي كتابة (تقدّم مفقود / مطالبة مكرَّرة / تحقق
+            // رياضي فاشل) — المعاملة تراجعت تلقائياً بلا أي أثر على القاعدة،
+            // ونعيد فقط استجابة الرفض الجاهزة التي حملها الاستثناء.
+            return $e->response;
         }
-
-        // Base reward for any lab completion
-        $coins = 100;
-        $xp = 200;
-
-        $user->increment('coins', $coins);
-        $user->increment('xp', $xp);
-
-        // منع أي مطالبة لاحقة بنفس المختبر
-        $progress->reward_claimed_at = now();
-        $progress->save();
-
-        // Logic for awarding a special badge if they complete many labs
-        $completionCount = \App\Models\UserProgress::where('user_id', $user->id)
-            ->where('is_completed', true)
-            ->count();
-
-        $badgeAwarded = null;
-        if ($completionCount >= 5) {
-            $badge = \App\Models\Badge::where('slug', 'algebra-explorer')->first();
-            if ($badge && !$user->badges->contains($badge->id)) {
-                $user->badges()->attach($badge->id);
-                $badgeAwarded = $badge;
-            }
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'أحسنت! لقد أتممت المختبر بنجاح وحصلت على مكافأة',
-            'reward' => [
-                'coins' => $coins,
-                'xp' => $xp
-            ],
-            'badge' => $badgeAwarded ? [
-                'name' => $badgeAwarded->name,
-                'icon' => $badgeAwarded->icon,
-                'description' => $badgeAwarded->description
-            ] : null
-        ]);
     }
 
     private function logSecurityIncident($user, $type, $labId, Request $request, $extraDetails = [])

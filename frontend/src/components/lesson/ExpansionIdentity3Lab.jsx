@@ -4,7 +4,6 @@ import { Scissors, Layers, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -168,6 +167,11 @@ function ExpansionIdentity3Content({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(1); setInputLast(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'مجموع × فرق', description: 'الحدّان الوسطيّان يلغيان بعضهما تماماً لأنهما متساويان بالقيمة ومتعاكسان بالإشارة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'يتبقى فقط: x² ناقص مربع الحد الثاني.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="flex items-center justify-center font-mono font-black text-lg gap-2" dir="ltr">
@@ -199,16 +203,12 @@ function ExpansionIdentity3Content({ phase, setPhase }) {
                 <AnimatePresence>
                     {step === 3 && (
                         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
-                            <div className="flex items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
                                 <div className="relative text-sky-400">x<span className="absolute -top-3 -right-3 text-xs">2</span></div>
                                 <span className={`opacity-40 ${theme.textMain}`}>-</span>
                                 <input type="number" value={inputLast} onChange={e => setInputLast(e.target.value)} onKeyDown={e => e.key === 'Enter' && checkMastery()} aria-label="أدخل مربع b" autoFocus
                                     className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-cyan-500/50 text-cyan-400' : 'bg-white border-cyan-200 text-cyan-700'}`} placeholder="؟" />
                             </div>
-                            <LabTutorialNote
-                                from={`الحد الثاني في القوسين هو نفسه ${problem.b} (موجب في الأول، سالب في الثاني).`}
-                                why={`عند نشر (x+${problem.b})(x-${problem.b})، الحدّان الوسطيّان (+${problem.b}x و-${problem.b}x) يتساويان في القيمة ويتعاكسان بالإشارة، فيلغيان بعضهما تماماً. يتبقى فقط: x² وسالب مربع ${problem.b} (=${problem.b * problem.b}).`}
-                            />
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد النتيجة
                             </button>

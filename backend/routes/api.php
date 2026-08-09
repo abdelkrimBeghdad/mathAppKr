@@ -25,7 +25,7 @@ Route::post('/broadcasting/auth', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'restrict.parent'])->group(function () {
     Route::post('/logout', [AuthController::class , 'logout']);
     Route::get('/user', function (Request $request) {
             return $request->user();
@@ -38,10 +38,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/notifications/read-all', [\App\Http\Controllers\NotificationController::class , 'markAllAsRead']);
 
         // Parent Dashboard Route
-        Route::get('/parent/dashboard', [\App\Http\Controllers\ParentController::class , 'dashboard']);
+        Route::get('/parent/dashboard', [\App\Http\Controllers\ParentController::class , 'dashboard'])->name('parent.dashboard');
 
         // Admin Routes
-        Route::group(['prefix' => 'admin', 'middleware' => ['admin', 'admin.audit', 'throttle:60,1']], function () {
+        Route::group(['prefix' => 'admin', 'middleware' => ['admin', 'admin.audit']], function () {
             Route::get('/fields', [\App\Http\Controllers\Admin\ContentController::class , 'indexFields']);
             Route::post('/fields', [\App\Http\Controllers\Admin\ContentController::class , 'storeField']);
             Route::put('/fields/{field}', [\App\Http\Controllers\Admin\ContentController::class , 'updateField']);
@@ -211,7 +211,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             Route::get('/access/pending-receipts', [\App\Http\Controllers\ContentAccessController::class , 'getPendingReceipts']);
             Route::post('/access/approve-receipt/{record}', [\App\Http\Controllers\ContentAccessController::class , 'approveAccess']);
-            Route::get('/access/financial-ledger', [\App\Http\Controllers\ContentAccessController::class , 'getFinancialLedger']);
         }
         );
     });

@@ -7,7 +7,6 @@ import { rewardService } from '../../utils/rewardService';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -175,6 +174,11 @@ function ExpansionSimpleContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setPracticeStep(1); setInputs({ term1: '', term2: '' }); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'التوزيع', description: 'العامل الخارجي يُضرب في كل حد داخل القوس على حدة.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'اضرب العامل الخارجي × x، ثم العامل الخارجي × الحد الثاني.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="relative">
@@ -224,7 +228,7 @@ function ExpansionSimpleContent({ phase, setPhase }) {
 
                 {practiceStep === 4 && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
-                        <div className="flex items-center justify-center gap-2 font-mono font-black text-lg" dir="ltr">
+                        <div data-tour-id="lab-answer-input" className="flex items-center justify-center gap-2 font-mono font-black text-lg" dir="ltr">
                             <input type="number" value={inputs.term1} onChange={e => setInputs({ ...inputs, term1: e.target.value })} aria-label="حاصل ضرب الحد الأول" autoFocus
                                 className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-indigo-500/50 text-indigo-400' : 'bg-white border-indigo-200 text-indigo-700'}`} placeholder="؟" />
                             <span className={theme.textMain}>x</span>
@@ -232,10 +236,6 @@ function ExpansionSimpleContent({ phase, setPhase }) {
                             <input type="number" value={inputs.term2} onChange={e => setInputs({ ...inputs, term2: e.target.value })} onKeyDown={e => e.key === 'Enter' && handleCheck()} aria-label="حاصل ضرب الحد الثاني"
                                 className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/50 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'}`} placeholder="؟" />
                         </div>
-                        <LabTutorialNote
-                            from={`العامل الخارجي هو ${problem.a}، والحدّان داخل القوس هما x و${problem.b}.`}
-                            why={`نضرب العامل الخارجي في كل حد على حدة: ${problem.a} × x = ${problem.a}x، و${problem.a} × ${problem.b} = ${problem.a * problem.b}${problem.op === '-' ? ' (وتبقى سالبة لأن العملية طرح)' : ''}.`}
-                        />
                         <button onClick={handleCheck} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                             <CheckCircle2 size={18} /> تحقق من النشر
                         </button>

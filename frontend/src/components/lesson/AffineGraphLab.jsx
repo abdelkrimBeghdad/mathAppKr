@@ -4,7 +4,6 @@ import { RotateCcw, CheckCircle2, Crosshair, Map, Navigation, ArrowRight } from 
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -210,9 +209,13 @@ function AffineGraphContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setPoints([]); setIsCompleted(false); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'affine-graph-svg', title: 'شبكة الإحداثيات', description: 'اضغط لتحديد نقطتين تحققان الدالة f(x)=ax+b — ابدأ من نقطة تقاطعها مع محور التراتيب.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col md:flex-row items-center justify-center gap-4">
-                <div className={`relative p-3 rounded-[1rem] border-2 overflow-visible shrink-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                <div data-tour-id="affine-graph-svg" className={`relative p-3 rounded-[1rem] border-2 overflow-visible shrink-0 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
                     <svg
                         width="320" height="320" viewBox="0 0 500 500" className="cursor-crosshair overflow-visible focus:outline-none"
                         onClick={handleGridClick}
@@ -266,10 +269,6 @@ function AffineGraphContent({ phase, setPhase }) {
                             </div>
                         )}
                     </div>
-                    <LabTutorialNote
-                        from={`الدالة f(x) = ${a}x ${b >= 0 ? '+' : ''}${b} تقطع محور التراتيب عند النقطة (0, ${b}).`}
-                        why={`أي نقطة تختارها يجب أن تحقق y = ${a}×x ${b >= 0 ? '+' : ''}${b}. أسهل طريقة: ابدأ من (0, ${b})، ثم أضف نقطة ثانية مثل x=1 حيث y=${a + b}.`}
-                    />
                     {!isCompleted && (
                         <button onClick={handleCheck} disabled={points.length < 2} className="w-full py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all active:scale-95">
                             <CheckCircle2 size={18} /> تأكيد المسار

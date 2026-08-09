@@ -5,7 +5,7 @@ import { BookOpen, Sigma, TrendingUp, Layers, X, Play, Rocket, Sun, Moon, Binary
 import { labProgressService } from '../../utils/labProgressService';
 import { useTheme } from '../../context/ThemeContext';
 import SEO from '../../components/common/SEO';
-
+import WelcomeBanner from '../student/WelcomeBanner';
 // Lab Imports (Preserved)
 import LabErrorBoundary from '../../components/lesson/LabErrorBoundary';
 
@@ -343,7 +343,14 @@ export default function MasteryWorld() {
                 title="مختبرات الإتقان الرياضي"
                 description="استكشف مختبرات الإتقان الرياضي التفاعلية وجرب بنفسك القوانين والحلول الرياضية."
             />
-
+            {labProgress.length === 0 && (
+                <WelcomeBanner
+                    studentName={"naame"}
+                    recommendedCategory={CATEGORIES.find(c => c.id === 'expansion')}
+                    onStart={() => setActiveCategory('expansion')}
+                    isDark={isDark}
+                />
+            )}
             {/* Ambient Background blur (low-key, adapted for theme) */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                 <div className={`absolute -top-40 -right-40 w-[400px] h-[400px] rounded-full blur-[120px] transition-colors duration-1000 ${isDark ? 'bg-indigo-600/5' : 'bg-indigo-500/5'}`} />

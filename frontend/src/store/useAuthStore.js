@@ -1,7 +1,10 @@
 /* eslint-disable */
 import { create } from 'zustand';
-import api from '../api/axios';
+import api, { primeCsrfCookie } from '../api/axios';
 
+// Cookie-session auth: there is no client-readable token anymore, so
+// "is the user logged in" can only be answered by asking the server
+// (GET /user succeeds if the session cookie is valid, 401s otherwise).
 const useAuthStore = create((set) => ({
     user: null,
     loading: true,
@@ -11,32 +14,27 @@ const useAuthStore = create((set) => ({
     initializeAuth: async () => {
         set({ loading: true });
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                const { data } = await api.get('/user');
-                set({ user: data });
-            }
+            const { data } = await api.get('/user');
+            set({ user: data });
         } catch (error) {
-            console.error("Failed to fetch user", error);
-            localStorage.removeItem('token');
+            // No valid session — this is the normal "not logged in" case,
+            // not necessarily an error worth logging.
+            set({ user: null });
         } finally {
             set({ loading: false });
         }
     },
 
     login: async (email, password) => {
+        await primeCsrfCookie();
         const { data } = await api.post('/login', { email, password });
-        localStorage.setItem('token', data.access_token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
         set({ user: data.user });
         return data.user;
     },
 
     register: async (name, email, password, password_confirmation) => {
+        await primeCsrfCookie();
         const { data } = await api.post('/register', { name, email, password, password_confirmation });
-        localStorage.setItem('token', data.access_token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
         set({ user: data.user });
         return data.user;
     },
@@ -45,8 +43,6 @@ const useAuthStore = create((set) => ({
         try {
             await api.post('/logout');
         } finally {
-            localStorage.removeItem('token');
-            delete api.defaults.headers.common['Authorization'];
             set({ user: null });
         }
     },

@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -257,13 +256,18 @@ function SysSubstitutionContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(0); setInput1(''); setInput2(''); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'sys-equations', title: 'نظام معادلتين', description: 'الهدف: عزل مجهول في إحدى المعادلتين، ثم تعويضه في الأخرى.' },
+                { target: 'lab-answer-input', title: 'خطوات الحل', description: 'كل خطوة تبني على سابقتها — تابع بالترتيب حتى تصل لقيمتي x وy.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع حسب الخطوة الحالية.' },
+            ]}
         >
-            <div className={`w-full p-3 rounded-xl border flex flex-col items-center gap-1 font-mono text-sm ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
+            <div data-tour-id="sys-equations" className={`w-full p-3 rounded-xl border flex flex-col items-center gap-1 font-mono text-sm ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'} ${theme.textMain}`} dir="ltr">
                 <div className={step === 0 ? 'text-emerald-400 font-black' : ''}>1) x + {problem.eq1.b}y = {problem.eq1.c}</div>
                 <div className={step === 1 ? 'text-amber-400 font-black' : ''}>2) {problem.eq2.a}x {problem.eq2.b < 0 ? '-' : '+'} {Math.abs(problem.eq2.b)}y = {problem.eq2.c}</div>
             </div>
 
-            <div className="flex items-center justify-center gap-2 font-mono text-base flex-wrap" dir="ltr">
+            <div data-tour-id="lab-answer-input" className="flex items-center justify-center gap-2 font-mono text-base flex-wrap" dir="ltr">
                 {step === 0 && (
                     <>
                         <span className="text-emerald-400 font-black">x = </span>
@@ -309,8 +313,6 @@ function SysSubstitutionContent({ phase, setPhase }) {
                     </>
                 )}
             </div>
-
-            <LabTutorialNote from={tutorialNotes[step].from} why={tutorialNotes[step].why} />
 
             <button onClick={handleCheckStep} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <CheckCircle2 size={18} /> تأكيد

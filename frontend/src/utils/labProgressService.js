@@ -1,23 +1,14 @@
-import axios from 'axios';
+import api from '../api/axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-const getHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    };
-};
-
+// Uses the shared `api` axios instance (withCredentials: true) so the
+// httpOnly session cookie authenticates these requests automatically.
 export const labProgressService = {
     /**
      * Get progress for all labs for the current user
      */
     getAll: async () => {
         try {
-            const response = await axios.get(`${API_URL}/lab-progress`, getHeaders());
+            const response = await api.get('/lab-progress');
             return response.data;
         } catch (error) {
             console.error('Error fetching lab progress:', error);
@@ -30,7 +21,7 @@ export const labProgressService = {
      */
     getOne: async (labId) => {
         try {
-            const response = await axios.get(`${API_URL}/lab-progress/${labId}`, getHeaders());
+            const response = await api.get(`/lab-progress/${labId}`);
             return response.data;
         } catch (error) {
             console.error(`Error fetching progress for lab ${labId}:`, error);
@@ -46,11 +37,11 @@ export const labProgressService = {
      */
     update: async (labId, phase, score = null) => {
         try {
-            const response = await axios.post(`${API_URL}/lab-progress`, {
+            const response = await api.post('/lab-progress', {
                 lab_id: labId,
                 phase,
                 score
-            }, getHeaders());
+            });
             return response.data;
         } catch (error) {
             console.error(`Error updating progress for lab ${labId}:`, error);

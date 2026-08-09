@@ -7,7 +7,6 @@ import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -194,6 +193,11 @@ function FactIdentity2Content({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(1); setInputA(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'تحليل مربع فرق', description: 'استخرج جذر الحد الأول وجذر الحد الأخير — الإشارة السالبة تميّز هذه المتطابقة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'تحقق أن الحد الأوسط (السالب) = سالب ضعف حاصل ضرب الجذرين.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
 
@@ -275,7 +279,7 @@ function FactIdentity2Content({ phase, setPhase }) {
                         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                             className="flex flex-col items-center gap-3 w-full"
                         >
-                            <div className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex items-center gap-2 font-mono font-black text-lg" dir="ltr">
                                 <span className={`opacity-50 ${theme.textMain}`}>(x -</span>
                                 <input
                                     type="number"
@@ -292,10 +296,6 @@ function FactIdentity2Content({ phase, setPhase }) {
                                 />
                                 <span className={`opacity-50 ${theme.textMain}`}>)²</span>
                             </div>
-                            <LabTutorialNote
-                                from={`استخرجت جذر الحد الأول (x) وجذر الحد الأخير (√${problem.a * problem.a} = ${problem.a}).`}
-                                why={`لتأكيد صحة التحليل، يجب أن يساوي الحد الأوسط (سالب) ضعف حاصل ضرب الجذرين: -2 × x × ${problem.a} = -${2 * problem.a}x — الإشارة السالبة هي ما يميز هذه المتطابقة عن الأولى.`}
-                            />
                             <button
                                 onClick={checkMastery}
                                 className="px-8 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black flex items-center gap-2 transition-all"

@@ -7,7 +7,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -125,11 +124,16 @@ function AffineImageContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={resetSameMode}
             onRestart={() => { setPhase('intro'); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'دالة تآلفية', description: 'الدالة f(x) = ax + b — إما احسب صورة x، أو اعكس العملية لإيجاد x من الصورة.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'عوّض بالترتيب الصحيح (ضرب ثم جمع)، أو اعكسه (طرح ثم قسمة) حسب نوع السؤال.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>{mode === 'image' ? `f(${x})` : 'x'} =</span>
                 <input
-                    type="number" value={inputVal}
+                    type="number" data-tour-id="lab-answer-input" value={inputVal}
                     onChange={e => setInputVal(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل النتيجة"
@@ -139,15 +143,6 @@ function AffineImageContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={mode === 'image'
-                    ? `الدالة f(x) = ${a}x ${b >= 0 ? '+' : ''}${b}، والمدخل x = ${x}.`
-                    : `الدالة f(x) = ${a}x ${b >= 0 ? '+' : ''}${b}، والناتج المعطى f(x) = ${a * x + b}.`}
-                why={mode === 'image'
-                    ? `نعوّض x في الدالة بالترتيب: أولاً الضرب (${a} × ${x} = ${a * x})، ثم الجمع (+ ${b} = ${a * x + b}).`
-                    : `لعكس العملية نسير بالترتيب المعاكس: أولاً نطرح الثابت (${a * x + b} − ${b} = ${a * x})، ثم نقسم على المعامل (÷ ${a} = ${x}).`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <Send size={18} /> تفعيل المعالجة

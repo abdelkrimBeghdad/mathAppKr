@@ -4,7 +4,6 @@ import { Star, Layers, ArrowRight, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 import { labProgressService } from '../../utils/labProgressService';
 import { difficultyEngine } from '../../utils/difficulty/algebra.js';
@@ -171,6 +170,11 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setStep(1); setInputs({ mid: '', last: '' }); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'مربع مجموع', description: 'المطابقة (x+b)² = x² + 2bx + b² ثابتة دائماً.' },
+                { target: 'lab-answer-input', title: 'حقلا الإجابة', description: 'الحد الأوسط = ضعف حاصل الضرب (2×b)، والحد الأخير = مربع b.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="w-full flex flex-col items-center gap-4">
                 <div className="flex items-center justify-center font-mono font-black text-lg gap-1" dir="ltr">
@@ -201,7 +205,7 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
                 <AnimatePresence>
                     {step === 3 && (
                         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
-                            <div className="flex flex-wrap items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
+                            <div data-tour-id="lab-answer-input" className="flex flex-wrap items-center justify-center gap-2 font-mono font-black text-base" dir="ltr">
                                 <div className="relative text-sky-400">x<span className="absolute -top-3 -right-3 text-xs">2</span></div>
                                 <span className={`opacity-40 ${theme.textMain}`}>+</span>
                                 <input type="number" value={inputs.mid} onChange={e => setInputs({ ...inputs, mid: e.target.value })} aria-label="الحد الأوسط" autoFocus
@@ -211,10 +215,6 @@ function ExpansionIdentity1Content({ phase, setPhase }) {
                                 <input type="number" value={inputs.last} onChange={e => setInputs({ ...inputs, last: e.target.value })} onKeyDown={e => e.key === 'Enter' && checkMastery()} aria-label="الحد الأخير"
                                     className={`w-20 rounded-xl text-center p-2 outline-none border-2 transition-all ${error ? 'border-rose-500' : isDarkMode ? 'bg-black/60 border-emerald-500/50 text-emerald-400' : 'bg-white border-emerald-200 text-emerald-700'}`} placeholder="؟" />
                             </div>
-                            <LabTutorialNote
-                                from={`الحد الثاني في القوس هو ${problem.b}.`}
-                                why={`القانون ثابت دائماً: الحد الأوسط = ضعف حاصل ضرب الحدين (2×1×${problem.b}=${2 * problem.b})، والحد الأخير = مربع الحد الثاني (${problem.b}²=${problem.b * problem.b}).`}
-                            />
                             <button onClick={checkMastery} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center gap-2 transition-all">
                                 <CheckCircle2 size={18} /> تأكيد الهيكلية
                             </button>

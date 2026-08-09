@@ -7,7 +7,6 @@ import { difficultyEngine } from '../../utils/difficulty/algebra.js';
 import { rewardService } from '../../utils/rewardService';
 import LabShell from './LabShell';
 import LabChallenge from './LabChallenge';
-import LabTutorialNote from './LabTutorialNote';
 import { useLabTheme } from './LabThemeContext';
 
 // 3 جولات تصاعدية الصعوبة قبل منح المكافأة (مبتدئ ➜ متوسط ➜ متقدم)
@@ -143,11 +142,16 @@ function LinearFormulaContent({ phase, setPhase }) {
             reward={reward}
             onRefresh={() => { setInputA(''); setError(false); setFeedback(null); }}
             onRestart={() => { setPhase('intro'); resetAll(); setReward(null); }}
+            tourSteps={[
+                { target: 'lab-question', title: 'دالة خطية', description: 'f(x) = ax تمر دائماً من نقطة الأصل — لا يوجد ثابت b.' },
+                { target: 'lab-answer-input', title: 'حقل الإجابة', description: 'المعامل a = f(x) ÷ x مباشرة.' },
+                { target: 'lab-hint-button', title: 'بحاجة لمساعدة؟', description: 'اضغط هنا لتلميح سريع.' },
+            ]}
         >
             <div className="flex items-center gap-3 font-mono font-black text-lg" dir="ltr">
                 <span className={theme.textMain}>a =</span>
                 <input
-                    type="number" value={inputA}
+                    type="number" data-tour-id="lab-answer-input" value={inputA}
                     onChange={e => setInputA(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheck()}
                     aria-label="أدخل قيمة المعامل"
@@ -157,11 +161,6 @@ function LinearFormulaContent({ phase, setPhase }) {
                     placeholder="؟"
                 />
             </div>
-
-            <LabTutorialNote
-                from={`القيمتان المعطاتان هما x = ${x} و f(x) = ${a * x}.`}
-                why={`بما أن f(x) = ax دالة خطية تمر من الأصل، فالمعامل a هو ببساطة ناتج قسمة f(x) على x: ${a * x} ÷ ${x} = ${a}.`}
-            />
 
             <button onClick={handleCheck} className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all">
                 <ZapIcon size={18} /> تأكيد التحليل
