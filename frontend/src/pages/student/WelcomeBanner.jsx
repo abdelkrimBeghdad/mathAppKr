@@ -9,32 +9,61 @@
  * مكوّن مستقل تماماً — لا يعدّل MasteryWorld.jsx. يُعرض فقط عند فراغ التقدّم،
  * ويختفي تلقائياً (localStorage) بعد أول محاولة فعلية أو بعد إغلاقه يدوياً.
  *
- * الاستخدام المقترح داخل MasteryWorld.jsx (لم يُطبَّق، فقط اقتراح):
- *   {labProgress.length === 0 && (
- *     <WelcomeBanner
- *       studentName={user?.name}
- *       recommendedCategory={CATEGORIES.find(c => c.id === 'expansion')}
- *       onStart={() => setActiveCategory('expansion')}
- *     />
- *   )}
+ * إصلاح خلل حقيقي (ظهور لحظي ثم اختفاء تلقائي بلا تسجيل بـlocalStorage):
+ * الاستخدام الساذج `{labProgress.length === 0 && <WelcomeBanner/>}` يجعل
+ * البانر يظهر فوراً قبل اكتمال الجلب (labProgress = [] ابتدائياً)، ثم يختفي
+ * بمجرد وصول بيانات حقيقية غير فارغة — دون أي تدخل من المستخدم، ودون أي
+ * كتابة بـlocalStorage لأن ذلك يحدث فقط داخل handleDismiss.
+ *
+ * الحل: خاصية `show` أصبحت ثلاثية الحالة:
+ *   - undefined/null  → لا يزال التحميل جارياً، لا تقرر شيئاً بعد
+ *   - true             → أظهر البانر (إن لم يكن مغلَقاً سابقاً)
+ *   - false            → لا تُظهره إطلاقاً لهذه الجلسة (كان هناك تقدّم فعلي)
+ * بمجرد ما يقرر المكوّن "أظهر" لأول مرة، يُثبّت هذا القرار داخلياً (latch)
+ * ولا يتراجع عنه حتى لو تغيّرت قيمة show لاحقاً من الأب — الإغلاق الوحيد
+ * الممكن بعدها هو ضغط المستخدم الفعلي على زر الإغلاق.
+ *
+ * الاستخدام الصحيح المُحدَّث داخل MasteryWorld.jsx:
+ *   const showWelcome = loading ? undefined : labProgress.length === 0;
+ *   <WelcomeBanner
+ *     show={showWelcome}
+ *     studentName={user?.name}
+ *     recommendedCategory={CATEGORIES.find(c => c.id === 'expansion')}
+ *     onStart={() => setActiveCategory('expansion')}
+ *   />
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, ArrowLeft, Trophy, Zap, Target } from 'lucide-react';
 
 const DISMISS_KEY = 'mw_welcome_dismissed';
 
-export default function WelcomeBanner({ studentName, recommendedCategory, onStart, isDark = true }) {
+export default function WelcomeBanner({ show, studentName, recommendedCategory, onStart, isDark = true }) {
     const [dismissed, setDismissed] = useState(() => {
         try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
     });
+    // القرار مثبَّت بمجرد اتخاذه لأول مرة — لا يتراجع البانر تلقائياً بعدها
+    const [latchedVisible, setLatchedVisible] = useState(false);
+    const decided = useRef(false);
+
+    useEffect(() => {
+        if (decided.current) return; // قرار سابق مثبَّت، تجاهل أي تحديثات لاحقة لـ show
+        if (show === true) {
+            decided.current = true;
+            setLatchedVisible(true);
+        } else if (show === false) {
+            decided.current = true;
+            setLatchedVisible(false);
+        }
+        // show === undefined/null → لا تزال البيانات تُحمَّل، لا تقرر بعد
+    }, [show]);
 
     const handleDismiss = () => {
         setDismissed(true);
         try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
     };
 
-    if (dismissed) return null;
+    if (dismissed || !latchedVisible) return null;
 
     const Icon = recommendedCategory?.icon || Target;
 

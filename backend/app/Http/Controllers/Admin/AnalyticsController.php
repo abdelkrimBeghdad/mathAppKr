@@ -28,13 +28,13 @@ class AnalyticsController extends Controller
         $fieldPerformance = Field::with(['lessons.quizResults'])
             ->get()
             ->map(function ($field) {
-            $scores = $field->lessons->flatMap->quizResults->pluck('score');
-            return [
-            'name' => $field->name,
-            'avg_score' => $scores->avg() ?? 0,
-            'count' => $scores->count()
-            ];
-        });
+                $scores = $field->lessons->flatMap->quizResults->pluck('score');
+                return [
+                    'name' => $field->name,
+                    'avg_score' => $scores->avg() ?? 0,
+                    'count' => $scores->count()
+                ];
+            });
 
         // Top 5 Students
         $topStudents = User::where('is_admin', false)
@@ -84,14 +84,14 @@ class AnalyticsController extends Controller
             ->keyBy('field_id');
 
         $funnel = $fields->map(function ($field) use ($reachByField, $totalStudents) {
-                $studentsReached = $reachByField->get($field->id)->students_reached ?? 0;
+            $studentsReached = $reachByField->get($field->id)->students_reached ?? 0;
 
-                return [
+            return [
                 'field' => $field->name,
                 'students_reached' => $studentsReached,
                 'reach_percent' => $totalStudents > 0 ? round(($studentsReached / $totalStudents) * 100, 1) : 0
-                ];
-            });
+            ];
+        });
 
         return response()->json([
             'difficult_lessons' => $difficultLessons,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity, DollarSign, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity, DollarSign, CreditCard, ArrowUpRight, ArrowDownLeft, Search, Download } from 'lucide-react';
 import LoadingScreen from '../../components/LoadingScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -14,6 +14,44 @@ export default function SiteGovernance() {
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('features'); // features, receipts, ledger
+
+    const [ledgerSearch, setLedgerSearch] = useState('');
+    const [ledgerTypeFilter, setLedgerTypeFilter] = useState('all');
+
+    const filteredLedger = (financialLedger.ledger?.data || []).filter(row => {
+        const matchesSearch = 
+            (row.user?.name || '').toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+            (row.description || '').toLowerCase().includes(ledgerSearch.toLowerCase());
+        const matchesType = 
+            ledgerTypeFilter === 'all' || 
+            row.transaction_type === ledgerTypeFilter;
+        return matchesSearch && matchesType;
+    });
+
+    const exportLedgerToCSV = () => {
+        const headers = ['رقم القيد', 'التاريخ', 'اسم الطالب', 'وسيلة الدفع', 'النوع', 'العملات', 'القيمة بالدينار', 'الوصف', 'المصادق'];
+        const rows = filteredLedger.map(row => [
+            `#${row.id}`,
+            new Date(row.created_at).toLocaleString('ar-DZ'),
+            row.user?.name || `مستخدم #${row.user_id}`,
+            row.payment_method,
+            row.transaction_type === 'credit' ? 'إيداع / تفعيل' : 'اقتطاع عملات',
+            row.coins_amount || 0,
+            row.amount_dzd || 0,
+            row.description || '',
+            row.approver?.name || 'آلي'
+        ]);
+
+        const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `تقرير_الدفتر_المالي_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const fetchData = async () => {
         try {
@@ -282,12 +320,51 @@ export default function SiteGovernance() {
                             </div>
                         </div>
 
+                        {/* Filters and Export Actions */}
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                                <div className="relative w-full sm:w-72">
+                                    <span className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
+                                        <Search size={18} />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        placeholder="بحث باسم الطالب أو البيان..."
+                                        value={ledgerSearch}
+                                        onChange={(e) => setLedgerSearch(e.target.value)}
+                                        className="w-full pr-10 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-sky-500 text-sm font-medium transition-colors"
+                                    />
+                                </div>
+                                <select
+                                    value={ledgerTypeFilter}
+                                    onChange={(e) => setLedgerTypeFilter(e.target.value)}
+                                    className="w-full sm:w-48 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-sky-500 text-sm font-bold transition-colors text-slate-600"
+                                >
+                                    <option value="all">جميع الحركات</option>
+                                    <option value="credit">إيداعات وتفعيلات</option>
+                                    <option value="debit">اقتطاعات العملات</option>
+                                </select>
+                            </div>
+                            <button
+                                onClick={exportLedgerToCSV}
+                                disabled={filteredLedger.length === 0}
+                                className="w-full md:w-auto px-6 py-3 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 transition-all active:scale-95 text-sm"
+                            >
+                                <Download size={18} /> تصدير تقرير المحاسبة (CSV)
+                            </button>
+                        </div>
+
                         {/* Ledger Table */}
                         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                <DollarSign className="text-emerald-500" size={22} />
-                                سجل القيود المالية والتدقيق التراكمي (ERP Audit Ledger)
-                            </h3>
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <DollarSign className="text-emerald-500" size={22} />
+                                    سجل القيود المالية والتدقيق التراكمي (ERP Audit Ledger)
+                                </h3>
+                                <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold">
+                                    عدد السجلات المصفاة: {filteredLedger.length}
+                                </span>
+                            </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-right text-sm">
                                     <thead>
@@ -303,7 +380,7 @@ export default function SiteGovernance() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 font-medium text-slate-700">
-                                        {(financialLedger.ledger?.data || []).map((row) => (
+                                        {filteredLedger.map((row) => (
                                             <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                                                 <td className="py-3 px-3 font-mono font-bold text-slate-400">#{row.id}</td>
                                                 <td className="py-3 px-3 text-xs text-slate-500">{new Date(row.created_at).toLocaleString('ar-DZ')}</td>
