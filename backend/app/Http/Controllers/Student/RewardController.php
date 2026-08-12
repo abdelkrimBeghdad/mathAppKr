@@ -8,7 +8,6 @@ use Carbon\Carbon;
 use App\Models\SecurityIncident;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Exceptions\LabClaimRejected;
 use App\Services\LabVerifiers\AlgebraVerifier;
 use App\Services\LabVerifiers\GeometryVerifier;
 use App\Services\LabVerifiers\TrigVerifier;
@@ -69,11 +68,18 @@ class RewardController extends Controller
         // — بفاصل زمني — يكتب عليه، بلا أي قفل. طلبان متزامنان لنفس المختبر
         // كانا يستطيعان كلاهما قراءة reward_claimed_at كـ"فارغ" قبل أن يكتب
         // أيّهما، فيمرّان معاً ويُمنح المستخدم المكافأة مرتين. الآن كل هذا
-        // القسم الحرج (القراءة + التحقق + الكتابة) محاط بمعاملة DB::transaction
-        // مع lockForUpdate على صف LabProgress، فيُجبَر أي طلب ثانٍ يصل بنفس
+        // القراءة + التحقق + الكتابة) محاطة بمعاملة DB::transaction مع
+        // lockForUpdate على صف LabProgress، فيُجبَر أي طلب ثانٍ يصل بنفس
         // اللحظة على الانتظار حتى تكتمل المعاملة الأولى بالكامل قبل أن يقرأ هو.
-        try {
-            return DB::transaction(function () use ($user, $labId, $verification, $request) {
+        //
+        // ملاحظة مهمة (إصلاح ثانٍ اكتُشف عبر php artisan test): كل مسارات
+        // الرفض هنا تستخدم return وليس throw. لو استخدمنا throw للخروج من
+        // closure المعاملة، كان DB::transaction سيتراجع تلقائياً عن كل
+        // الكتابات بداخلها — بما فيها كتابة سجل الحادثة الأمنية نفسها التي
+        // نريد الاحتفاظ بها كدليل! بـreturn، تكتمل المعاملة (commit) دائماً
+        // بغض النظر عن النتيجة، فتُحفظ سجلات security_incidents في كل الحالات
+        // بينما يبقى منح المكافأة الفعلي محمياً بنفس القفل.
+        return DB::transaction(function () use ($user, $labId, $verification, $request) {
                 // 1. التحقق العام من وجود تقدم للمختبر - مطابقة تامة (exact match) فقط.
                 // ملاحظة أمنية: تمت إزالة منطق المطابقة الجزئية/البادئة (prefix matching) القديم
                 // لأنه كان يسمح لسجل تقدم واحد بمعرف قصير بمطابقة عشرات المختبرات المختلفة.
@@ -84,20 +90,20 @@ class RewardController extends Controller
 
                 if (!$progress || !in_array($progress->phase, ['practice', 'completed'])) {
                     $this->logSecurityIncident($user, 'missing_lab_progress', $labId, $request);
-                    throw new LabClaimRejected(response()->json([
+                    return response()->json([
                         'error' => 'Cheat detected',
                         'message' => 'You must start and practice the lab before claiming the reward.'
-                    ], 403));
+                    ], 403);
                 }
 
                 // 1.b. الحماية من الاستنزاف اللانهائي: مكافأة كل مختبر تُمنح مرة واحدة فقط
                 // لكل (user_id, lab_id). أي محاولة لاحقة تُرفض وتُسجَّل كحادثة أمنية.
                 if ($progress->reward_claimed_at) {
                     $this->logSecurityIncident($user, 'duplicate_claim', $labId, $request);
-                    throw new LabClaimRejected(response()->json([
+                    return response()->json([
                         'error' => 'Cheat detected',
                         'message' => 'Reward for this lab has already been claimed.'
-                    ], 403));
+                    ], 403);
                 }
 
                 // 2. التحقق الرياضي المخصص للمختبرات المفروض عليها التحقق حالياً
@@ -134,17 +140,17 @@ class RewardController extends Controller
                 if (in_array($labId, $enforcedLabs)) {
                     if (!$verification || !is_array($verification)) {
                         $this->logSecurityIncident($user, 'missing_verification', $labId, $request);
-                        throw new LabClaimRejected(response()->json([
+                        return response()->json([
                             'error' => 'Cheat detected',
                             'message' => 'Missing verification payload for enforced security lab.'
-                        ], 403));
+                        ], 403);
                     }
 
                     $type = $verification['type'] ?? '';
 
                     $verifierResult = $this->dispatchLabVerification($type, $verification, $user, $labId, $request);
                     if ($verifierResult !== null) {
-                        throw new LabClaimRejected($verifierResult);
+                        return $verifierResult;
                     }
                 }
 
@@ -187,12 +193,6 @@ class RewardController extends Controller
                     ] : null
                 ]);
             });
-        } catch (LabClaimRejected $e) {
-            // رُفضت المطالبة قبل أي كتابة (تقدّم مفقود / مطالبة مكرَّرة / تحقق
-            // رياضي فاشل) — المعاملة تراجعت تلقائياً بلا أي أثر على القاعدة،
-            // ونعيد فقط استجابة الرفض الجاهزة التي حملها الاستثناء.
-            return $e->response;
-        }
     }
 
     private function logSecurityIncident($user, $type, $labId, Request $request, $extraDetails = [])
@@ -242,5 +242,5 @@ class RewardController extends Controller
             'error' => 'Cheat detected',
             'message' => 'Unknown verification type.'
         ], 403);
-    }
+                }
 }

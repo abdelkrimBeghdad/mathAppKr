@@ -17,7 +17,12 @@ Route::middleware('throttle:10,1')->post('/register', [AuthController::class , '
 Route::middleware('throttle:10,1')->post('/login', [AuthController::class , 'login']);
 
 // Parent Login (public)
-Route::post('/parent/login', [\App\Http\Controllers\ParentController::class , 'login']);
+// إصلاح خلل حقيقي: هذا المسار لم يكن محميًا بأي حد لعدد المحاولات إطلاقًا،
+// خلافاً لـ/login و/register (10 محاولات/دقيقة). وهو أخطر من الدخول العادي
+// لأنه يعتمد على رقم هاتف + إيميل الطالب فقط بلا كلمة سر — عرضة لهجوم
+// تخمين آلي (brute-force) على مجموعات محتملة من الأرقام/الإيميلات. الحد هنا
+// أشد (5 بدل 10) لأن سطح الهجوم المحتمل أخطر.
+Route::middleware('throttle:5,1')->post('/parent/login', [\App\Http\Controllers\ParentController::class , 'login']);
 
 // Broadcast Auth Route for Sanctum
 Route::post('/broadcasting/auth', function (Request $request) {
