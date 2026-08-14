@@ -205,6 +205,9 @@ Route::middleware(['auth:sanctum', 'restrict.parent'])->group(function () {
             Route::get('/lab-progress/{labId}', [LabProgressController::class, 'show']);
             Route::post('/lab-progress', [LabProgressController::class, 'update'])
                 ->middleware('throttle:60,1');
+
+            // Labs access settings for students (public lab list with access_type / price)
+            Route::get('/labs', [\App\Http\Controllers\Admin\AdminLabController::class, 'index']);
         }
 
         );
@@ -216,6 +219,11 @@ Route::middleware(['auth:sanctum', 'restrict.parent'])->group(function () {
 
             Route::get('/access/pending-receipts', [\App\Http\Controllers\ContentAccessController::class , 'getPendingReceipts']);
             Route::post('/access/approve-receipt/{record}', [\App\Http\Controllers\ContentAccessController::class , 'approveAccess']);
+
+            // Labs Management (Admin)
+            Route::get('/labs', [\App\Http\Controllers\Admin\AdminLabController::class, 'index']);
+            Route::put('/labs/{lab}', [\App\Http\Controllers\Admin\AdminLabController::class, 'update']);
+            Route::post('/labs/bulk-update', [\App\Http\Controllers\Admin\AdminLabController::class, 'bulkUpdate']);
         }
         );
     });

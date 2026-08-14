@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity, DollarSign, CreditCard, ArrowUpRight, ArrowDownLeft, Search, Download } from 'lucide-react';
+import { Shield, Settings, CheckCircle, XCircle, FileText, ExternalLink, Loader2, Save, Coins, Zap, Activity, DollarSign, CreditCard, ArrowUpRight, ArrowDownLeft, Search, Download, FlaskConical, Filter, BookOpen, BarChart3 } from 'lucide-react';
 import LoadingScreen from '../../components/LoadingScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -13,7 +13,11 @@ export default function SiteGovernance() {
     const [financialLedger, setFinancialLedger] = React.useState({ summary: {}, ledger: { data: [] } });
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState('features'); // features, receipts, ledger
+    const [activeTab, setActiveTab] = React.useState('features'); // features, labs, receipts, ledger
+    const [labs, setLabs] = React.useState([]);
+    const [labCategoryFilter, setLabCategoryFilter] = React.useState('all');
+    const [labSearch, setLabSearch] = React.useState('');
+    const [savingLabId, setSavingLabId] = React.useState(null);
 
     const [ledgerSearch, setLedgerSearch] = useState('');
     const [ledgerTypeFilter, setLedgerTypeFilter] = useState('all');
@@ -55,14 +59,16 @@ export default function SiteGovernance() {
 
     const fetchData = async () => {
         try {
-            const [featuresRes, receiptsRes, ledgerRes] = await Promise.all([
+            const [featuresRes, receiptsRes, ledgerRes, labsRes] = await Promise.all([
                 api.get('/settings/features'),
                 api.get('/admin/access/pending-receipts'),
-                api.get('/admin/access/financial-ledger')
+                api.get('/admin/access/financial-ledger'),
+                api.get('/admin/labs'),
             ]);
             setFeatures(featuresRes.data);
             setPendingReceipts(receiptsRes.data);
             setFinancialLedger(ledgerRes.data);
+            setLabs(labsRes.data);
         } catch (e) {
             console.error(e);
             toast.error('فشل تحميل البيانات');
@@ -70,6 +76,57 @@ export default function SiteGovernance() {
             setLoading(false);
         }
     };
+
+    const handleUpdateLab = async (lab) => {
+        setSavingLabId(lab.id);
+        try {
+            await api.put(`/admin/labs/${lab.id}`, {
+                access_type: lab.access_type,
+                price: lab.price,
+            });
+            toast.success(`تم تحديث إعدادات «${lab.title_ar}»`);
+        } catch (e) {
+            toast.error('فشل تحديث المختبر');
+        } finally {
+            setSavingLabId(null);
+        }
+    };
+
+    const LAB_CATEGORIES = [
+        { key: 'all',           label: 'الكل' },
+        { key: 'expansion',     label: 'النشر والتبسيط' },
+        { key: 'factorization', label: 'التحليل الجبري' },
+        { key: 'pgcd',          label: 'القواسم والأعداد' },
+        { key: 'roots',         label: 'الجذور التربيعية' },
+        { key: 'fractions',     label: 'الكسور' },
+        { key: 'powers',        label: 'القوى والكتابة العلمية' },
+        { key: 'equations',     label: 'المعادلات' },
+        { key: 'inequalities',  label: 'المتراجحات' },
+        { key: 'linear',        label: 'الدوال الخطية' },
+        { key: 'affine',        label: 'الدوال التآلفية' },
+        { key: 'systems',       label: 'جمل المعادلتين' },
+        { key: 'pythagoras',    label: 'فيثاغورس' },
+        { key: 'thales',        label: 'طاليس' },
+        { key: 'vectors',       label: 'الأشعة' },
+        { key: 'trig',          label: 'الحساب المثلثي' },
+        { key: 'geometry-3d',   label: 'الهندسة الفضائية' },
+        { key: 'stats',         label: 'الإحصاء' },
+        { key: 'rotation',      label: 'الرادار' },
+        { key: 'probability',   label: 'الاحتمالات' },
+    ];
+
+    const DIFFICULTY_COLORS = {
+        'مبتدئ': 'bg-emerald-100 text-emerald-700',
+        'متوسط': 'bg-sky-100 text-sky-700',
+        'متقدم': 'bg-amber-100 text-amber-700',
+        'خبير':  'bg-rose-100 text-rose-700',
+    };
+
+    const filteredLabs = labs.filter(lab => {
+        const matchCat = labCategoryFilter === 'all' || lab.category === labCategoryFilter;
+        const matchSearch = lab.title_ar.includes(labSearch) || lab.lab_key.includes(labSearch);
+        return matchCat && matchSearch;
+    });
 
     React.useEffect(() => {
         fetchData();
@@ -127,6 +184,13 @@ export default function SiteGovernance() {
                         {pendingReceipts.length > 0 && (
                             <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">{pendingReceipts.length}</span>
                         )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('labs')}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === 'labs' ? 'bg-white text-violet-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <FlaskConical size={18} /> إدارة المخابر
+                        <span className="bg-violet-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{labs.length}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('ledger')}
@@ -276,6 +340,146 @@ export default function SiteGovernance() {
                                 ))}
                             </div>
                         )}
+                    </motion.div>
+                )}
+
+                {activeTab === 'labs' && (
+                    <motion.div
+                        key="labs"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                    >
+                        {/* Stats Summary */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                                { label: 'إجمالي المخابر', value: labs.length, icon: <FlaskConical size={22} />, color: 'violet' },
+                                { label: 'مجاني (Classic)', value: labs.filter(l => l.access_type === 'classic').length, icon: <BookOpen size={22} />, color: 'emerald' },
+                                { label: 'مدفوع (Premium)', value: labs.filter(l => l.access_type === 'premium').length, icon: <Coins size={22} />, color: 'amber' },
+                                { label: 'إجمالي المحاولات', value: labs.reduce((s, l) => s + (l.attempts || 0), 0), icon: <BarChart3 size={22} />, color: 'sky' },
+                            ].map(stat => (
+                                <div key={stat.label} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+                                    <div>
+                                        <span className="text-xs font-black text-slate-400 uppercase">{stat.label}</span>
+                                        <h3 className={`text-3xl font-black mt-1 text-${stat.color}-600`}>{stat.value}</h3>
+                                    </div>
+                                    <div className={`w-12 h-12 bg-${stat.color}-50 text-${stat.color}-500 rounded-2xl flex items-center justify-center`}>
+                                        {stat.icon}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Search & Filter Toolbar */}
+                        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="بحث بالاسم أو المفتاح..."
+                                    value={labSearch}
+                                    onChange={e => setLabSearch(e.target.value)}
+                                    className="w-full pr-10 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-violet-400 transition-colors"
+                                />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {LAB_CATEGORIES.map(cat => (
+                                    <button
+                                        key={cat.key}
+                                        onClick={() => setLabCategoryFilter(cat.key)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                            labCategoryFilter === cat.key
+                                                ? 'bg-violet-500 text-white shadow-md shadow-violet-500/20'
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Labs Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {filteredLabs.map(lab => (
+                                <div key={lab.id} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 hover:border-violet-300 group transition-all flex flex-col gap-4">
+                                    {/* Lab Header */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                            <h4 className="font-black text-slate-800 text-sm leading-snug">{lab.title_ar}</h4>
+                                            <code className="text-[10px] text-slate-400 font-mono">{lab.lab_key}</code>
+                                        </div>
+                                        <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-black ${DIFFICULTY_COLORS[lab.difficulty] || 'bg-slate-100 text-slate-500'}`}>
+                                            {lab.difficulty}
+                                        </span>
+                                    </div>
+
+                                    {/* Usage Stats */}
+                                    <div className="flex gap-3 text-[11px] font-bold text-slate-500">
+                                        <span className="flex items-center gap-1"><BarChart3 size={12} /> {lab.attempts || 0} محاولة</span>
+                                        <span className="flex items-center gap-1"><CheckCircle size={12} className="text-emerald-500" /> {lab.completed || 0} مكتمل</span>
+                                    </div>
+
+                                    {/* Access Type Toggle */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">نوع الوصول</label>
+                                        <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                                            <button
+                                                onClick={() => setLabs(prev => prev.map(l => l.id === lab.id ? { ...l, access_type: 'classic', price: 0 } : l))}
+                                                className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                                                    lab.access_type === 'classic'
+                                                        ? 'bg-white text-emerald-600 shadow-sm border border-slate-100'
+                                                        : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                مجاني
+                                            </button>
+                                            <button
+                                                onClick={() => setLabs(prev => prev.map(l => l.id === lab.id ? { ...l, access_type: 'premium' } : l))}
+                                                className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                                                    lab.access_type === 'premium'
+                                                        ? 'bg-amber-500 text-white shadow-md'
+                                                        : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                مدفوع
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Price Input */}
+                                    {lab.access_type === 'premium' && (
+                                        <div className="relative animate-in slide-in-from-top-2 duration-200">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={lab.price}
+                                                onChange={e => setLabs(prev => prev.map(l => l.id === lab.id ? { ...l, price: parseInt(e.target.value) || 0 } : l))}
+                                                className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-amber-400 transition-all font-black text-slate-700 text-sm pr-10"
+                                                placeholder="السعر بالعملات"
+                                            />
+                                            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={16} />
+                                        </div>
+                                    )}
+
+                                    {/* Save Button */}
+                                    <button
+                                        onClick={() => handleUpdateLab(lab)}
+                                        disabled={savingLabId === lab.id}
+                                        className="mt-auto w-full py-2.5 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-violet-700 transition-all active:scale-95 disabled:opacity-50 text-sm"
+                                    >
+                                        {savingLabId === lab.id ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                        حفظ
+                                    </button>
+                                </div>
+                            ))}
+                            {filteredLabs.length === 0 && (
+                                <div className="col-span-full py-16 text-center text-slate-400 font-bold">
+                                    لا توجد مخابر تطابق معايير البحث.
+                                </div>
+                            )}
+                        </div>
                     </motion.div>
                 )}
 

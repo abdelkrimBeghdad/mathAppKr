@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Models\Section;
 use App\Models\Field;
 use App\Models\SiteFeature;
+use App\Models\SiteLab;
 use App\Models\PaymentLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -175,10 +176,11 @@ class ContentAccessController extends Controller
     protected function getModelClass($type)
     {
         return match ($type) {
-            'lesson' => Lesson::class,
+            'lesson'  => Lesson::class,
             'section' => Section::class,
-            'field' => Field::class,
+            'field'   => Field::class,
             'feature' => SiteFeature::class,
+            'lab'     => SiteLab::class,
         };
     }
 }

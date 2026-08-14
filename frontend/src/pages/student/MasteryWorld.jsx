@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Sigma, TrendingUp, Layers, X, Play, Rocket, Sun, Moon, Binary, Scale, ShieldCheck, Target, LayoutGrid, ChevronLeft, ChevronRight, Triangle, Map, Zap, Calculator, GitBranch, Box, BarChart2, RefreshCcw, Dice5, Navigation, CheckCircle2, Clock, ArrowRight, Search } from 'lucide-react';
+import { BookOpen, Sigma, TrendingUp, Layers, X, Play, Rocket, Sun, Moon, Binary, Scale, ShieldCheck, Target, LayoutGrid, ChevronLeft, ChevronRight, Triangle, Map, Zap, Calculator, GitBranch, Box, BarChart2, RefreshCcw, Dice5, Navigation, CheckCircle2, Clock, ArrowRight, Search, Lock, Coins } from 'lucide-react';
 import { labProgressService } from '../../utils/labProgressService';
 import { useTheme } from '../../context/ThemeContext';
+import api from '../../api/axios';
 import SEO from '../../components/common/SEO';
 import WelcomeBanner from '../student/WelcomeBanner';
 import SkillPathTrig from '../student/SkillPathTrig';
@@ -214,11 +215,42 @@ export default function MasteryWorld() {
     const [labProgress, setLabProgress] = useState([]);
     const [activeDomain, setActiveDomain] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [labSettings, setLabSettings] = useState({}); // lab_key -> { access_type, price }
+    const [premiumLockLab, setPremiumLockLab] = useState(null); // lab shown in premium gate
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchProgress();
+        fetchLabSettings();
     }, []);
+
+    const fetchLabSettings = async () => {
+        try {
+            const res = await api.get('/labs');
+            const map = {};
+            (res.data || []).forEach(l => { map[l.lab_key] = l; });
+            setLabSettings(map);
+        } catch (err) {
+            console.error('Failed to fetch lab settings', err);
+        }
+    };
+
+    const getLabAccess = (labId) => {
+        const setting = labSettings[labId];
+        return setting?.access_type || 'classic';
+    };
+
+    const getLabPrice = (labId) => {
+        return labSettings[labId]?.price || 0;
+    };
+
+    const handleOpenLab = (labId) => {
+        if (getLabAccess(labId) === 'premium') {
+            setPremiumLockLab(labId);
+        } else {
+            setPlayingLab(labId);
+        }
+    };
 
     const fetchProgress = async () => {
         try {
@@ -635,6 +667,63 @@ export default function MasteryWorld() {
                     )}
                 </AnimatePresence>
             </main>
+
+            {/* Premium Lock Modal */}
+            <AnimatePresence>
+                {premiumLockLab && (() => {
+                    const labMeta = LABS_MENU.find(l => l.id === premiumLockLab);
+                    const price = getLabPrice(premiumLockLab);
+                    return (
+                        <motion.div
+                            key="premium-lock"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setPremiumLockLab(null)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.85, y: 40 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.85, y: 40 }}
+                                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                onClick={e => e.stopPropagation()}
+                                className="bg-white rounded-[2.5rem] p-10 max-w-md w-full text-center shadow-2xl border border-amber-100"
+                                dir="rtl"
+                            >
+                                <div className="w-20 h-20 bg-amber-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-amber-200">
+                                    <Lock size={40} className="text-amber-500" />
+                                </div>
+                                <h2 className="text-2xl font-black text-slate-800 mb-2">مختبر مميز 🔒</h2>
+                                <p className="text-slate-500 font-medium mb-2">هذا المختبر من النوع المدفوع:</p>
+                                <p className="text-xl font-black text-slate-800 mb-6">{labMeta?.title}</p>
+                                <div className="flex items-center justify-center gap-2 mb-8 bg-amber-50 px-6 py-4 rounded-2xl border border-amber-200">
+                                    <Coins size={24} className="text-amber-500" />
+                                    <span className="text-3xl font-black text-amber-600">{price}</span>
+                                    <span className="text-slate-500 font-bold">عملة ذهبية</span>
+                                </div>
+                                <p className="text-sm text-slate-400 font-medium mb-8">
+                                    يمكنك فتح هذا المختبر بالعملات الذهبية التي تجمعها من حل الدروس والتحديات أو بالشراء من المتجر.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setPremiumLockLab(null)}
+                                        className="flex-1 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                                    >
+                                        رجوع
+                                    </button>
+                                    <button
+                                        onClick={() => { setPremiumLockLab(null); navigate('/student/content'); }}
+                                        className="flex-1 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-500/25 transition-all"
+                                    >
+                                        فتح بالعملات
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    );
+                })()}
+            </AnimatePresence>
 
             {/* Lab Playing Overlay with smooth transition */}
             <AnimatePresence>
