@@ -59,16 +59,16 @@ export default function SiteGovernance() {
 
     const fetchData = async () => {
         try {
-            const [featuresRes, receiptsRes, ledgerRes, labsRes] = await Promise.all([
+            const [featuresRes, receiptsRes, ledgerRes, labsRes] = await Promise.allSettled([
                 api.get('/settings/features'),
                 api.get('/admin/access/pending-receipts'),
                 api.get('/admin/access/financial-ledger'),
                 api.get('/admin/labs'),
             ]);
-            setFeatures(featuresRes.data);
-            setPendingReceipts(receiptsRes.data);
-            setFinancialLedger(ledgerRes.data);
-            setLabs(labsRes.data);
+            if (featuresRes.status === 'fulfilled') setFeatures(featuresRes.value.data);
+            if (receiptsRes.status === 'fulfilled') setPendingReceipts(receiptsRes.value.data);
+            if (ledgerRes.status === 'fulfilled') setFinancialLedger(ledgerRes.value.data);
+            if (labsRes.status === 'fulfilled') setLabs(labsRes.value.data);
         } catch (e) {
             console.error(e);
             toast.error('فشل تحميل البيانات');

@@ -14,11 +14,15 @@ class AdminLabController extends Controller
      */
     public function index()
     {
-        $labs = SiteLab::all()->map(function ($lab) {
+        $user = auth('sanctum')->user();
+
+        $labs = SiteLab::all()->map(function ($lab) use ($user) {
             // Attach usage stats: how many students attempted / completed this lab
             $attempts  = LabProgress::where('lab_id', $lab->lab_key)->count();
             $completed = LabProgress::where('lab_id', $lab->lab_key)
                 ->where('phase', 'completed')->count();
+
+            $isUnlocked = $lab->access_type === 'classic' || ($user && ($user->is_admin || $user->accessRecords()->where('accessible_type', SiteLab::class)->where('accessible_id', $lab->id)->where('status', 'active')->exists()));
 
             return [
                 'id'          => $lab->id,
@@ -28,6 +32,7 @@ class AdminLabController extends Controller
                 'difficulty'  => $lab->difficulty,
                 'access_type' => $lab->access_type,
                 'price'       => $lab->price,
+                'is_unlocked' => $isUnlocked,
                 'attempts'    => $attempts,
                 'completed'   => $completed,
             ];

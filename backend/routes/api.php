@@ -218,6 +218,7 @@ Route::middleware(['auth:sanctum', 'restrict.parent'])->group(function () {
             Route::post('/settings/content-pricing', [\App\Http\Controllers\SiteSettingsController::class , 'updateContentPricing']);
 
             Route::get('/access/pending-receipts', [\App\Http\Controllers\ContentAccessController::class , 'getPendingReceipts']);
+            Route::get('/access/financial-ledger', [\App\Http\Controllers\ContentAccessController::class , 'getFinancialLedger']);
             Route::post('/access/approve-receipt/{record}', [\App\Http\Controllers\ContentAccessController::class , 'approveAccess']);
 
             // Labs Management (Admin)

@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             DemoContentSeeder::class ,
             QuizDemoSeeder::class ,
             SiteFeatureSeeder::class ,
+            SiteLabSeeder::class ,
         ]);
     }
 }

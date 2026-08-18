@@ -21,7 +21,7 @@ class ContentAccessController extends Controller
     {
         $request->validate([
             'accessible_id' => 'required',
-            'accessible_type' => 'required|string|in:lesson,section,field,feature',
+            'accessible_type' => 'required|string|in:lesson,section,field,feature,lab',
         ]);
 
         $user = $request->user();
@@ -61,7 +61,7 @@ class ContentAccessController extends Controller
                 'coins_amount' => $resource->price,
                 'payment_method' => 'coins',
                 'transaction_type' => 'debit',
-                'description' => 'فتح محتوى بالعملات الرقمية: ' . ($resource->title ?? $resource->name ?? $type),
+                'description' => 'فتح محتوى بالعملات الرقمية: ' . ($resource->title_ar ?? $resource->title ?? $resource->name ?? $type),
                 'approved_by' => null,
             ]);
 
@@ -79,7 +79,7 @@ class ContentAccessController extends Controller
     {
         $request->validate([
             'accessible_id' => 'required',
-            'accessible_type' => 'required|string|in:lesson,section,field,feature',
+            'accessible_type' => 'required|string|in:lesson,section,field,feature,lab',
             'receipt' => 'required|image|max:2048', // 2MB Max
         ]);
 

@@ -8,6 +8,8 @@ import api from '../../api/axios';
 import SEO from '../../components/common/SEO';
 import WelcomeBanner from '../student/WelcomeBanner';
 import SkillPathTrig from '../student/SkillPathTrig';
+import toast from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
 
 // Lab Imports (Preserved)
 import LabErrorBoundary from '../../components/lesson/LabErrorBoundary';
@@ -215,8 +217,9 @@ export default function MasteryWorld() {
     const [labProgress, setLabProgress] = useState([]);
     const [activeDomain, setActiveDomain] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [labSettings, setLabSettings] = useState({}); // lab_key -> { access_type, price }
+    const [labSettings, setLabSettings] = useState({}); // lab_key -> { id, access_type, price, is_unlocked }
     const [premiumLockLab, setPremiumLockLab] = useState(null); // lab shown in premium gate
+    const [unlocking, setUnlocking] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -235,9 +238,13 @@ export default function MasteryWorld() {
         }
     };
 
-    const getLabAccess = (labId) => {
+    const isLabLocked = (labId) => {
         const setting = labSettings[labId];
-        return setting?.access_type || 'classic';
+        if (!setting) return false;
+        if (setting.access_type === 'premium' && !setting.is_unlocked) {
+            return true;
+        }
+        return false;
     };
 
     const getLabPrice = (labId) => {
@@ -245,10 +252,30 @@ export default function MasteryWorld() {
     };
 
     const handleOpenLab = (labId) => {
-        if (getLabAccess(labId) === 'premium') {
+        if (isLabLocked(labId)) {
             setPremiumLockLab(labId);
         } else {
             setPlayingLab(labId);
+        }
+    };
+
+    const handleUnlockWithCoins = async (labId) => {
+        const setting = labSettings[labId];
+        if (!setting) return;
+        setUnlocking(true);
+        try {
+            await api.post('/access/unlock-coins', {
+                accessible_type: 'lab',
+                accessible_id: setting.id
+            });
+            toast.success('تم فتح المختبر بنجاح! 🚀');
+            await fetchLabSettings();
+            setPremiumLockLab(null);
+            setPlayingLab(labId);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'فشل فتح المختبر. تأكد من رصيدك.');
+        } finally {
+            setUnlocking(false);
         }
     };
 
@@ -478,12 +505,13 @@ export default function MasteryWorld() {
                                         const status = getLabStatus(lab.id);
                                         const labBg = isDark ? catAccent.bg : catAccent.bgLight;
                                         const labText = isDark ? catAccent.text : catAccent.textLight;
+                                        const isLocked = isLabLocked(lab.id);
                                         return (
                                             <motion.div
                                                 key={lab.id}
                                                 whileHover={{ scale: 1.03, y: -4 }}
                                                 whileTap={{ scale: 0.98 }}
-                                                onClick={() => setPlayingLab(lab.id)}
+                                                onClick={() => handleOpenLab(lab.id)}
                                                 className={`relative p-7 rounded-[2rem] border transition-all cursor-pointer group overflow-hidden ${isDark
                                                     ? 'bg-white/[0.03] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.06]'
                                                     : 'bg-white border-slate-200/60 hover:border-indigo-200 hover:bg-indigo-50/10 shadow-md'
@@ -491,8 +519,10 @@ export default function MasteryWorld() {
                                             >
                                                 <div className={`absolute inset-0 bg-gradient-to-br ${catAccent.gradient || 'from-indigo-500 to-purple-600'} opacity-0 group-hover:opacity-[0.07] transition-opacity duration-500`} />
                                                 <div className="relative flex items-center justify-between mb-5">
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${status === 'completed' ? 'bg-emerald-500/15' : labBg} group-hover:scale-110`}>
-                                                        {status === 'completed' ? (
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${status === 'completed' ? 'bg-emerald-500/15' : isLocked ? 'bg-amber-500/15' : labBg} group-hover:scale-110`}>
+                                                        {isLocked ? (
+                                                            <Lock size={22} className="text-amber-400" />
+                                                        ) : status === 'completed' ? (
                                                             <CheckCircle2 size={22} className="text-emerald-400" />
                                                         ) : status === 'in-progress' ? (
                                                             <Clock size={22} className="text-amber-400" />
@@ -501,11 +531,15 @@ export default function MasteryWorld() {
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        {status && (
+                                                        {isLocked ? (
+                                                            <span className="text-[10px] font-black px-3 py-1 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/30 flex items-center gap-1">
+                                                                <Lock size={10} /> {getLabPrice(lab.id)} عملة
+                                                            </span>
+                                                        ) : status ? (
                                                             <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}`}>
                                                                 {status === 'completed' ? 'مكتمل ✅' : 'قيد العمل 🔄'}
                                                             </span>
-                                                        )}
+                                                        ) : null}
                                                         <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full ${isDark ? 'bg-white/5 text-white/40 border border-white/5' : 'bg-slate-100 text-slate-500 border border-slate-200/50'}`}>
                                                             {lab.difficulty}
                                                         </span>
@@ -708,15 +742,18 @@ export default function MasteryWorld() {
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => setPremiumLockLab(null)}
-                                        className="flex-1 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                                        disabled={unlocking}
+                                        className="flex-1 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
                                     >
-                                        رجوع
+                                        إلغاء
                                     </button>
                                     <button
-                                        onClick={() => { setPremiumLockLab(null); navigate('/student/content'); }}
-                                        className="flex-1 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-500/25 transition-all"
+                                        onClick={() => handleUnlockWithCoins(premiumLockLab)}
+                                        disabled={unlocking}
+                                        className="flex-1 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
-                                        فتح بالعملات
+                                        {unlocking ? <Loader2 size={18} className="animate-spin" /> : <Coins size={18} />}
+                                        فتح بالعملات الان
                                     </button>
                                 </div>
                             </motion.div>
