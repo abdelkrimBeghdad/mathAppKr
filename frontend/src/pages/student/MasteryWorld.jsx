@@ -7,7 +7,6 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../api/axios';
 import SEO from '../../components/common/SEO';
 import WelcomeBanner from '../student/WelcomeBanner';
-import SkillPathTrig from '../student/SkillPathTrig';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -413,13 +412,11 @@ export default function MasteryWorld() {
                     isDark={isDark}
                 />
             </div>
-            <SkillPathTrig onOpenLab={(labId) => console.log('فتح:', labId)} />
             {/* Ambient Background blur (low-key, adapted for theme) */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                 <div className={`absolute -top-40 -right-40 w-[400px] h-[400px] rounded-full blur-[120px] transition-colors duration-1000 ${isDark ? 'bg-indigo-600/5' : 'bg-indigo-500/5'}`} />
                 <div className={`absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full blur-[120px] transition-colors duration-1000 ${isDark ? 'bg-purple-600/5' : 'bg-purple-500/5'}`} style={{ animationDelay: '2s' }} />
             </div>
-
             {/* Hero Header */}
             <header className={`${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} rounded-[2.5rem] p-8 md:p-10 shadow-xl border-2 text-center relative overflow-hidden z-10`}>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full" />
