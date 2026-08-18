@@ -111,6 +111,8 @@ export default function LabChallenge({
     current = 1,        // رقم السؤال الحالي (يبدأ من 1)
     total = 3,          // إجمالي الأسئلة
     level = 1,          // مستوى الطالب
+    levelLabel,         // اختياري لتخصيص نص المستوى
+    counterPrefix = 'المسألة', // 'المسألة' | 'سؤال' | 'التحدي'
     question,           // نص السؤال (اختياري)
     hint,               // نص التلميح (جملة واحدة مختصرة)
     tutorial,           // مصفوفة خطوات شرح الحل الكامل: [{ title, detail }] — خاصة بالسؤال الحالي
@@ -166,28 +168,28 @@ export default function LabChallenge({
     );
 
     return (
-        <div className={`flex flex-col items-center w-full px-2 gap-4 ${sidePanel ? 'max-w-4xl' : 'max-w-2xl'}`}>
+        <div className={`flex flex-col items-center w-full px-1 sm:px-2 gap-2.5 sm:gap-3.5 ${sidePanel ? 'max-w-4xl' : 'max-w-2xl'} my-auto`}>
 
             {/* ── شريط التقدم + المؤشرات ─────────────────────────────────────── */}
-            <div className="w-full">
+            <div className="w-full shrink-0">
                 {/* النص العلوي */}
-                <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-black ${theme.textSub}`}>
-                        سؤال {current} من {total}
+                <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-[11px] sm:text-xs font-black ${theme.textSub}`}>
+                        {counterPrefix} {current} من {total}
                     </span>
                     <div className="flex items-center gap-2">
                         {tourSteps && tourSteps.length > 0 && (
                             <button
                                 data-tour-id="lab-tour-trigger"
                                 onClick={() => setShowTour(true)}
-                                className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border transition-all ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100'}`}
+                                className={`flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border transition-all cursor-pointer ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100'}`}
                                 aria-label="ابدأ جولة تعريفية على الشاشة"
                             >
                                 <Compass size={11} /> جولة تعريفية
                             </button>
                         )}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${LEVEL_COLORS[level]}`}>
-                            {LEVEL_LABELS[level]}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${LEVEL_COLORS[level] || LEVEL_COLORS[1]}`}>
+                            {levelLabel || LEVEL_LABELS[level] || LEVEL_LABELS[1]}
                         </span>
                     </div>
                 </div>
@@ -212,18 +214,18 @@ export default function LabChallenge({
             </div>
 
             {/* ── بطاقة المحتوى (+ لوحة الخطوات الجانبية إن وُجدت) ─────────────── */}
-            <div className={`w-full flex flex-col md:flex-row gap-4 items-start ${sidePanel ? '' : ''}`}>
-                <div className={`w-full p-5 rounded-[1.25rem] border shadow-xl backdrop-blur-3xl ${theme.card}`}>
+            <div className={`w-full flex flex-col md:flex-row gap-3 items-stretch`}>
+                <div className={`w-full p-3.5 sm:p-5 rounded-[1.25rem] sm:rounded-[1.5rem] border shadow-xl backdrop-blur-3xl ${theme.card} flex flex-col justify-center`}>
 
                     {/* نص السؤال — يظهر فقط إذا مرّرناه */}
                     {question && (
-                        <p data-tour-id="lab-question" className={`text-sm md:text-base font-black text-center mb-5 leading-relaxed ${theme.textMain}`}>
+                        <p data-tour-id="lab-question" className={`text-xs sm:text-sm md:text-base font-black text-center mb-3 sm:mb-4 leading-relaxed ${theme.textMain}`}>
                             {question}
                         </p>
                     )}
 
                     {/* المحتوى التفاعلي — يأتي من المختبر */}
-                    <div data-tour-id="lab-content" className={`w-full flex flex-col items-center gap-4 ${type === 'visual' ? 'min-h-[160px] justify-center' : ''} relative`}>
+                    <div data-tour-id="lab-content" className={`w-full flex flex-col items-center gap-2 sm:gap-3 ${type === 'visual' ? 'min-h-[140px] justify-center' : ''} relative`}>
                         {children}
 
                         {/* Cooldown Overlay */}
@@ -235,9 +237,9 @@ export default function LabChallenge({
                                     exit={{ opacity: 0 }}
                                     className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/70 backdrop-blur-md rounded-xl text-white shadow-2xl border border-white/10"
                                 >
-                                    <span className="text-4xl mb-3 animate-pulse">⏳</span>
-                                    <h3 className="text-lg font-black mb-1">توقف للتفكير...</h3>
-                                    <p className="text-sm font-bold text-slate-300">يمكنك المحاولة مجدداً بعد <span className="text-rose-400 text-lg mx-1">{cooldownRemaining}</span> ثوانٍ</p>
+                                    <span className="text-3xl mb-2 animate-pulse">⏳</span>
+                                    <h3 className="text-base font-black mb-1">توقف للتفكير...</h3>
+                                    <p className="text-xs font-bold text-slate-300">يمكنك المحاولة مجدداً بعد <span className="text-rose-400 text-base mx-1">{cooldownRemaining}</span> ثوانٍ</p>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -253,27 +255,30 @@ export default function LabChallenge({
                 {feedback && (
                     <motion.div
                         key={feedback.type + feedback.text}
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.2 }}
                         role="alert"
                         aria-live="polite"
-                        className={`w-full py-3 px-4 rounded-xl border font-bold text-sm text-center ${feedback.type === 'success'
+                        dir="rtl"
+                        className={`w-full py-2.5 px-4 rounded-xl border font-bold text-xs sm:text-sm text-center flex items-center justify-center gap-2 shrink-0 ${feedback.type === 'success'
                                 ? isDarkMode
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                    : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                                    : 'bg-emerald-50 border-emerald-300 text-emerald-800'
                                 : isDarkMode
-                                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                                    : 'bg-rose-50 border-rose-200 text-rose-700'
+                                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                                    : 'bg-rose-50 border-rose-300 text-rose-800'
                             }`}
                     >
-                        {feedback.type === 'success' ? '✓ ' : '✗ '}{feedback.text}
+                        <span className="text-base font-black shrink-0">{feedback.type === 'success' ? '✓' : '✗'}</span>
+                        <span className="leading-snug">{feedback.text}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* ── شريط الأدوات السفلي ─────────────────────────────────────────── */}
-            <div className="w-full flex items-center justify-between gap-3">
+            <div className="w-full flex items-center justify-between gap-3 shrink-0">
 
                 {/* زر التلميح */}
                 {hint ? (
@@ -281,15 +286,15 @@ export default function LabChallenge({
                         <button
                             data-tour-id="lab-hint-button"
                             onClick={() => setShowHint(s => !s)}
-                            className={`flex items-center gap-1.5 text-xs font-black transition-all ${showHint
+                            className={`flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer ${showHint
                                     ? 'text-amber-400'
                                     : isDarkMode ? 'text-slate-500 hover:text-amber-400' : 'text-slate-400 hover:text-amber-600'
                                 }`}
                             aria-expanded={showHint}
                             aria-label="تلميح"
                         >
-                            <HelpCircle size={15} />
-                            تلميح
+                            <HelpCircle size={14} />
+                            <span>تلميح</span>
                         </button>
                         <AnimatePresence>
                             {showHint && (
@@ -297,7 +302,7 @@ export default function LabChallenge({
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
-                                    className={`text-xs font-medium max-w-[200px] leading-relaxed ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700'}`}
+                                    className={`text-[11px] font-medium max-w-[240px] leading-relaxed ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700'}`}
                                 >
                                     {hint}
                                 </motion.p>
@@ -306,16 +311,16 @@ export default function LabChallenge({
                     </div>
                 ) : <div />}
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     {/* زر شرح الحل الكامل */}
                     {tutorial && tutorial.length > 0 && (
                         <button
                             onClick={() => setShowTutorial(true)}
-                            className={`flex items-center gap-1.5 text-xs font-black transition-all ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+                            className={`flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
                             aria-label="اشرح لي طريقة الحل بالتفصيل"
                         >
-                            <GraduationCap size={16} />
-                            كيف أحل هذا؟
+                            <GraduationCap size={15} />
+                            <span>كيف أحل هذا؟</span>
                         </button>
                     )}
 
@@ -323,11 +328,11 @@ export default function LabChallenge({
                     {onRefresh && (
                         <button
                             onClick={() => { setShowHint(false); onRefresh(); }}
-                            className={`flex items-center gap-1.5 text-xs font-black transition-all ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
+                            className={`flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
                             aria-label="سؤال جديد"
                         >
-                            <RefreshCw size={14} />
-                            سؤال جديد
+                            <RefreshCw size={13} />
+                            <span>سؤال جديد</span>
                         </button>
                     )}
                 </div>

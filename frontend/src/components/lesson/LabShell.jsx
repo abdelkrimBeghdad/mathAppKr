@@ -80,31 +80,31 @@ const LabShell = ({
 
   return (
     <LabThemeContext.Provider value={{ theme, isDarkMode, accentColor, currentAccent }}>
-      <div className={`w-full h-full min-h-[350px] max-h-[88vh] ${theme.container} rounded-[1rem] md:rounded-[1.5rem] p-3 md:p-5 relative overflow-hidden flex flex-col font-sans border transition-all duration-700 ${containerClassName} ${currentAccent.glow}`} dir="rtl">
+      <div className={`w-full h-full max-h-full ${theme.container} rounded-[1.75rem] md:rounded-[2rem] p-3 sm:p-5 relative overflow-hidden flex flex-col font-sans border transition-all duration-500 ${containerClassName} ${currentAccent.glow}`} dir="rtl">
         {/* Background Decorative Elements */}
         <div className={`absolute inset-0 transition-opacity duration-1000 ${isDarkMode ? 'opacity-100' : 'opacity-40'}`}>
-          <div className={`absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse`} />
-          <div className={`absolute -bottom-24 -left-24 w-96 h-96 bg-${accentColor}-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse`} style={{ animationDelay: '1s' }} />
+          <div className={`absolute -top-24 -right-24 w-80 h-80 bg-indigo-600/15 rounded-full blur-[100px] pointer-events-none`} />
+          <div className={`absolute -bottom-24 -left-24 w-80 h-80 bg-${accentColor}-600/15 rounded-full blur-[100px] pointer-events-none`} />
           <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] ${currentAccent.gradient} via-transparent to-transparent pointer-events-none`} />
         </div>
 
         {/* Header Section */}
-        <div className="text-center z-10 mb-2 pt-1">
+        <div className="text-center z-10 mb-1 sm:mb-2 shrink-0">
           <AnimatePresence mode="wait">
             {customHeader ? customHeader : (
               <motion.div 
                 key={phase === 'intro' ? 'intro-header' : 'lab-header'} 
-                initial={{ opacity: 0, y: -20 }} 
+                initial={{ opacity: 0, y: -10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
+                exit={{ opacity: 0, y: 10 }}
                 className="flex flex-col items-center"
               >
                 {badgeText && (
-                  <div className={`inline-flex items-center gap-1.5 px-4 py-1 rounded-full font-black text-[10px] md:text-xs uppercase tracking-widest mb-1.5 border backdrop-blur-xl ${currentAccent.badge}`}>
-                    {BadgeIcon && <BadgeIcon size={14} />} {badgeText}
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest mb-1 border backdrop-blur-xl ${currentAccent.badge}`}>
+                    {BadgeIcon && <BadgeIcon size={13} />} {badgeText}
                   </div>
                 )}
-                <h2 className={`text-xs md:text-sm lg:text-xl font-black leading-tight tracking-tighter ${theme.textMain} drop-shadow-sm`}>
+                <h2 className={`text-base sm:text-lg md:text-xl font-black leading-tight tracking-tight ${theme.textMain} drop-shadow-sm`}>
                   {title}
                 </h2>
               </motion.div>
@@ -113,7 +113,7 @@ const LabShell = ({
         </div>
 
         {/* Lab Content */}
-        <div className="flex-grow flex flex-col items-center justify-center relative z-10 w-full min-h-0 overflow-y-auto no-scrollbar">
+        <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full min-h-0 overflow-hidden">
           {children}
         </div>
 

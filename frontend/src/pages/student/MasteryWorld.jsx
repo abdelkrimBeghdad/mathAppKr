@@ -102,9 +102,9 @@ const LABS_MENU = [
     { id: 'fact-id1', title: 'التحليل بالمتطابقة 1', type: 'factorization', isReady: true, desc: 'من الشكل a² + 2ab + b².', difficulty: 'متقدم' },
     { id: 'fact-id2', title: 'التحليل بالمتطابقة 2', type: 'factorization', isReady: true, desc: 'من الشكل a² - 2ab + b².', difficulty: 'متقدم' },
     { id: 'fact-id3', title: 'التحليل بالمتطابقة 3', type: 'factorization', isReady: true, desc: 'من الشكل a² - b².', difficulty: 'خبير' },
-    { id: 'pgcd-divisors', title: 'القواسم المشتركة', type: 'pgcd', isReady: true, desc: 'سرد القواسم وتحديد المشترك.', difficulty: 'مبتدئ' },
-    { id: 'pgcd-subtraction', title: 'الفروق المتتالية', type: 'pgcd', isReady: true, desc: 'حساب PGCD بالطرح المتتالي.', difficulty: 'متوسط' },
-    { id: 'pgcd-euclidean', title: 'خوارزمية إقليدس', type: 'pgcd', isReady: true, desc: 'حساب PGCD بالقسمة المتتالية.', difficulty: 'متوسط' },
+    { id: 'pgcd-divisors', title: 'القواسم المشتركة', type: 'pgcd', isReady: true, desc: 'تفكيك الأعداد واستخراج القواسم المشتركة وتحديد الأكبر.', difficulty: 'مبتدئ' },
+    { id: 'pgcd-subtraction', title: 'الفروق المتتالية', type: 'pgcd', isReady: true, desc: 'تدرب على خوارزمية الفروق المتتالية للوصول إلى PGCD.', difficulty: 'متوسط' },
+    { id: 'pgcd-euclidean', title: 'خوارزمية إقليدس', type: 'pgcd', isReady: true, desc: 'تطبيق عملي سريع للقسمات الإقليدية المتتالية لاستخراج PGCD.', difficulty: 'متوسط' },
     { id: 'roots-simplification', title: 'تبسيط الجذور', type: 'roots', isReady: true, desc: 'استخراج المربعات التامة.', difficulty: 'متوسط' },
     { id: 'roots-multiplication', title: 'ضرب الجذور', type: 'roots', isReady: true, desc: 'دمج جذرين تحت جذر واحد.', difficulty: 'متوسط' },
     { id: 'roots-division', title: 'قسمة الجذور', type: 'roots', isReady: true, desc: 'توحيد الكسور الجذريّة.', difficulty: 'متوسط' },
@@ -768,17 +768,17 @@ export default function MasteryWorld() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.96 }}
                         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                        className={`fixed inset-0 z-50 overflow-hidden flex flex-col p-4 md:p-8 ${isDark ? 'bg-[#050510] text-white' : 'bg-[#f8faff] text-slate-900'}`}
+                        className={`fixed inset-0 z-50 overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 ${isDark ? 'bg-[#050510]/95 backdrop-blur-2xl text-white' : 'bg-slate-900/40 backdrop-blur-xl text-slate-900'}`}
                         dir="rtl"
                     >
                         {/* Ambient Backgrounds */}
                         <motion.div
-                            className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none"
+                            className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[150px] pointer-events-none"
                             animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
                             transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
                         />
                         <motion.div
-                            className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none"
+                            className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[150px] pointer-events-none"
                             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.9, 0.5] }}
                             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
                         />
@@ -788,13 +788,13 @@ export default function MasteryWorld() {
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.2 }}
-                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.9)' }}
+                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.95)' }}
                             whileTap={{ scale: 0.9 }}
-                            className={`absolute top-6 left-6 p-3 rounded-full transition-all border shadow-lg z-50 backdrop-blur-xl ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-600 shadow-md'}`}
+                            className={`absolute top-4 left-4 sm:top-6 sm:left-6 p-2.5 sm:p-3 rounded-2xl transition-all border shadow-xl z-50 backdrop-blur-xl cursor-pointer ${isDark ? 'bg-white/10 border-white/15 text-white hover:border-white/30' : 'bg-white/90 border-slate-200 text-slate-700 hover:text-white shadow-md'}`}
                         >
-                            <X size={24} />
+                            <X size={22} />
                         </motion.button>
-                        <div className="max-w-6xl mx-auto w-full h-full relative z-10 flex flex-col justify-center">
+                        <div className="max-w-5xl mx-auto w-full h-full max-h-[96vh] relative z-10 flex flex-col justify-center items-center overflow-hidden">
                             <LabErrorBoundary onReset={() => setPlayingLab(playingLab)} onBack={handleBackFromLab}>
                                 <Suspense fallback={<LabLoadingFallback isDark={isDark} />}>
                                     {renderActiveLab()}

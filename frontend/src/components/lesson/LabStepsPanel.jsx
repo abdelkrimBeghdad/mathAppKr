@@ -37,39 +37,39 @@ export default function LabStepsPanel({ title = 'سجل الخطوات', steps =
     if (!steps.length) return null;
 
     return (
-        <div className={`w-full md:w-56 flex-shrink-0 p-4 rounded-[1.25rem] border shadow-xl backdrop-blur-3xl ${theme.card}`}>
-            <h4 className={`text-xs font-black uppercase tracking-widest mb-3 ${theme.textSub}`}>
+        <div className={`w-full md:w-56 flex-shrink-0 p-3 sm:p-4 rounded-[1.25rem] border shadow-lg backdrop-blur-3xl ${theme.card} flex flex-col max-h-[190px] md:max-h-[270px]`}>
+            <h4 className={`text-xs font-black tracking-wide mb-2.5 shrink-0 text-center ${theme.textMain}`}>
                 {title}
             </h4>
 
-            <ol className="flex flex-col gap-2" aria-label={title}>
+            <ol className="flex flex-col gap-1.5 overflow-y-auto no-scrollbar flex-1 pr-0.5" aria-label={title}>
                 <AnimatePresence initial={false}>
                     {steps.map((step, i) => (
                         <motion.li
                             key={i}
-                            initial={{ opacity: 0, x: -8 }}
+                            initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            className={`flex items-center gap-2 text-xs font-mono px-2 py-1.5 rounded-lg border transition-all ${
+                            transition={{ delay: i * 0.04 }}
+                            className={`flex items-center gap-2 text-xs font-mono px-2 py-1 rounded-lg border transition-all ${
                                 step.active
                                     ? isDarkMode
-                                        ? 'bg-white/10 border-white/20 text-white font-bold'
-                                        : 'bg-slate-100 border-slate-300 text-slate-900 font-bold'
+                                        ? 'bg-white/10 border-white/25 text-white font-bold shadow-sm'
+                                        : 'bg-slate-100 border-slate-300 text-slate-900 font-bold shadow-sm'
                                     : step.done
                                         ? isDarkMode
-                                            ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400/80'
-                                            : 'bg-emerald-50 border-emerald-100 text-emerald-700/80'
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                                         : `border-transparent opacity-40 ${theme.textSub}`
                             }`}
                             dir="ltr"
                             aria-current={step.active ? 'step' : undefined}
                         >
                             {step.done ? (
-                                <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
+                                <CheckCircle2 size={12} className="text-emerald-500 flex-shrink-0" />
                             ) : step.active ? (
-                                <ChevronLeft size={13} className="flex-shrink-0" />
+                                <ChevronLeft size={12} className="flex-shrink-0 text-indigo-400" />
                             ) : (
-                                <Circle size={13} className="flex-shrink-0 opacity-40" />
+                                <Circle size={12} className="flex-shrink-0 opacity-40" />
                             )}
                             <span className="truncate">{step.label}</span>
                         </motion.li>
